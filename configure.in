@@ -1,0 +1,16 @@
+AC_INIT(configure.in, 1.0)
+
+AC_CANONICAL_HOST
+
+
+AC_PROG_CXX(cxx CC g++)
+
+
+AM_INIT_AUTOMAKE (rcdaq,1.00)
+
+AC_PROG_INSTALL
+
+AC_PROG_LIBTOOL
+
+AC_OUTPUT(Makefile)
+
