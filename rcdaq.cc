@@ -39,6 +39,7 @@
 #define WRITESEM 1
 #define WRITEPROTECTSEM 2
 #define TRIGGERSEM 3
+#define TRIGGERLOOP 4
 
 
 // those are the "todo" definitions. DAQ can be woken up by a trigger
@@ -96,11 +97,13 @@ int TheRun = 0;
 int Buffer_number;
 int Event_number;
 
+int TriggerControl = 0;
 
 daqBuffer  *fillBuffer, *transportBuffer;
 
 pthread_t ThreadId;
 pthread_t ThreadEvt;
+pthread_t ThreadTrigger;
 
 int *thread_arg;
 
@@ -108,6 +111,7 @@ int end_thread = 0;
 
 pthread_mutex_t M_cout;
 
+void * daq_triggerloop (void * arg);
 
 
 devicevector DeviceList;
@@ -211,8 +215,35 @@ int sem_wait (const int semnumber)
 }
 
 int reset_deadtime() {}
-int enable_trigger() {}
-int disable_trigger() {}
+int enable_trigger() 
+{
+
+  TriggerControl=1;
+  int status = pthread_create(&ThreadTrigger, NULL, 
+			  daq_triggerloop, 
+			  (void *) 0);
+
+  if (status ) 
+    {
+      cout << "error in thread create " << status << endl;
+      ThreadTrigger = 0;
+    }
+  else
+    {
+      cout << "trigger loop created " << endl;
+    }
+
+  return 0;
+  
+}
+
+int disable_trigger() 
+{
+  TriggerControl=0;  // this makes the trigger process terminate
+  pthread_join(ThreadTrigger, NULL);
+  cout << "trigger loop finished" << endl;
+  return 0;
+}
 
 
 
@@ -356,6 +387,23 @@ int daq_end(std::ostream& os)
   Command(COMMAND_END);
   return 0;
 }
+
+void * daq_triggerloop (void * arg)
+{
+
+  while (TriggerControl)
+    {
+      
+      Trigger_Todo=DAQ_READ;
+      Origin |= DAQ_TRIGGER;
+      sem_inc ( TRIGGERSEM );
+      cout << "trigger" << endl;
+      usleep (200000);
+
+    }
+}
+
+
 
 int daq_fake_trigger (const int n, const int waitinterval)
 {
@@ -733,7 +781,7 @@ int rcdaq_init( )
 
   int status;
 
-  semid = semget(pid_key, 4, 0666 | IPC_CREAT);
+  semid = semget(pid_key, 8, 0666 | IPC_CREAT);
 
   pthread_mutex_init(&M_cout, 0); 
    
@@ -791,4 +839,28 @@ int rcdaq_init( )
  
 }
 
+int daq_status (std::ostream& os)
+{
+  if ( Daq_Status & DAQ_RUNNING ) 
+    {
+      os << "Runing  " << TheRun  << " Event " << Event_number << endl;
+    }
+  else
+    {
+      os << "Stopped"  << endl;
+    }
+  
+  os << "Current Filename: " << get_current_filename() << endl; 
 
+  if ( daq_open_flag)
+    {
+      os << "Logging enabled"  << endl;
+    }
+  else
+    {
+      os << "Logging Disabled"  << endl;
+    }
+ 
+  os << "Filerule: " <<  daq_get_filerule() << endl; 
+  return 0;
+}
