@@ -53,9 +53,11 @@ librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daq_device.cc 
 
 
+bin_SCRIPTS =  rcdaq_control.pl
+
 bin_PROGRAMS =  rcdaq_client rcdaq_server elogtest
 
-elogtest_SOURCES = elogtest.cc daq_elog_handler.cc
+elogtest_SOURCES = elogtest.cc eloghandler.lo
 
 
 rcdaq_client_SOURCES = rcdaq_client.cc rcdaq_rpc.h
@@ -63,7 +65,7 @@ rcdaq_client_LDADD = rcdaq_rpc_clnt.lo rcdaq_rpc_xdr.lo
 
 
 rcdaq_server_SOURCES = rcdaq_server.cc 
-rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo daq_elog_handler.lo -lpthread
+rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo -lpthread
 
 
 
