@@ -93,9 +93,9 @@ int handle_device( int argc, char **argv, const int optind)
     {
       clnt_perror (clnt, "call failed");
     }
-  if ( r->content) std::cout <<  r->str << std::endl;
+  if ( r->content) std::cout <<  r->str << std::flush;
   
-  return 0;
+  return r->status;
 }
 
 
@@ -110,13 +110,17 @@ int command_execute( int argc, char **argv)
   
   char command[256];
   
-  
+  // the log and short flags are for qualifying the 
+  // status output
+  int long_flag = 0;
+  int short_flag = 0;
+
   int c;
   
   optind = 0; // tell getopt to start over
   int servernumber=0;
 
-  while ((c = getopt(argc, argv, "v")) != EOF)
+  while ((c = getopt(argc, argv, "vls")) != EOF)
     {
       switch (c) 
 	{
@@ -125,12 +129,20 @@ int command_execute( int argc, char **argv)
 	  verbose_flag = 1;
 	  break;
 
-	  //	case 's': // determine the server number
-	  //	  servernumber=atoi(argv[optind+1]);
-	  //	  break;
+	case 'l': // set the verbose flag
+	  long_flag = 1;
+	  break;
+
+	case 's': // set the verbose flag
+	  short_flag = 1;
+	  break;
 
 	}
     }
+
+  // long takes precedence over short
+  if (  long_flag ) short_flag = 0;
+
   //  std::cout << "Server number is " << servernumber << std::endl;
 
   char *host = "localhost";
@@ -164,16 +176,22 @@ int command_execute( int argc, char **argv)
 
   else if ( strcasecmp(command,"daq_begin") == 0)
     {
-      if ( argc != optind + 2) return -1;
 
       ab.action = DAQ_BEGIN;
-      ab.ipar[0] = atoi(argv[optind + 1]);
+      if ( argc == optind + 2)
+	{
+	  ab.ipar[0] = atoi(argv[optind + 1]);
+	}
+      else
+	{
+	  ab.ipar[0] = 0;
+	}
       r = r_action_1 (&ab, clnt);
       if (r == (shortResult *) NULL) 
 	{
 	  clnt_perror (clnt, "call failed");
 	}
-      if (r->content) std::cout <<  r->str << std::endl;
+      if (r->content) std::cout <<  r->str << std::flush;
  
     }
   
@@ -187,7 +205,7 @@ int command_execute( int argc, char **argv)
 	{
 	  clnt_perror (clnt, "call failed");
 	}
-      if (r->content) std::cout <<  r->str << std::endl;
+      if (r->content) std::cout <<  r->str << std::flush;
  
     }
   
@@ -202,7 +220,7 @@ int command_execute( int argc, char **argv)
 	{
 	  clnt_perror (clnt, "call failed");
 	}
-      if (r->content) std::cout <<  r->str << std::endl;
+      if (r->content) std::cout <<  r->str << std::flush;
  
     }
   
@@ -215,7 +233,7 @@ int command_execute( int argc, char **argv)
 	{
 	  clnt_perror (clnt, "call failed");
 	}
-      if (r->content) std::cout <<  r->str << std::endl;
+      if (r->content) std::cout <<  r->str << std::flush;
  
     }
   
@@ -229,7 +247,7 @@ int command_execute( int argc, char **argv)
 	{
 	  clnt_perror (clnt, "call failed");
 	}
-      if (r->content) std::cout <<  r->str << std::endl;
+      if (r->content) std::cout <<  r->str << std::flush;
  
     }
   
@@ -250,7 +268,7 @@ int command_execute( int argc, char **argv)
 	{
 	  clnt_perror (clnt, "call failed");
 	}
-      if (r->content) std::cout <<  r->str << std::endl;
+      if (r->content) std::cout <<  r->str << std::flush;
  
     }
 
@@ -264,7 +282,39 @@ int command_execute( int argc, char **argv)
 	{
 	  clnt_perror (clnt, "call failed");
 	}
-      if (r->content) std::cout <<  r->str << std::endl;
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+  
+ else if ( strcasecmp(command,"daq_clear_readlist") == 0)
+    {
+
+      ab.action = DAQ_CLEARREADLIST;
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+  
+
+  else if ( strcasecmp(command,"daq_status") == 0)
+    {
+
+      ab.action = DAQ_STATUS;
+
+      if ( long_flag) ab.ipar[0] = 1;
+      else if ( short_flag) ab.ipar[0] = 2;
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
  
     }
   
@@ -284,7 +334,7 @@ int command_execute( int argc, char **argv)
 	{
 	  clnt_perror (clnt, "call failed");
 	}
-      if (r->content) std::cout <<  r->str << std::endl;
+      if (r->content) std::cout <<  r->str << std::flush;
  
     }
   
@@ -298,10 +348,10 @@ int command_execute( int argc, char **argv)
 
   else
     {
-      std::cout << "Unknown Command " << command << std::endl;
+      std::cout << "Unknown Command " << command << std::flush;
     }
 
-  return 0;
+  return r->status;
 }
 
 
@@ -310,12 +360,13 @@ main (int argc, char *argv[])
 {
 
   int status = command_execute( argc, argv);
-  if ( status)
-    {
-      cout << "Wrong number of parameters" << endl;
-    }
-
   clnt_destroy (clnt);
 
-  exit (0);
+  if ( status)
+    {
+      return 1;
+    }
+
+
+  return 0;
 }

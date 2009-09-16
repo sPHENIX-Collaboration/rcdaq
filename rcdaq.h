@@ -41,9 +41,11 @@ std::string& get_current_filename();
 int daq_close (std::ostream& os = std::cout);
 
 int daq_list_readlist(std::ostream& os = std::cout );
-int daq_clear_readlist();
+int daq_clear_readlist(std::ostream& os = std::cout);
 std::string& get_current_filename();
 std::string& daq_get_filerule();
+
+int daq_status(const int flag, std::ostream& os = std::cout );
 
 int daq_set_eloghandler( const char *host, const int port, const char *logname);
 

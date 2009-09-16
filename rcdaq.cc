@@ -64,8 +64,8 @@
 
 using namespace std;
 
-static std::string TheFileRule = "rdcaq_%010d_%04d.evt";
-static std::string CurrentFilename = " ";
+static std::string TheFileRule = "rcdaq-%08d-%04d.evt";
+static std::string CurrentFilename = "";
 static int daq_open_flag = 0;  //no files written unless asked for
 static int file_is_open = 0;
 static int current_filesequence = 0;
@@ -122,7 +122,7 @@ int semid;
 int pid_key = 99;
 
 int NumberWritten = 0; 
-unsigned long long BytesInThisRun;
+unsigned long long BytesInThisRun = 0;
 unsigned long long run_volume, max_volume;
 unsigned int max_events;
 
@@ -274,6 +274,9 @@ int open_file(const int run_number, int *fd)
 		  S_IRWXU | S_IROTH | S_IRGRP );
   if (ifd < 0) 
     {
+      cout << " error opending file " << d << endl;
+      perror ( d);
+      *fd = 0;
       return -1;
     }
 
@@ -295,7 +298,7 @@ void *writebuffers ( void * arg)
     {
 
       sem_dec( WRITESEM);
-      cout << "writing..." << endl;
+      //cout << "writing..." << endl;
       unsigned int bytecount = transportBuffer->writeout(outfile_fd);
       NumberWritten++;
       BytesInThisRun += bytecount;
@@ -352,11 +355,12 @@ int daq_begin(const int irun, std::ostream& os)
 {
   if ( Daq_Status & DAQ_RUNNING ) 
     {
-      os << "Run is already active" << endl;
+      os << "Run is already active" << endl;;
       return -1;
     }
 
-  if ( ! irun)
+
+  if (  irun ==0)
     {
       TheRun++;
     }
@@ -364,13 +368,79 @@ int daq_begin(const int irun, std::ostream& os)
     {
       TheRun = irun;
     }
-  Event_number = 0;
 
-  Command(COMMAND_BEGIN);
-
+  if ( daq_open_flag )
+    {
+      int status = open_file ( TheRun, &outfile_fd);
+      if ( !status)
+	{
+	  if (ElogH) ElogH->BegrunLog( TheRun,"RCDAQ",  
+				       get_current_filename());
+	}
+      else
+	{
+	  os << "Could not open output file - Run " << TheRun << " not started" << endl;;
+	  return -1;
+	}
+    }
+  //initialize the Buffer and event number
+  Buffer_number = 1;
+  Event_number  = 1;
+  
+  // set the status to "running"
+  Daq_Status |= DAQ_RUNNING;
+  set_eventsizes();
+  // initialize Buffer1 to be the fill buffer
+  fillBuffer      = &Buffer1;
+  transportBuffer = &Buffer2;
+  fillBuffer->prepare_next(Buffer_number,TheRun);
+  run_volume = 0;
+  
+  device_init();
+  
+  // readout the begin-run event
+  readout(BEGRUNEVENT);
+  
+  //now enable the interrupts and reset the deadtime
+  enable_trigger();
+  reset_deadtime();
+  os << "Run " << TheRun << " started" << endl;;
+	  
   return 0;
 }
 
+
+int daq_end(std::ostream& os)
+{
+  if ( ! (Daq_Status & DAQ_RUNNING) ) 
+    {
+      os << "Run is not active" << endl;;
+      return -1;
+    }
+  disable_trigger();
+		
+  readout(ENDRUNEVENT);
+		
+  if ( file_is_open )
+    {
+      switch_buffer();  // we force a buffer flush
+      sem_dec ( WRITEPROTECTSEM );  // this is to wait for the write
+      sem_inc ( WRITEPROTECTSEM );  // to complete
+      if (ElogH) ElogH->EndrunLog( TheRun,"RCDAQ", Event_number); 
+      close (outfile_fd);
+      outfile_fd = 0;
+      file_is_open = 0;
+ 
+    }
+  Daq_Status ^= DAQ_RUNNING;
+  os << "Run " << TheRun << " ended" << endl;;
+  Event_number = 0;
+  run_volume = 0;    // volume in longwords 
+  BytesInThisRun = 0;    // bytes actually written
+  Buffer_number = 0;
+  CurrentFilename = "";
+  return 0;
+}
 
 int Command (const int command)
 {
@@ -382,11 +452,6 @@ int Command (const int command)
   return 0;
 }
 
-int daq_end(std::ostream& os)
-{
-  Command(COMMAND_END);
-  return 0;
-}
 
 void * daq_triggerloop (void * arg)
 {
@@ -397,8 +462,8 @@ void * daq_triggerloop (void * arg)
       Trigger_Todo=DAQ_READ;
       Origin |= DAQ_TRIGGER;
       sem_inc ( TRIGGERSEM );
-      cout << "trigger" << endl;
-      usleep (200000);
+      //      cout << "trigger" << endl;
+      usleep (20000);
 
     }
 }
@@ -449,9 +514,9 @@ void * EventLoop( void *arg)
 		      Daq_Status |= DAQ_READING;
 		      readout(DATAEVENT);
 		      Daq_Status ^= DAQ_READING;
-
+		      
 		      rearm(DATAEVENT);
-
+		      
 		      // reset todo, and the DAQ_TRIGGER bit. 
 		      Trigger_Todo = 0;
 		      Origin ^= DAQ_TRIGGER;
@@ -468,117 +533,13 @@ void * EventLoop( void *arg)
 		  Origin ^= DAQ_TRIGGER;
 		}
 	    }
-
-
-	  if ( Origin & DAQ_COMMAND )
-	    {
-	      //  cout << " command! " <<  ++i << Command_Todo << endl;
-							
-	      // reset the DAQ_COMMAND bit
-	      Origin ^= DAQ_COMMAND;
-
-	      // now look what to do
-	      switch (Command_Todo)
-		{
-		case COMMAND_INIT: 
-		  cout << "Init..." << endl;
-		  Command_Todo = 0;
-		  break;
-
-		case  COMMAND_BEGIN:
-
-
-		  // if we are already running, return
-		  if ( Daq_Status & DAQ_RUNNING ) 
-		    {
-		      cout << "Run is already active" << endl;
-		    }
-		  else
-		    {
-		      // if we have a protocol, say "begin run" 
-		      if ( daq_open_flag )
-			{
-			  int status = open_file ( TheRun, &outfile_fd);
-			  if ( !status)
-			    {
-			      if (ElogH) ElogH->BegrunLog( TheRun,"RCDAQ",  
-							   get_current_filename());
-			    }
-			}
-		      //initialize the Buffer and event number
-		      Buffer_number = 1;
-		      Event_number  = 1;
-
-		      // set the status to "running"
-		      Daq_Status |= DAQ_RUNNING;
-		      set_eventsizes();
-		      // initialize Buffer1 to be the fill buffer
-		      fillBuffer      = &Buffer1;
-		      transportBuffer = &Buffer2;
-		      fillBuffer->prepare_next(Buffer_number,TheRun);
-		      BytesInThisRun = 0;
-
-		      device_init();
-
-		      // readout the begin-run event
-		      readout(BEGRUNEVENT);
-
-		      //now enable the interrupts and reset the deadtime
-		      enable_trigger();
-		      reset_deadtime();
-		    }
-		  Command_Todo = 0;
-		  break;
-
-		case COMMAND_END:
-
-		  if ( Daq_Status & DAQ_RUNNING ) 
-		    {
-		      disable_trigger();
-		
-		      readout(ENDRUNEVENT);
-		      switch_buffer();  // we force a buffer flush
-		      sem_dec ( WRITEPROTECTSEM );  // this is to wait for the write
-		      sem_inc ( WRITEPROTECTSEM );  // to complete
-		
-		      if ( file_is_open )
-			{
-			  if (ElogH) ElogH->EndrunLog( TheRun,"RCDAQ", Event_number); 
-
-			}
-		      Daq_Status ^= DAQ_RUNNING;
-		      cout << "Run ended" << endl;
-		      Event_number = 0;
-		      run_volume = 0;    // volume in longwords 
-		      BytesInThisRun = 0;    // bytes actually written
-		      Buffer_number = 0;
-		    }
-		  else
-		    {
-		      cout << "Run is not active" << endl;
-		    }
-		  Command_Todo = 0;
-		  break;
-									
-		case COMMAND_FINISH:
-		  cout << "Finish command!" << endl;
-		  Command_Todo = 0;
-		  return 0;
-
-		default:
-		  cout << "unknown command!" << endl;
-		  Command_Todo = 0;
-		  break;
-
-		}
-	    }
-					
+	  
+	  
 	}
     }
-
+  
 }
 
-  
 
 int add_readoutdevice ( daq_device *d)
 {
@@ -605,7 +566,7 @@ int device_init()
 int readout(const int etype)
 {
 
-  cout << " readout etype = " << etype << endl;
+  //  cout << " readout etype = " << etype << endl;
 
   int len = EVTHEADERLENGTH;
 
@@ -629,6 +590,7 @@ int readout(const int etype)
     }
 
   run_volume += len;
+  //  cout << "len, run_volume = " << len << "  " << run_volume << endl;
 
   if ( max_volume > 0 && run_volume >= max_volume) 
     {
@@ -688,7 +650,7 @@ int daq_open (std::ostream& os)
 
   if ( Daq_Status & DAQ_RUNNING ) 
     {
-      os << "Run is active" << endl;
+      os << "Run is active" << endl;;
       return -1;
     }
 
@@ -726,7 +688,7 @@ int daq_close (std::ostream& os)
 
   if ( Daq_Status & DAQ_RUNNING ) 
     {
-      cout << "Run is active" << endl;
+      cout << "Run is active" << endl;;
       return -1;
     }
 
@@ -761,7 +723,7 @@ int daq_list_readlist(std::ostream& os)
 
 }
 
-int daq_clear_readlist()
+int daq_clear_readlist(std::ostream& os)
 {
   deviceiterator d_it;
 
@@ -771,6 +733,7 @@ int daq_clear_readlist()
     }
 
   DeviceList.clear();
+  os << "Readlist cleared" << endl;
 
   return 0;
 }
@@ -839,28 +802,62 @@ int rcdaq_init( )
  
 }
 
-int daq_status (std::ostream& os)
+int daq_status (const int flag, std::ostream& os)
 {
-  if ( Daq_Status & DAQ_RUNNING ) 
-    {
-      os << "Runing  " << TheRun  << " Event " << Event_number << endl;
-    }
-  else
-    {
-      os << "Stopped"  << endl;
-    }
-  
-  os << "Current Filename: " << get_current_filename() << endl; 
 
-  if ( daq_open_flag)
+  double v = run_volume;
+  v /= (1024*1024);
+
+  switch (flag)
     {
-      os << "Logging enabled"  << endl;
+
+    case 2:    // "short format"
+      
+      if ( Daq_Status & DAQ_RUNNING ) 
+	{
+	  os << TheRun  << " " <<  Event_number << " " 
+	     << v << " " 
+	     << daq_open_flag << " " 
+	     << get_current_filename() << endl;
+	}
+      else
+	{
+	  os << "-1 0 0 " << daq_open_flag << " 0" << endl;
+	}
+      
+      break;
+
+    case 1:
+      
+      if ( Daq_Status & DAQ_RUNNING ) 
+	{
+	  os << "Running" << endl;
+	  os << "Run Number: " << TheRun  << endl;
+	  os << "Event:      " << Event_number << endl;;
+	  os << "Run Volume: " << v << " MB"<< endl;
+	  os << "Filename:   " << get_current_filename() << endl;; 	  
+	  os << "Filerule:   " <<  daq_get_filerule() << endl; 	
+	}
+      else
+	{
+	  os << "Stopped"  << endl;;
+	  os << "Filerule:   " <<  daq_get_filerule() << endl; 	
+	}
+      break;
+
+    default:
+      if ( Daq_Status & DAQ_RUNNING ) 
+	{
+	  os << "Run " << TheRun  
+	     << " Event: " << Event_number 
+	     << " Volume: " << v << endl;
+	}
+      else
+	{
+	  os << "Stopped " << endl;
+	}
+      break;
     }
-  else
-    {
-      os << "Logging Disabled"  << endl;
-    }
- 
-  os << "Filerule: " <<  daq_get_filerule() << endl; 
+
   return 0;
 }

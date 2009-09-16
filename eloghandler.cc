@@ -1,4 +1,4 @@
-#include <daq_elog_handler.h>
+#include <eloghandler.h>
 #include <iostream>
 #include <stdlib.h>
 #include <sstream>
@@ -17,7 +17,7 @@ int ElogHandler::BegrunLog ( const int run, std::string who, std::string filenam
     " >/dev/null 2<&1" << endl;
 
 
-  cout << command.str() << endl;
+  //  cout << command.str() << endl;
   system (command.str().c_str() );
   return 0;
 }
@@ -34,7 +34,7 @@ int ElogHandler::EndrunLog ( const int run, std::string who, const int events)
     "\"Run " << run <<  " ended with  " <<  events << " events\"" << 
     " >/dev/null 2<&1" << endl;
 
-  cout << command.str() << endl;
+  //  cout << command.str() << endl;
   system (command.str().c_str() );
 
 

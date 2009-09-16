@@ -29,6 +29,7 @@
 
 using namespace std;
 
+static pthread_mutex_t M_output;
 
 
 void rcdaq_1(struct svc_req *rqstp, register SVCXPRT *transp);
@@ -113,8 +114,10 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 
   static std::ostringstream outputstream;
 
+
   std::cout << ab->action << std::endl;
 
+  pthread_mutex_lock(&M_output);
   result.str=" ";
   result.content = 0;
   result.what = 0;
@@ -128,79 +131,101 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     {
       
     case DAQ_BEGIN:
-      cout << "daq_begin " << ab->ipar[0] << endl;
-      status = daq_begin (  ab->ipar[0], outputstream);
-      if (status) 
-	{
-	  result.str = (char *) outputstream.str().c_str();
-	  result.content = 1;
-	}
+      //  cout << "daq_begin " << ab->ipar[0] << endl;
+      result.status = daq_begin (  ab->ipar[0], outputstream);
+      result.str = (char *) outputstream.str().c_str();
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
     case DAQ_END:
-      cout << "daq_end "  << endl;
-      status = daq_end(outputstream);
-      if (status) 
-	{
-	  result.str = (char *) outputstream.str().c_str();
-	  result.content = 1;
-	}
+        // cout << "daq_end "  << endl;
+      result.status = daq_end(outputstream);
+      result.str = (char *) outputstream.str().c_str();
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
     case DAQ_SETFILERULE:
-      cout << "daq_set_filerule " << ab->spar << endl;
+      // cout << "daq_set_filerule " << ab->spar << endl;
       daq_set_filerule(ab->spar);
       break;
 
     case DAQ_OPEN:
-      cout << "daq_open " << ab->spar << endl;
-      status = daq_open(outputstream);
-      if (status) 
+      // cout << "daq_open " << ab->spar << endl;
+      result.status = daq_open(outputstream);
+      if (result.status) 
 	{
 	  result.str = (char *) outputstream.str().c_str();
 	  result.content = 1;
 	}
+      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
     case DAQ_CLOSE:
-      cout << "daq_close "  << endl;
-      status = daq_close(outputstream);
-      if (status) 
+      // cout << "daq_close "  << endl;
+      result.status = daq_close(outputstream);
+      if (result.status) 
 	{
 	  result.str = (char *) outputstream.str().c_str();
 	  result.content = 1;
 	}
+      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
     case DAQ_FAKETRIGGER:
-      cout << "daq_fake_trigger "  << endl;
-      status =  daq_fake_trigger (ab->ipar[0], ab->ipar[1]);
+      // cout << "daq_fake_trigger "  << endl;
+      result.status =  daq_fake_trigger (ab->ipar[0], ab->ipar[1]);
       break;
 
     case DAQ_LISTREADLIST:
-      cout << "daq_list_readlist "  << endl;
-      status = daq_list_readlist(outputstream);
+      // cout << "daq_list_readlist "  << endl;
+      result.status = daq_list_readlist(outputstream);
       result.str = (char *) outputstream.str().c_str();
       result.content = 1;
+      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
+    case DAQ_CLEARREADLIST:
+      // cout << "daq_clear_readlist "  << endl;
+      result.status = daq_clear_readlist(outputstream);
+      result.str = (char *) outputstream.str().c_str();
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
+    case DAQ_STATUS:
+
+      cout << "daq_status "  << endl;
+      result.status = daq_status(ab->ipar[0], outputstream);
+      result.str = (char *) outputstream.str().c_str();
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
+
     case DAQ_ELOG:
-      cout << "daq_elog " << ab->spar << "  " << ab->ipar[0] << endl;
+      // cout << "daq_elog " << ab->spar << "  " << ab->ipar[0] << endl;
       daq_set_eloghandler( ab->spar,  ab->ipar[0], ab->spar2);
       break;
 
 
     default:
-      cout << "Unknown action" <<  endl;
+      result.str =   "Unknown action";
+      result.content = 1;
+      result.status = 1;
       break;
 
     }
   
+  pthread_mutex_unlock(&M_output);
   return &result;
   
 
@@ -215,6 +240,7 @@ main (int argc, char **argv)
 
   int i;
 
+  pthread_mutex_init(&M_output, 0); 
 
   rcdaq_init();
 
