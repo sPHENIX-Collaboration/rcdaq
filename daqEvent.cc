@@ -21,8 +21,7 @@ int daqEvent::prepare_next()
   return  prepare_next(-1,-1);
 }
 
-int daqEvent::prepare_next( const int evtseq =-1
-			  , const int irun = -1)
+int daqEvent::prepare_next( const int evtseq, const int irun)
 {
   // re-initialize the event header length
   evthdr->evt_length =  EVTHEADERLENGTH;

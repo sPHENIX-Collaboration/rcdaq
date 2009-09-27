@@ -86,7 +86,7 @@ void daq_device_random::identify(std::ostream& os) const
 {
   
   os  << "Random Device  Event Type: " << m_eventType << " Subevent id: " << m_subeventid 
-       << "n_words: " << number_of_words << " range: " << low_range << " - " << high_range << endl;
+       << " n_words: " << number_of_words << " range: " << low_range << " - " << high_range << endl;
 
 }
 

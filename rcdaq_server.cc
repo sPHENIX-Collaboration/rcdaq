@@ -4,7 +4,7 @@
 
 #include "rcdaq.h"
 #include "daq_device.h" 
-#include "daq_device_random.h" 
+#include "all.h" 
 
 
 #include <iostream>
@@ -93,6 +93,12 @@ shortResult * r_create_device_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  return &result;
 	  break;
 	}
+      break;
+
+    case DAQ_DEVICE_FILE:
+      add_readoutdevice ( new daq_device_file( ab->ipar[0],
+					       ab->ipar[1],
+					       ab->spar));
       break;
 
     default:

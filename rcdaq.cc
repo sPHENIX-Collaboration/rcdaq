@@ -36,10 +36,10 @@
 
 #include "rcdaq.h"
 
-#define WRITESEM 1
-#define WRITEPROTECTSEM 2
-#define TRIGGERSEM 3
-#define TRIGGERLOOP 4
+#define WRITESEM 3
+#define WRITEPROTECTSEM 4
+#define TRIGGERSEM 5
+#define TRIGGERLOOP 6
 
 
 // those are the "todo" definitions. DAQ can be woken up by a trigger
@@ -241,7 +241,11 @@ int disable_trigger()
 {
   TriggerControl=0;  // this makes the trigger process terminate
   pthread_join(ThreadTrigger, NULL);
+
+  pthread_mutex_lock(&M_cout);
   cout << "trigger loop finished" << endl;
+  pthread_mutex_unlock(&M_cout);
+
   return 0;
 }
 
@@ -274,8 +278,11 @@ int open_file(const int run_number, int *fd)
 		  S_IRWXU | S_IROTH | S_IRGRP );
   if (ifd < 0) 
     {
+      pthread_mutex_lock(&M_cout);
       cout << " error opending file " << d << endl;
       perror ( d);
+      pthread_mutex_unlock(&M_cout);
+
       *fd = 0;
       return -1;
     }
@@ -298,7 +305,9 @@ void *writebuffers ( void * arg)
     {
 
       sem_dec( WRITESEM);
-      //cout << "writing..." << endl;
+      pthread_mutex_lock(&M_cout);
+      cout << "writing..." << endl;
+      pthread_mutex_unlock(&M_cout);
       unsigned int bytecount = transportBuffer->writeout(outfile_fd);
       NumberWritten++;
       BytesInThisRun += bytecount;
@@ -321,6 +330,10 @@ void *writebuffers ( void * arg)
 int switch_buffer()
 {
 
+  pthread_mutex_lock(&M_cout);
+  cout << __LINE__ << "  " << __FILE__ << " switching buffer" << endl;
+  pthread_mutex_unlock(&M_cout);
+
   daqBuffer *spare;
   
   sem_dec ( WRITEPROTECTSEM );
@@ -328,7 +341,7 @@ int switch_buffer()
   spare = transportBuffer;
   transportBuffer = fillBuffer;
   fillBuffer = spare;
-
+  fillBuffer->prepare_next(++Buffer_number);
 
   sem_inc ( WRITESEM );
   return 0;
@@ -393,7 +406,18 @@ int daq_begin(const int irun, std::ostream& os)
   // initialize Buffer1 to be the fill buffer
   fillBuffer      = &Buffer1;
   transportBuffer = &Buffer2;
+
+  pthread_mutex_lock(&M_cout);
+  cout << " before prepare" << endl;
+  pthread_mutex_unlock(&M_cout);
+
   fillBuffer->prepare_next(Buffer_number,TheRun);
+
+  pthread_mutex_lock(&M_cout);
+  cout << " after prepare" << endl;
+  pthread_mutex_unlock(&M_cout);
+
+
   run_volume = 0;
   
   device_init();
@@ -463,7 +487,7 @@ void * daq_triggerloop (void * arg)
       Origin |= DAQ_TRIGGER;
       sem_inc ( TRIGGERSEM );
       //      cout << "trigger" << endl;
-      usleep (20000);
+      usleep (1000);
 
     }
 }
@@ -479,7 +503,10 @@ int daq_fake_trigger (const int n, const int waitinterval)
       Trigger_Todo=DAQ_READ;
       Origin |= DAQ_TRIGGER;
       sem_inc ( TRIGGERSEM );
+      pthread_mutex_lock(&M_cout);
       cout << "trigger" << endl;
+      pthread_mutex_unlock(&M_cout);
+
       usleep (200000);
 
     }
@@ -566,7 +593,9 @@ int device_init()
 int readout(const int etype)
 {
 
-  //  cout << " readout etype = " << etype << endl;
+  pthread_mutex_lock(&M_cout);
+  cout << " readout etype = " << etype << endl;
+  pthread_mutex_unlock(&M_cout);
 
   int len = EVTHEADERLENGTH;
 
@@ -749,7 +778,7 @@ int rcdaq_init( )
   pthread_mutex_init(&M_cout, 0); 
    
   int i;
-  for ( i = 0; i <4 ; i++)
+  for ( i = 0; i <8 ; i++)
     {
       sem_set(i, 0);
     }

@@ -10,6 +10,7 @@ allheaders = \
 allsources = \
   daqEvent.cc \
   daq_device_random.cc \
+  daq_device_file.cc \
   rcdaq.cc \
   daqBuffer.cc \
   daq_device.cc 
@@ -30,6 +31,7 @@ noinst_HEADERS = \
   SubevtStructures.h \
   daqEvent.h \
   daq_device_random.h \
+  daq_device_file.h \
   rcdaq_rpc.h \
   all.h
 
@@ -49,6 +51,7 @@ lib_LTLIBRARIES =  librcdaq.la
 
 librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daq_device_random.cc \
+  daq_device_file.cc \
   daqBuffer.cc \
   daq_device.cc 
 

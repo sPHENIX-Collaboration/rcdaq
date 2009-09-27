@@ -99,6 +99,7 @@ int daqBuffer::addEoB()
   bptr->Length  += 2*4;
 
   has_end = 1;
+  cout << "addind EOB" << endl;
   return 0;
 }
 
@@ -117,6 +118,7 @@ unsigned int daqBuffer::writeout ( int fd)
 
   addEoB();
   unsigned int bytes;
+  //cout << "writing buffer len = " << getLength() << endl;
   int blockcount = ( getLength() + 8192 -1)/8192;
   int bytecount = blockcount*8192;
   bytes = writen ( fd, (char *) bptr , bytecount );

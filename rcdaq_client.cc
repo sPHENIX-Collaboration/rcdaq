@@ -52,8 +52,16 @@ int handle_device( int argc, char **argv, const int optind)
 
   struct shortResult  *r;
   struct actionblock ab;
+  ab.value=0;
+  ab.spare=0;
   ab.spar = " ";
   ab.spar2 = " ";
+  int i;
+  for ( i = 0; i< 16; i++)
+    {
+      ab.ipar[i] = 0;
+    }
+  
 
   ab.action = DAQ_DEVICE;
 
@@ -88,6 +96,19 @@ int handle_device( int argc, char **argv, const int optind)
 	}
 
     }
+  else if ( strcasecmp(argv[optind+1],"device_file") == 0 ) 
+    {
+
+      if ( argc < optind + 4) return -1;
+
+      ab.spare = DAQ_DEVICE_FILE;
+
+      ab.ipar[0] = atoi ( argv[optind+2]); // event type
+      ab.ipar[1] = atoi ( argv[optind+3]); // subevent id
+      ab.spar = argv[optind+4]; // file
+
+    }
+
   r = r_create_device_1(&ab, clnt);
   if (r == (shortResult *) NULL) 
     {

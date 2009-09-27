@@ -17,6 +17,7 @@
 #define DAQ_ELOG          120
 
 #define DAQ_DEVICE_RANDOM    1001
+#define DAQ_DEVICE_FILE      1002
 
 
 #endif
