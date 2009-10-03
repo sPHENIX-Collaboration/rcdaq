@@ -99,7 +99,7 @@ int daqBuffer::addEoB()
   bptr->Length  += 2*4;
 
   has_end = 1;
-  cout << "addind EOB" << endl;
+  //  cout << "addind EOB" << endl;
   return 0;
 }
 

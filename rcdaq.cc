@@ -2,7 +2,6 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <sys/sem.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -36,10 +35,10 @@
 
 #include "rcdaq.h"
 
-#define WRITESEM 3
-#define WRITEPROTECTSEM 4
-#define TRIGGERSEM 5
-#define TRIGGERLOOP 6
+pthread_mutex_t WriteSem;
+pthread_mutex_t WriteProtectSem;
+pthread_mutex_t TriggerSem;
+pthread_mutex_t TriggerLoop;
 
 
 // those are the "todo" definitions. DAQ can be woken up by a trigger
@@ -117,9 +116,6 @@ void * daq_triggerloop (void * arg);
 devicevector DeviceList;
 
 
-int semid;
-
-int pid_key = 99;
 
 int NumberWritten = 0; 
 unsigned long long BytesInThisRun = 0;
@@ -144,75 +140,6 @@ void sig_handler(int i)
   go_on = 0;
 }
 
-
-
-int sem_set (const int semnumber, const int value)
-{
-  union semun 
-  {
-    int val;                    /* value for SETVAL */
-    struct semid_ds *buf;       /* buffer for IPC_STAT, IPC_SET */
-    unsigned short int *array;  /* array for GETALL, SETALL */
-    struct seminfo *__buf;      /* buffer for IPC_INFO */
-  } semset;
-
-  semset.val = value;
-  
-  return semctl(semid, semnumber, SETVAL, semset);
-
-}
-
-
-int sem_inc (const int semnumber)
-{
-  struct sembuf operations[1];
-
-  operations[0].sem_num = semnumber;
-
-  operations[0].sem_op = 1;
-  operations[0].sem_flg = 0;
-  return semop(semid, operations, 1);
-
-}
-
-int sem_dec (const int semnumber)
-{
-  struct sembuf operations[1];
-
-  operations[0].sem_num = semnumber;
-
-  operations[0].sem_op = -1;
-  operations[0].sem_flg = 0;
-  return semop(semid, operations, 1);
-
-}
-
-int sem_lock (const int semnumber)
-{
-  struct sembuf operations[2];
-  operations[0].sem_num = semnumber;
-  operations[0].sem_op = 0;
-  operations[0].sem_flg = 0;
-
-  operations[1].sem_num = semnumber;
-  operations[1].sem_op = 1;
-  operations[1].sem_flg = 0;
-
-  return semop(semid, operations, 2);
-
-}
-
-int sem_wait (const int semnumber)
-{
-  struct sembuf operations[1];
-
-  operations[0].sem_num = semnumber;
-  operations[0].sem_op = 0;
-  operations[0].sem_flg = 0;
-
-  return semop(semid, operations, 1);
-
-}
 
 int reset_deadtime() {}
 int enable_trigger() 
@@ -249,6 +176,22 @@ int disable_trigger()
   return 0;
 }
 
+
+int daq_setmaxevents (const int n, std::ostream& os)
+{
+
+  max_events =n;
+  return 0;
+
+}
+
+int daq_setmaxvolume (const int n_mb, std::ostream& os)
+{
+
+  max_volume =n_mb * 1024 *1024;
+  return 0;
+
+}
 
 
 int daq_set_eloghandler( const char *host, const int port, const char *logname)
@@ -304,10 +247,11 @@ void *writebuffers ( void * arg)
   while(1)
     {
 
-      sem_dec( WRITESEM);
-      pthread_mutex_lock(&M_cout);
-      cout << "writing..." << endl;
-      pthread_mutex_unlock(&M_cout);
+      pthread_mutex_lock( &WriteSem); // we wait for an unlock
+
+      //      pthread_mutex_lock(&M_cout);
+      //      cout << "writing..." << endl;
+      //      pthread_mutex_unlock(&M_cout);
       unsigned int bytecount = transportBuffer->writeout(outfile_fd);
       NumberWritten++;
       BytesInThisRun += bytecount;
@@ -322,7 +266,7 @@ void *writebuffers ( void * arg)
       
       if ( end_thread) pthread_exit(0);
       
-      sem_inc(WRITEPROTECTSEM);
+      pthread_mutex_unlock(&WriteProtectSem);
     }
   
 }
@@ -330,20 +274,21 @@ void *writebuffers ( void * arg)
 int switch_buffer()
 {
 
-  pthread_mutex_lock(&M_cout);
-  cout << __LINE__ << "  " << __FILE__ << " switching buffer" << endl;
-  pthread_mutex_unlock(&M_cout);
+//   pthread_mutex_lock(&M_cout);
+//   cout << __LINE__ << "  " << __FILE__ << " switching buffer" << endl;
+//   pthread_mutex_unlock(&M_cout);
 
   daqBuffer *spare;
   
-  sem_dec ( WRITEPROTECTSEM );
+  pthread_mutex_lock(&WriteProtectSem);
+
   //switch buffers
   spare = transportBuffer;
   transportBuffer = fillBuffer;
   fillBuffer = spare;
   fillBuffer->prepare_next(++Buffer_number);
 
-  sem_inc ( WRITESEM );
+  pthread_mutex_unlock(&WriteSem);
   return 0;
 
 }
@@ -407,15 +352,8 @@ int daq_begin(const int irun, std::ostream& os)
   fillBuffer      = &Buffer1;
   transportBuffer = &Buffer2;
 
-  pthread_mutex_lock(&M_cout);
-  cout << " before prepare" << endl;
-  pthread_mutex_unlock(&M_cout);
 
   fillBuffer->prepare_next(Buffer_number,TheRun);
-
-  pthread_mutex_lock(&M_cout);
-  cout << " after prepare" << endl;
-  pthread_mutex_unlock(&M_cout);
 
 
   run_volume = 0;
@@ -442,22 +380,24 @@ int daq_end(std::ostream& os)
       return -1;
     }
   disable_trigger();
+
+  Daq_Status ^= DAQ_RUNNING;
 		
   readout(ENDRUNEVENT);
 		
   if ( file_is_open )
     {
       switch_buffer();  // we force a buffer flush
-      sem_dec ( WRITEPROTECTSEM );  // this is to wait for the write
-      sem_inc ( WRITEPROTECTSEM );  // to complete
+      pthread_mutex_lock(&WriteProtectSem);
+      pthread_mutex_unlock(&WriteProtectSem);
+
       if (ElogH) ElogH->EndrunLog( TheRun,"RCDAQ", Event_number); 
       close (outfile_fd);
       outfile_fd = 0;
       file_is_open = 0;
  
     }
-  Daq_Status ^= DAQ_RUNNING;
-  os << "Run " << TheRun << " ended" << endl;;
+   os << "Run " << TheRun << " ended" << endl;;
   Event_number = 0;
   run_volume = 0;    // volume in longwords 
   BytesInThisRun = 0;    // bytes actually written
@@ -471,7 +411,7 @@ int Command (const int command)
   Command_Todo = command;
   Origin |= DAQ_COMMAND;
   
-  sem_inc( TRIGGERSEM);
+  pthread_mutex_unlock ( &TriggerSem );
 
   return 0;
 }
@@ -485,7 +425,8 @@ void * daq_triggerloop (void * arg)
       
       Trigger_Todo=DAQ_READ;
       Origin |= DAQ_TRIGGER;
-      sem_inc ( TRIGGERSEM );
+      pthread_mutex_unlock ( &TriggerSem );
+
       //      cout << "trigger" << endl;
       usleep (1000);
 
@@ -502,10 +443,11 @@ int daq_fake_trigger (const int n, const int waitinterval)
       
       Trigger_Todo=DAQ_READ;
       Origin |= DAQ_TRIGGER;
-      sem_inc ( TRIGGERSEM );
-      pthread_mutex_lock(&M_cout);
-      cout << "trigger" << endl;
-      pthread_mutex_unlock(&M_cout);
+      pthread_mutex_unlock ( &TriggerSem );
+
+//       pthread_mutex_lock(&M_cout);
+//       cout << "trigger" << endl;
+//       pthread_mutex_unlock(&M_cout);
 
       usleep (200000);
 
@@ -521,7 +463,7 @@ void * EventLoop( void *arg)
   while (go_on)
     {
 
-      sem_dec ( TRIGGERSEM );
+      pthread_mutex_lock ( &TriggerSem );
       Origin &= ( DAQ_TRIGGER | DAQ_COMMAND | DAQ_SPECIAL);
 
       while (Origin)
@@ -593,9 +535,9 @@ int device_init()
 int readout(const int etype)
 {
 
-  pthread_mutex_lock(&M_cout);
-  cout << " readout etype = " << etype << endl;
-  pthread_mutex_unlock(&M_cout);
+  //  pthread_mutex_lock(&M_cout);
+  // cout << " readout etype = " << etype << endl;
+  //pthread_mutex_unlock(&M_cout);
 
   int len = EVTHEADERLENGTH;
 
@@ -621,16 +563,19 @@ int readout(const int etype)
   run_volume += len;
   //  cout << "len, run_volume = " << len << "  " << run_volume << endl;
 
-  if ( max_volume > 0 && run_volume >= max_volume) 
+  if (  Daq_Status & DAQ_RUNNING )
     {
-      cout << " automatic end after " << max_volume /(256*1024) << " Mb" << endl;
-      daq_end(std::cout);
-    }
-
-  if ( max_events > 0 && Event_number >= max_events ) 
-    {
-      cout << " automatic end after " << max_events<< " events" << endl;
-      daq_end(std::cout);
+      if ( max_volume > 0 && run_volume >= max_volume) 
+	{
+	  cout << " automatic end after " << max_volume /(1024*1024) << " Mb" << endl;
+	  daq_end(std::cout);
+	}
+      
+      if ( max_events > 0 && Event_number >= max_events ) 
+	{
+	  cout << " automatic end after " << max_events<< " events" << endl;
+	  daq_end(std::cout);
+	}
     }
 
   return 0;
@@ -773,17 +718,20 @@ int rcdaq_init( )
 
   int status;
 
-  semid = semget(pid_key, 8, 0666 | IPC_CREAT);
 
   pthread_mutex_init(&M_cout, 0); 
    
-  int i;
-  for ( i = 0; i <8 ; i++)
-    {
-      sem_set(i, 0);
-    }
+  pthread_mutex_init( &WriteSem, 0);
+  pthread_mutex_init( &WriteProtectSem, 0);
+  pthread_mutex_init( &TriggerSem, 0);
+  pthread_mutex_init( &TriggerLoop, 0);
 
-  sem_set ( WRITEPROTECTSEM,1);
+  // pre-lock them except WriteProtect
+  pthread_mutex_lock( &WriteSem);
+  pthread_mutex_lock( &TriggerSem);
+  pthread_mutex_lock( &TriggerLoop);
+
+
 
   //  signal(SIGKILL, sig_handler);
   //signal(SIGTERM, sig_handler);
@@ -861,16 +809,32 @@ int daq_status (const int flag, std::ostream& os)
       if ( Daq_Status & DAQ_RUNNING ) 
 	{
 	  os << "Running" << endl;
-	  os << "Run Number: " << TheRun  << endl;
-	  os << "Event:      " << Event_number << endl;;
-	  os << "Run Volume: " << v << " MB"<< endl;
-	  os << "Filename:   " << get_current_filename() << endl;; 	  
-	  os << "Filerule:   " <<  daq_get_filerule() << endl; 	
+	  os << "Run Number:   " << TheRun  << endl;
+	  os << "Event:        " << Event_number << endl;;
+	  os << "Run Volume:   " << v << " MB"<< endl;
+	  os << "Filename:     " << get_current_filename() << endl; 	  
+	  os << "Filerule:     " <<  daq_get_filerule() << endl;
+	  if (max_volume)
+	    {
+	      os << "Volume Limit: " <<  max_volume /(1024 *1024) << " Mb" << endl;
+	    }
+	  if (max_events)
+	    {
+	      os << "Event Limit:  " <<  max_events << endl;
+	    }
 	}
       else
 	{
 	  os << "Stopped"  << endl;;
 	  os << "Filerule:   " <<  daq_get_filerule() << endl; 	
+	  if (max_volume)
+	    {
+	      os << "Volume Limit: " <<  max_volume /(1024 *1024) << " Mb" << endl;
+	    }
+	  if (max_events)
+	    {
+	      os << "Event Limit:  " <<  max_events << endl;
+	    }
 	}
       break;
 

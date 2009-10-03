@@ -7,11 +7,6 @@ class daq_device;
 
 void sig_handler(int i);
 
-int sem_set (const int semnumber, const int value);
-int sem_inc (const int semnumber);
-int sem_dec (const int semnumber);
-int sem_lock (const int semnumber);
-int sem_wait (const int semnumber);
 
 void set_eventsizes();
 
@@ -46,6 +41,10 @@ std::string& get_current_filename();
 std::string& daq_get_filerule();
 
 int daq_status(const int flag, std::ostream& os = std::cout );
+
+int daq_setmaxevents (const int n, std::ostream& os);
+int daq_setmaxvolume (const int n_mb, std::ostream& os);
+
 
 int daq_set_eloghandler( const char *host, const int port, const char *logname);
 

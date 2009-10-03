@@ -216,6 +216,32 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       return &result;
       break;
 
+    case DAQ_SETMAXEVENTS:
+      //  cout << "daq_setmaxevents " << ab->ipar[0] << endl;
+      result.status = daq_setmaxevents (  ab->ipar[0], outputstream);
+      result.str = (char *) outputstream.str().c_str();
+      if (result.status) 
+	{
+	  result.str = (char *) outputstream.str().c_str();
+	  result.content = 1;
+	}
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
+    case DAQ_SETMAXVOLUME:
+      //  cout << "daq_setmaxvolume " << ab->ipar[0] << endl;
+      result.status = daq_setmaxvolume (  ab->ipar[0], outputstream);
+      result.str = (char *) outputstream.str().c_str();
+      if (result.status) 
+	{
+	  result.str = (char *) outputstream.str().c_str();
+	  result.content = 1;
+	}
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
 
     case DAQ_ELOG:
       // cout << "daq_elog " << ab->spar << "  " << ab->ipar[0] << endl;

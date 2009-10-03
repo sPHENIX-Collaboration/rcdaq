@@ -7,6 +7,8 @@
 #define DAQ_CLOSE         104
 #define DAQ_SETFILERULE   105
 #define DAQ_FAKETRIGGER   106
+#define DAQ_SETMAXEVENTS  107
+#define DAQ_SETMAXVOLUME  108
 
 #define DAQ_DEVICE        110
 #define DAQ_LISTREADLIST  111

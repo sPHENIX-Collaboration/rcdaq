@@ -339,6 +339,40 @@ int command_execute( int argc, char **argv)
  
     }
   
+  else if ( strcasecmp(command,"daq_set_maxevents") == 0)
+    {
+      if ( argc < optind + 2) return -1;
+
+      ab.action = DAQ_SETMAXEVENTS;
+      ab.ipar[0] = atoi(argv[optind + 1]);
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+  else if ( strcasecmp(command,"daq_set_maxvolume") == 0)
+    {
+      if ( argc < optind + 2) return -1;
+
+      ab.action = DAQ_SETMAXVOLUME;
+      ab.ipar[0] = atoi(argv[optind + 1]);
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+
+
 
   else if ( strcasecmp(command,"elog") == 0)
     {
