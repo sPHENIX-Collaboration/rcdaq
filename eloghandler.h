@@ -12,12 +12,7 @@ public:
 
   //** Constructors
 
-  ElogHandler (const std::string h, const int p, const std::string name)
-    {
-      hostname=h;
-      port=p;
-      logbookname = name;
-    }
+  ElogHandler (const std::string h, const int p, const std::string name);
 
   virtual ~ElogHandler() {}
 

@@ -5,6 +5,13 @@
 
 using namespace std;
 
+  ElogHandler::ElogHandler (const std::string h, const int p, const std::string name)
+    {
+      hostname=h;
+      port=p;
+      logbookname = name;
+    }
+
 int ElogHandler::BegrunLog ( const int run, std::string who, std::string filename)
 {
  

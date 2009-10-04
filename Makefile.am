@@ -60,7 +60,8 @@ bin_SCRIPTS =  rcdaq_control.pl
 
 bin_PROGRAMS =  rcdaq_client rcdaq_server elogtest
 
-elogtest_SOURCES = elogtest.cc eloghandler.lo
+elogtest_SOURCES = elogtest.cc
+elogtest_LDADD = eloghandler.lo 
 
 
 rcdaq_client_SOURCES = rcdaq_client.cc rcdaq_rpc.h
