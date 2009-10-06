@@ -82,25 +82,25 @@ rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.l
 rcdaq_rpc_clnt.cc : $(srcdir)/rcdaq_rpc.x
 	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xx
 	$(RPCGEN) -l rcdaq_rpc.xx  > $@
-	rm rcdaq_rpc.x
+	rm rcdaq_rpc.xx
 
 
 rcdaq_rpc_svc.cc : $(srcdir)/rcdaq_rpc.x
 	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xx
 	$(RPCGEN) -m rcdaq_rpc.xx  > $@
-	rm rcdaq_rpc.x
+	rm rcdaq_rpc.xx
 
 
 rcdaq_rpc_xdr.cc : $(srcdir)/rcdaq_rpc.x
 	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xx
 	$(RPCGEN)  -c  rcdaq_rpc.xx  > $@
-	rm rcdaq_rpc.x
+	rm rcdaq_rpc.xx
 
 
 rcdaq_rpc.h : $(srcdir)/rcdaq_rpc.x
 	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xx
 	$(RPCGEN)  -h  rcdaq_rpc.xx > $@
-	rm rcdaq_rpc.x
+	rm rcdaq_rpc.xx
 
 
 clean-local:
