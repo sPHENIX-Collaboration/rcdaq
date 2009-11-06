@@ -238,6 +238,14 @@ int open_file(const int run_number, int *fd)
   return 0;
 }
 
+void *shutdown_thread (void *arg)
+{
+
+  cout << "shutting down... " << endl;
+  sleep(5);
+  exit(0);
+}
+
 
 void *writebuffers ( void * arg)
 {
@@ -631,6 +639,34 @@ int daq_open (std::ostream& os)
   daq_open_flag =1;
   return 0;
 }
+
+int daq_shutdown (std::ostream& os)
+{
+
+  if ( Daq_Status & DAQ_RUNNING ) 
+    {
+      os << "Run is active" << endl;;
+      return -1;
+    }
+
+
+  pthread_t t;
+
+  int status = pthread_create(&t, NULL, 
+			  shutdown_thread, 
+			  (void *) 0);
+   
+  if (status ) 
+    {
+      cout << "cannot shut down " << status << endl;
+      os << "cannot shut down " << status << endl;
+      return -1;
+    }
+
+  return 0;
+}
+
+
 
 //   if (outfile_fd)
 //     {

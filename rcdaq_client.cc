@@ -401,9 +401,26 @@ int command_execute( int argc, char **argv)
  
     }
 
+  else if ( strcasecmp(command,"daq_shutdown") == 0)
+    {
+
+      r = r_shutdown_1(0,clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	  return 0;
+	}
+      else
+	{
+	  if (r->content) std::cout <<  r->str << std::flush;
+	}
+    }
+
+
   else
     {
       std::cout << "Unknown Command " << command << std::flush;
+      return 0;
     }
 
   return r->status;

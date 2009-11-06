@@ -31,6 +31,7 @@ int daq_fake_trigger (const int n, const int waitinterval);
 int daq_set_filerule(const char *rule);
 std::string& daq_get_filerule();
 int daq_open(std::ostream& os = std::cout);
+int daq_shutdown(std::ostream& os = std::cout);
 int is_open();
 std::string& get_current_filename();
 int daq_close (std::ostream& os = std::cout);

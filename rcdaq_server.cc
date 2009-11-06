@@ -262,6 +262,38 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 
 }
 
+shortResult * r_shutdown_1_svc(void *x, struct svc_req *rqstp)
+{
+
+  
+  static shortResult  result;
+
+  static std::ostringstream outputstream;
+
+  pthread_mutex_lock(&M_output);
+
+  cout << "daq_shutdown "  << endl;
+
+  result.str=" ";
+  result.content = 0;
+  result.what = 0;
+  result.status = 0;
+
+  int status;
+
+  outputstream.str("");
+
+  result.status = daq_shutdown ( outputstream);
+  if (result.status) 
+    {
+      result.str = (char *) outputstream.str().c_str();
+      result.content = 1;
+    }
+  pthread_mutex_unlock(&M_output);
+  return &result;
+
+}
+
 //-------------------------------------------------------------
 
 

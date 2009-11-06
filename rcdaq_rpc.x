@@ -25,6 +25,7 @@ program RCDAQ
 
       shortResult r_action(actionblock) = 1;
       shortResult r_create_device(actionblock) = 2;
+      shortResult r_shutdown() = 3;
 
     } = 1;
 
