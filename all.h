@@ -3,6 +3,7 @@
 
 #include "daq_device_random.h"
 #include "daq_device_file.h"
+#include "daq_device_tspmproto.h"
 
 
 #endif

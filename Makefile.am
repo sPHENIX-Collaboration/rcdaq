@@ -11,6 +11,7 @@ allsources = \
   daqEvent.cc \
   daq_device_random.cc \
   daq_device_file.cc \
+  daq_device_tspmproto.cc \
   rcdaq.cc \
   daqBuffer.cc \
   daq_device.cc 
@@ -32,6 +33,7 @@ noinst_HEADERS = \
   daqEvent.h \
   daq_device_random.h \
   daq_device_file.h \
+  daq_device_tspmproto.h \
   rcdaq_rpc.h \
   all.h
 
@@ -52,6 +54,7 @@ lib_LTLIBRARIES =  librcdaq.la
 librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daq_device_random.cc \
   daq_device_file.cc \
+  daq_device_tspmproto.cc \
   daqBuffer.cc \
   daq_device.cc 
 
