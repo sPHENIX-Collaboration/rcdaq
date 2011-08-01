@@ -126,7 +126,7 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
   static std::ostringstream outputstream;
 
 
-  std::cout << ab->action << std::endl;
+  //  std::cout << ab->action << std::endl;
 
   pthread_mutex_lock(&M_output);
   result.str=" ";
@@ -213,7 +213,7 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 
     case DAQ_STATUS:
 
-      cout << "daq_status "  << endl;
+      //      cout << "daq_status "  << endl;
       result.status = daq_status(ab->ipar[0], outputstream);
       result.str = (char *) outputstream.str().c_str();
       result.content = 1;
@@ -311,7 +311,7 @@ main (int argc, char **argv)
 
   pthread_mutex_init(&M_output, 0); 
 
-  rcdaq_init();
+  rcdaq_init( M_output);
 
 
   server_setup(argc, argv);

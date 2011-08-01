@@ -41,7 +41,20 @@ void showHelp()
 {
   std::cout << "  help                 show this help text"  << std::endl; 
   std::cout << std::endl; 
-  std::cout << "  daq_begin            start taking data"  << std::endl; 
+  std::cout << "   daq_begin [run-number]      	start taking data for run-number, or auto-increment" << std::endl;
+  std::cout << "   daq_end   		 	end the run " << std::endl;
+  std::cout << "   daq_setfilerule file-rule 	set the file rule default rcdaq-%08d-%04d.evt" << std::endl;
+  std::cout << "   daq_open  	 		enable logging" << std::endl;
+  std::cout << "   daq_close  			disable logging" << std::endl;
+  std::cout << "   daq_fake_trigger n 		create n artificial triggers" << std::endl;
+  std::cout << "   daq_list_readlist  		display the current readout list" << std::endl;
+  std::cout << "   daq_clear_readlist  		clear the current readout list " << std::endl;
+  std::cout << "   daq_status [-s] [-l] 	display status [short] [long]" << std::endl;
+  std::cout << "   daq_set_maxevents nevt 	set automatic end at so many events" << std::endl;
+  std::cout << "   daq_set_maxvolume n_MB 	set automatic end at n_MB MegaByte" << std::endl;
+  std::cout << "   elog elog-server port	specify coordinates for an Elog server" << std::endl;
+  std::cout << "   create_device [device-specific parameters] " << std::endl;
+  std::cout << "   daq_shutdown  		terminate the rcdaq backend" << std::endl;
   exit(0);
 }
 
@@ -432,7 +445,7 @@ int command_execute( int argc, char **argv)
 
   else
     {
-      std::cout << "Unknown Command " << command << std::flush;
+      std::cout << "Unknown Command " << command << std::endl;
       return 0;
     }
 
