@@ -187,8 +187,8 @@ int daq_setmaxevents (const int n, std::ostream& os)
 
 int daq_setmaxvolume (const int n_mb, std::ostream& os)
 {
-
-  max_volume =n_mb * 1024 *1024;
+  unsigned long long x = n_mb;
+  max_volume =x * 1024 *1024;
   return 0;
 
 }
@@ -222,7 +222,7 @@ int open_file(const int run_number, int *fd)
   if (ifd < 0) 
     {
       pthread_mutex_lock(&M_cout);
-      cout << " error opending file " << d << endl;
+      cout << " error opening file " << d << endl;
       perror ( d);
       pthread_mutex_unlock(&M_cout);
 
@@ -267,7 +267,7 @@ void *writebuffers ( void * arg)
       if (verbose >1)
 	{
 	  pthread_mutex_lock(&M_cout);
-	  cout << __LINE__ << "  " << __FILE__ << " write thread has written  " <<  BytesInThisRun << endl;
+	  //	  cout << __LINE__ << "  " << __FILE__ << " write thread has written  " <<  BytesInThisRun << endl;
 	  pthread_mutex_unlock(&M_cout);
 	}
       
@@ -435,8 +435,9 @@ void * daq_triggerloop (void * arg)
       Origin |= DAQ_TRIGGER;
       pthread_mutex_unlock ( &TriggerSem );
 
+      //      cout << __LINE__ << "  " << __FILE__ << " trigger" << endl;
       //      cout << "trigger" << endl;
-      usleep (1000);
+      usleep (10000);
 
     }
 }
@@ -472,6 +473,7 @@ void * EventLoop( void *arg)
     {
 
       pthread_mutex_lock ( &TriggerSem );
+      //      cout << __LINE__ << "  " << __FILE__ << " Origin "  << Origin<< dec << endl;
       Origin &= ( DAQ_TRIGGER | DAQ_COMMAND | DAQ_SPECIAL);
 
       while (Origin)
@@ -489,8 +491,10 @@ void * EventLoop( void *arg)
 		    {
 		    case DAQ_READ:
 		      Daq_Status |= DAQ_READING;
+		      //		      cout << __LINE__ << "  " << __FILE__ << " reading out..." << endl;
 		      readout(DATAEVENT);
 		      Daq_Status ^= DAQ_READING;
+		      // cout << __LINE__ << "  " << __FILE__ << " done" << endl;
 		      
 		      rearm(DATAEVENT);
 		      
@@ -568,7 +572,7 @@ int readout(const int etype)
       len += fillBuffer->addSubevent ( (*d_it) );
     }
 
-  run_volume += len;
+  run_volume += 4*len;
   //  cout << "len, run_volume = " << len << "  " << run_volume << endl;
 
   if (  Daq_Status & DAQ_RUNNING )
@@ -749,14 +753,15 @@ int daq_clear_readlist(std::ostream& os)
 }
 
 
-int rcdaq_init( )
+int rcdaq_init( pthread_mutex_t &M)
 {
 
   int status;
 
 
-  pthread_mutex_init(&M_cout, 0); 
-   
+  //  pthread_mutex_init(&M_cout, 0); 
+  M_cout = M;
+
   pthread_mutex_init( &WriteSem, 0);
   pthread_mutex_init( &WriteProtectSem, 0);
   pthread_mutex_init( &TriggerSem, 0);
