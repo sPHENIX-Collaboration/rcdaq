@@ -6,7 +6,7 @@
 #include <daq_device_tspmproto.h>
 #include <string.h>
 
-#define PORT 32002
+#define PORT 32003
 
 #define MAX_PACKETS 200
 
@@ -182,7 +182,7 @@ int daq_device_tspmproto::start_tspm()
 
 #define SETPORT 32000
 #define READREQPORT 32001
-#define RECPORT 32002
+#define RECPORT 32003
 
 
   struct sockaddr_in server;
