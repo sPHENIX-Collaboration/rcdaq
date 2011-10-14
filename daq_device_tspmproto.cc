@@ -8,7 +8,7 @@
 
 #define PORT 32003
 
-#define MAX_PACKETS 200
+#define MAX_PACKETS 1
 
 using namespace std;
 
@@ -56,7 +56,7 @@ int daq_device_tspmproto::put_data(const int etype, int * adr, const int length 
   // update id's etc
   sevt->sub_id =  m_subeventid;
   sevt->sub_type=4;
-  sevt->sub_decoding = ID4EVT;
+  sevt->sub_decoding = 61;
   sevt->reserved[0] = 0;
   sevt->reserved[1] = 0;
 
@@ -82,11 +82,11 @@ int daq_device_tspmproto::put_data(const int etype, int * adr, const int length 
   socklen_t src_len;
   int ia;
   int received_len; 
-  for ( ia = 0; ia < MAX_PACKETS; ia++)  //receive 20 packets
+  for ( ia = 0; ia < MAX_PACKETS; ia++)  //receive 
     {
 
-      tv.tv_sec = 0;
-      tv.tv_usec = 500000;
+      tv.tv_sec = 60;
+      tv.tv_usec = 0;
 
       int retval = select(_s+1, &read_flag, NULL, NULL, &tv);
       if ( retval >0) 
@@ -102,8 +102,8 @@ int daq_device_tspmproto::put_data(const int etype, int * adr, const int length 
 	}
       else
 	{
-	  cout << __LINE__ << "  " << __FILE__ << " timeout in ";
-	  identify();
+	  // cout << __LINE__ << "  " << __FILE__ << " timeout in ";
+	  //identify();
 	  return 0;
 	}
 
