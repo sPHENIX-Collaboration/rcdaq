@@ -10,9 +10,8 @@ daqBuffer::daqBuffer (const int irun, const int length
   bptr = ( buffer_ptr ) b;
 
   data_ptr = &(bptr->data[0]);
-  max_length = length;
+  max_length = length;   // in 32bit units
   max_size = max_length;
-  left = max_size - BUFFERHEADERLENGTH;
   bptr->ID = -64;
   bptr->Bufseq = iseq;
   bptr->Runnr = 0;
@@ -42,7 +41,7 @@ int daqBuffer::prepare_next( const int iseq
   if (irun>0) bptr->Runnr = irun;
 
   current_index = 0;
-  left=max_size - EVTHEADERLENGTH ;
+  left = max_size - BUFFERHEADERLENGTH - EOBLENGTH; 
   has_end = 0;
   return 0;
 }
@@ -56,7 +55,6 @@ int daqBuffer::nextEvent(const int etype, const int evtseq, const int evtsize)
   current_event = 0;
   current_etype = -1;
 
-  //cout << "maxsize,left: " << maxsize << " " << left << endl;
   if (evtsize > left-EOBLENGTH) return -1;
 
   current_event = new daqEvent(&(bptr->data[current_index]), evtsize
@@ -66,6 +64,9 @@ int daqBuffer::nextEvent(const int etype, const int evtseq, const int evtsize)
   bptr->Length  += EVTHEADERLENGTH*4;
 
   current_etype = etype;
+
+  //  cout << "maxsize,left: " << max_size << " " << left << endl;
+
   return 0;
 }
 
@@ -116,13 +117,44 @@ int daqBuffer::addEoB()
 unsigned int daqBuffer::writeout ( int fd)
 {
 
-  addEoB();
+  if (!has_end) addEoB();
+
   unsigned int bytes;
   //cout << "writing buffer len = " << getLength() << endl;
   int blockcount = ( getLength() + 8192 -1)/8192;
   int bytecount = blockcount*8192;
   bytes = writen ( fd, (char *) bptr , bytecount );
   return bytes;
+}
+
+unsigned int daqBuffer::sendData ( int fd, struct sockaddr_in *si_remote)
+{
+
+  if (!has_end) addEoB();
+
+  socklen_t slen = sizeof(*si_remote);
+  ssize_t l;
+
+  char *p = (char *) bptr;
+  int sent = 0;
+
+  cout << "sending  buffer len = " << getLength()  << endl;
+  while ( sent < getLength() )
+    {
+      if ( (l = sendto(fd, p, 1024, 0, (sockaddr *) si_remote, slen))==-1)
+	{
+	  perror( "sendto " );
+	  return 0;
+	}
+      p+=l;
+      sent += l;
+      //      cout << "sent: " << sent  << " in this buffer: " << l << endl;
+      usleep(100);
+    }
+
+
+
+  return sent;
 }
 
 
