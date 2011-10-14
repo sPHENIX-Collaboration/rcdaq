@@ -6,6 +6,7 @@
 #include <EventTypes.h>
 #include <daqEvent.h>
 #include <BufferConstants.h>
+#include <arpa/inet.h>
 
 
 class daqBuffer {
@@ -31,8 +32,11 @@ public:
   int addEoB();
 
   // now the write routine
-  //  int transfer ( dataProtocol * dprotocol );
   unsigned int writeout ( int fd);
+
+  // now the "send monitor data" routine
+  unsigned int sendData ( int fd, struct sockaddr_in *si_remote);
+
 
   // now the re-sizing of buffer
   int setMaxSize( const int size);
