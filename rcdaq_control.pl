@@ -140,74 +140,84 @@ MainLoop();
 sub update()
 {
 
+    my $old_run;
+
     my $res = `rcdaq_client daq_status -s 2>&1`;
 #    print $res;
 
-#    chop $res;
-    ($run, $evt, $v, $openflag, $fn)= split (/\s/ ,$res);
-#    print " run $run  evt $evt  vol $v open  $openflag file  $fn \n";
-    
-    if ( $run < 0)
+    if ( $res =~ /system error/ )
     {
-	
-	$button_begin->configure(-text =>"Begin");
-	$button_begin->configure(-command => [\&daq_begin]);
-
-	$runstatuslabel->configure(-text =>"Stopped");
-	$button_open->configure(-bg => $buttonbgcolor );
-
-	if ( $openflag)
-	{
-	    $button_open->configure(-text =>    "Close");
-	    $button_open->configure(-command => [\&daq_close] );
-	}
-	else
-	{
-	    $button_open->configure(-text =>    "Open");
-	    $button_open->configure(-command => [\&daq_open] );
-	}
-
-
-	if ( $openflag )
-	{
-	    
-	    $filenamelabel->configure(-text =>"Logging enabled");
-	}
-	else
-	{
-	    $filenamelabel->configure(-text =>"Logging Disabled");
-	}
+	$runstatuslabel->configure(-text =>"RCDAQ not running");
+	$run = "n/a";
+	$evt =  "n/a";
+	$v =  "n/a";
     }
     else
     {
-	$button_begin->configure(-text =>"End");
-	$button_begin->configure(-command => [\&daq_end]);
-
-	$runstatuslabel->configure(-text =>"Running");
-	$button_open->configure(-bg => $graycolor );
-	$button_open->configure(-command => [\&dummy] );
-
-	if ( $openflag )
+	($run, $evt, $v, $openflag, $fn)= split (/\s/ ,$res);
+#    print " run $run  evt $evt  vol $v open  $openflag file  $fn \n";
+	
+	if ( $run < 0)
 	{
 	    
-	    $filenamelabel->configure(-text =>"File: $fn");
+	    $button_begin->configure(-text =>"Begin");
+	    $button_begin->configure(-command => [\&daq_begin]);
+	    
+	    $runstatuslabel->configure(-text =>"Stopped   Run $old_run");
+	    $button_open->configure(-bg => $buttonbgcolor );
+	    
+	    if ( $openflag)
+	    {
+		$button_open->configure(-text =>    "Close");
+		$button_open->configure(-command => [\&daq_close] );
+	    }
+	    else
+	    {
+		$button_open->configure(-text =>    "Open");
+		$button_open->configure(-command => [\&daq_open] );
+	    }
+	    
+	    
+	    if ( $openflag )
+	    {
+		
+		$filenamelabel->configure(-text =>"Logging enabled");
+	    }
+	    else
+	    {
+		$filenamelabel->configure(-text =>"Logging Disabled");
+	    }
 	}
 	else
 	{
-	    $filenamelabel->configure(-text =>"Logging Disabled");
+	    $old_run = $run;
+	    
+	    $button_begin->configure(-text =>"End");
+	    $button_begin->configure(-command => [\&daq_end]);
+	    
+	    $runstatuslabel->configure(-text =>"Running");
+	    $button_open->configure(-bg => $graycolor );
+	    $button_open->configure(-command => [\&dummy] );
+	    
+	    if ( $openflag )
+	    {
+		
+		$filenamelabel->configure(-text =>"File: $fn");
+	    }
+	    else
+	    {
+		$filenamelabel->configure(-text =>"Logging Disabled");
+	    }
 	}
-    }
-
     
+    }
        
     $runnumberlabel->configure(-text => "Run:    $run");
     
     $eventcountlabel->configure(-text =>"Events: $evt");
     
-    $volumelabel->configure(-text =>    "Volume: $v");
+    $volumelabel->configure(-text =>    "Volume: $v MB");
     
-
-
-
+    
 }
 

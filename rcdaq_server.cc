@@ -86,6 +86,15 @@ shortResult * r_create_device_1_svc(actionblock *ab, struct svc_req *rqstp)
 						     ab->ipar[4]));
 	  break;
 
+	case 6:
+	  add_readoutdevice ( new daq_device_random( ab->ipar[0],
+						     ab->ipar[1],
+						     ab->ipar[2],
+						     ab->ipar[3],
+						     ab->ipar[4],
+						     ab->ipar[5]));
+	  break;
+
 	default:
 	  result.content=1;
 	  result.str= "Wrong parameters for daq_device_random";
@@ -237,6 +246,19 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     case DAQ_SETMAXVOLUME:
       //  cout << "daq_setmaxvolume " << ab->ipar[0] << endl;
       result.status = daq_setmaxvolume (  ab->ipar[0], outputstream);
+      result.str = (char *) outputstream.str().c_str();
+      if (result.status) 
+	{
+	  result.str = (char *) outputstream.str().c_str();
+	  result.content = 1;
+	}
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
+    case DAQ_SETMAXBUFFERSIZE:
+      //  cout << "daq_setmaxvolume " << ab->ipar[0] << endl;
+      result.status = daq_setmaxbuffersize (  ab->ipar[0], outputstream);
       result.str = (char *) outputstream.str().c_str();
       if (result.status) 
 	{

@@ -167,7 +167,9 @@ int daqBuffer::setMaxSize(const int size)
   if (size == 0) max_size = max_length;
   else
     {
-      max_size = (size + ( 8192 - size%8192) ) /4;
+      max_size = (size + 8191)/8192;
+      max_size *= 2048;
+
       if (max_size > max_length)
 	{
 	  max_size = max_length;
@@ -180,7 +182,7 @@ int daqBuffer::setMaxSize(const int size)
 // ----------------------------------------------------------
 int daqBuffer::getMaxSize() const 
 {
-  return max_size;
+  return max_size*4;
 }
 
 unsigned int daqBuffer::writen (int fd, char *ptr, const unsigned int nbytes)

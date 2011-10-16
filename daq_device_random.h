@@ -3,6 +3,7 @@
 
 
 #include <daq_device.h>
+#include <pulserTriggerHandler.h>
 #include <stdio.h>
 
 
@@ -15,7 +16,8 @@ public:
     , const int subeventid
     , const int n_words=32
     , const int low=0
-    , const int high=2047);
+    , const int high=2047
+    , const int trigger_enabled=0);
 
 
   ~daq_device_random();
@@ -33,12 +35,13 @@ public:
 
   int rearm( const int etype);
 
-private:
+protected:
   subevtdata_ptr sevt;
   unsigned int number_of_words;
   int low_range;
   int high_range;
   FILE *rfp;
+  pulserTriggerHandler *th;
 
 };
 

@@ -8,6 +8,11 @@
 #include <iostream>
 #include <iomanip>
 #include <stdio.h>
+#include "TriggerHandler.h"
+
+
+int registerTriggerHandler(TriggerHandler *);
+int clearTriggerHandler();
 
 
 class daq_device {

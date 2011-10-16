@@ -17,7 +17,7 @@ public:
   virtual ~ElogHandler() {}
 
   virtual int BegrunLog ( const int run, std::string who, std::string filename);
-  virtual int EndrunLog ( const int run, std::string who, const int events);
+  virtual int EndrunLog ( const int run, std::string who, const int events, const double volume=0);
 
 
 protected:

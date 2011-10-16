@@ -10,7 +10,8 @@ daq_device_random::daq_device_random(const int eventtype
     , const int subeventid
     , const int n_words
     , const int low
-    , const int high)
+    , const int high
+    , const int trigger_enabled)
 {
 
   m_eventType  = eventtype;
@@ -19,12 +20,22 @@ daq_device_random::daq_device_random(const int eventtype
   low_range = low;
   high_range = high;
   rfp = fopen("/dev/urandom","r");
-
+  if (trigger_enabled) 
+    {
+      th = new pulserTriggerHandler();
+      registerTriggerHandler(th);
+    }
+  else
+    {
+      th = 0;
+    }
 }
 
 daq_device_random::~daq_device_random()
 {
   if ( rfp) fclose( rfp);
+  clearTriggerHandler();
+  delete th;
 }
 
 
@@ -86,7 +97,15 @@ void daq_device_random::identify(std::ostream& os) const
 {
   
   os  << "Random Device  Event Type: " << m_eventType << " Subevent id: " << m_subeventid 
-       << " n_words: " << number_of_words << " range: " << low_range << " - " << high_range << endl;
+      << " n_words: " << number_of_words 
+      << " range: " << low_range << " - " << high_range;
+
+    if (th) 
+      {
+	os << " ** Trigger enabled";
+      }
+
+  os << endl;
 
 }
 

@@ -47,6 +47,8 @@ int daq_status(const int flag, std::ostream& os = std::cout );
 int daq_setmaxevents (const int n, std::ostream& os);
 int daq_setmaxvolume (const int n_mb, std::ostream& os);
 
+int daq_setmaxbuffersize (const int n_mb, std::ostream& os);
+
 
 int daq_set_eloghandler( const char *host, const int port, const char *logname);
 

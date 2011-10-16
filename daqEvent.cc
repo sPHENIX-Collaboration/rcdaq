@@ -36,6 +36,11 @@ int daqEvent::prepare_next( const int evtseq, const int irun)
   if ( irun >  0 )
     evthdr->run_number=irun;
   
+  // if > 0, adjust the run number, else just keep it.
+  evthdr->date = 0;
+  evthdr->time = time(0);
+
+ 
   // reset the current data index, and the leftover counter
   current = 0;
   left=max_length - EVTHEADERLENGTH ;

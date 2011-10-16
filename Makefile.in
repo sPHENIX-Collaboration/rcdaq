@@ -63,8 +63,8 @@ libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 librcdaq_la_LIBADD =
 am_librcdaq_la_OBJECTS = rcdaq.lo daqEvent.lo daq_device_random.lo \
-	daq_device_file.lo daq_device_tspmproto.lo daqBuffer.lo \
-	daq_device.lo
+	daq_device_file.lo daq_device_tspmproto.lo \
+	tspmTriggerHandler.lo daqBuffer.lo daq_device.lo
 librcdaq_la_OBJECTS = $(am_librcdaq_la_OBJECTS)
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
@@ -239,8 +239,11 @@ AUTOMAKE_OPTIONS = foreign
 allheaders = \
   EvtConstants.h \
   EvtStructures.h \
+  TriggerHandler.h \
+  pulserTriggerHandler.h \
+  tspmTriggerHandler.h \
   oBuffer.h \
-  oEvent.h 
+  oEvent.h .
 
 allsources = \
   daqEvent.cc \
@@ -249,6 +252,7 @@ allsources = \
   daq_device_tspmproto.cc \
   rcdaq.cc \
   daqBuffer.cc \
+  tspmTriggerHandler.cc \
   daq_device.cc 
 
 AM_LDFLAGS = -L$(libdir) -L$(ONLINE_MAIN)/lib
@@ -280,6 +284,7 @@ librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daq_device_random.cc \
   daq_device_file.cc \
   daq_device_tspmproto.cc \
+  tspmTriggerHandler.cc \
   daqBuffer.cc \
   daq_device.cc 
 
@@ -430,6 +435,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rcdaq.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rcdaq_client.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rcdaq_server.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tspmTriggerHandler.Plo@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

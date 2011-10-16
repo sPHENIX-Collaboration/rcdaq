@@ -29,7 +29,7 @@ int ElogHandler::BegrunLog ( const int run, std::string who, std::string filenam
   return 0;
 }
 
-int ElogHandler::EndrunLog ( const int run, std::string who, const int events)
+int ElogHandler::EndrunLog ( const int run, std::string who, const int events, const double volume)
 {
 
 
@@ -38,7 +38,7 @@ int ElogHandler::EndrunLog ( const int run, std::string who, const int events)
   command << "elog -h " <<  hostname <<  " -p " << port << " -l " << logbookname <<
     " -a \"Author=" <<  who << "\"" <<
     " -a \"Subject=Run " << run << " ended\" " << 
-    "\"Run " << run <<  " ended with  " <<  events << " events\"" << 
+    "\"Run " << run <<  " ended with  " <<  events << " events, size is " << volume << " MB\" "
     " >/dev/null 2<&1" << endl;
 
   //  cout << command.str() << endl;

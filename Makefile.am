@@ -3,8 +3,11 @@ AUTOMAKE_OPTIONS = foreign
 allheaders = \
   EvtConstants.h \
   EvtStructures.h \
+  TriggerHandler.h \
+  pulserTriggerHandler.h \
+  tspmTriggerHandler.h \
   oBuffer.h \
-  oEvent.h 
+  oEvent.h .
 
 
 allsources = \
@@ -14,6 +17,7 @@ allsources = \
   daq_device_tspmproto.cc \
   rcdaq.cc \
   daqBuffer.cc \
+  tspmTriggerHandler.cc \
   daq_device.cc 
 
 
@@ -55,6 +59,7 @@ librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daq_device_random.cc \
   daq_device_file.cc \
   daq_device_tspmproto.cc \
+  tspmTriggerHandler.cc \
   daqBuffer.cc \
   daq_device.cc 
 

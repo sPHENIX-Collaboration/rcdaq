@@ -32,6 +32,7 @@
 #include "daq_device.h"
 #include "daqBuffer.h"
 #include "eloghandler.h" 
+#include "TriggerHandler.h" 
 
 #include "rcdaq.h"
 
@@ -42,6 +43,7 @@ pthread_mutex_t SendSem;
 pthread_mutex_t SendProtectSem;
 
 pthread_mutex_t TriggerSem;
+pthread_mutex_t TriggerDone;
 pthread_mutex_t TriggerLoop;
 
 
@@ -75,6 +77,7 @@ static int current_filesequence = 0;
 static int outfile_fd;
 
 static ElogHandler *ElogH =0;
+static TriggerHandler  *TriggerH =0;
 
 
 typedef std::vector<daq_device *> devicevector;
@@ -144,6 +147,20 @@ int packetid = 1001;
 int max_buffers=0;
 int go_on =1;
 
+int registerTriggerHandler ( TriggerHandler *th)
+{
+  // we already have one
+  if ( TriggerH ) return -1;
+  TriggerH = th;
+  return 0;
+}
+
+int clearTriggerHandler ()
+{
+  TriggerH = 0;
+  return 0;
+}
+
 
 void sig_handler(int i)
 {
@@ -158,14 +175,20 @@ void sig_handler(int i)
 }
 
 
-int reset_deadtime() {}
+int reset_deadtime() 
+{
+  pthread_mutex_unlock ( &TriggerDone );
+
+}
+
 int enable_trigger() 
 {
 
   TriggerControl=1;
+
   int status = pthread_create(&ThreadTrigger, NULL, 
-			  daq_triggerloop, 
-			  (void *) 0);
+  			  daq_triggerloop, 
+  			  (void *) 0);
 
   if (status ) 
     {
@@ -190,6 +213,8 @@ int enable_trigger()
 int disable_trigger() 
 {
   TriggerControl=0;  // this makes the trigger process terminate
+
+  pthread_cancel(ThreadTrigger);
   pthread_join(ThreadTrigger, NULL);
 
   pthread_mutex_lock(&M_cout);
@@ -214,6 +239,19 @@ int daq_setmaxvolume (const int n_mb, std::ostream& os)
   max_volume =x * 1024 *1024;
   return 0;
 
+}
+
+int daq_setmaxbuffersize (const int n_kb, std::ostream& os)
+{
+  if ( Daq_Status & DAQ_RUNNING ) 
+    {
+      os << "Run is active" << endl;
+      return -1;
+    }
+
+  Buffer1.setMaxSize(n_kb*1024);
+  Buffer2.setMaxSize(n_kb*1024);
+  return 0;
 }
 
 
@@ -494,7 +532,10 @@ int daq_end(std::ostream& os)
       pthread_mutex_lock(&WriteProtectSem);
       pthread_mutex_unlock(&WriteProtectSem);
 
-      if (ElogH) ElogH->EndrunLog( TheRun,"RCDAQ", Event_number); 
+      double v = run_volume;
+      v /= (1024*1024);
+
+      if (ElogH) ElogH->EndrunLog( TheRun,"RCDAQ", Event_number, v); 
       close (outfile_fd);
       outfile_fd = 0;
       file_is_open = 0;
@@ -522,18 +563,32 @@ int Command (const int command)
 
 void * daq_triggerloop (void * arg)
 {
-
+  int status;
   while (TriggerControl)
     {
-      
-      Trigger_Todo=DAQ_READ;
-      Origin |= DAQ_TRIGGER;
-      pthread_mutex_unlock ( &TriggerSem );
+      // let's se if we have a TriggerHelper object
+      if (TriggerH)
+	{
+	  status = TriggerH->wait_for_trigger();
+	  
 
-      //      cout << __LINE__ << "  " << __FILE__ << " trigger" << endl;
-      //      cout << "trigger" << endl;
-      usleep (10000);
+	  Trigger_Todo=DAQ_READ;
+	  Origin |= DAQ_TRIGGER;
+	  pthread_mutex_unlock ( &TriggerSem );
 
+	  cout << __LINE__ << "  " << __FILE__ << " trigger" << endl;
+	  cout << "trigger" << endl;
+	  pthread_mutex_lock ( &TriggerDone );
+
+	}
+      else
+	{
+	  Trigger_Todo=DAQ_READ;
+	  Origin |= DAQ_TRIGGER;
+	  pthread_mutex_unlock ( &TriggerSem );
+	  pthread_mutex_lock ( &TriggerDone );
+	  usleep (10000);
+	}
     }
 }
 
@@ -548,7 +603,8 @@ int daq_fake_trigger (const int n, const int waitinterval)
       Trigger_Todo=DAQ_READ;
       Origin |= DAQ_TRIGGER;
       pthread_mutex_unlock ( &TriggerSem );
-
+      pthread_mutex_lock ( &TriggerDone );
+	  
 //       pthread_mutex_lock(&M_cout);
 //       cout << "trigger" << endl;
 //       pthread_mutex_unlock(&M_cout);
@@ -864,6 +920,7 @@ int rcdaq_init( pthread_mutex_t &M)
   pthread_mutex_init( &SendProtectSem, 0);
 
   pthread_mutex_init( &TriggerSem, 0);
+  pthread_mutex_init( &TriggerDone, 0);
   pthread_mutex_init( &TriggerLoop, 0);
 
   // pre-lock them except the "protect" ones
@@ -1019,6 +1076,7 @@ int daq_status (const int flag, std::ostream& os)
 	    {
 	      os << "Event Limit:  " <<  max_events << endl;
 	    }
+	  os << "Buffer Sizes:     " <<  Buffer1.getMaxSize()/1024 << " KB" << endl;
 	}
       break;
 
