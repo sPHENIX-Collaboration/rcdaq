@@ -22,7 +22,7 @@ public:
   {
     int sleeptime = _sleeptime;
     if ( moreinfo) sleeptime = moreinfo;
-    std::cout << "trigger " << _count++ << std::endl; 
+    //std::cout << "trigger " << _count++ << std::endl; 
     usleep ( sleeptime);
     return 0;
   }

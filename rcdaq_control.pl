@@ -140,7 +140,6 @@ MainLoop();
 sub update()
 {
 
-    my $old_run;
 
     my $res = `rcdaq_client daq_status -s 2>&1`;
 #    print $res;

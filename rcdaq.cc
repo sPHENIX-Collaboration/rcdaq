@@ -409,9 +409,9 @@ void *writebuffers ( void * arg)
 int switch_buffer()
 {
 
-   pthread_mutex_lock(&M_cout);
-   cout << __LINE__ << "  " << __FILE__ << " switching buffer" << endl;
-   pthread_mutex_unlock(&M_cout);
+   // pthread_mutex_lock(&M_cout);
+   // cout << __LINE__ << "  " << __FILE__ << " switching buffer" << endl;
+   // pthread_mutex_unlock(&M_cout);
 
   daqBuffer *spare;
   
@@ -576,8 +576,7 @@ void * daq_triggerloop (void * arg)
 	  Origin |= DAQ_TRIGGER;
 	  pthread_mutex_unlock ( &TriggerSem );
 
-	  cout << __LINE__ << "  " << __FILE__ << " trigger" << endl;
-	  cout << "trigger" << endl;
+	  //cout << __LINE__ << "  " << __FILE__ << " trigger" << endl;
 	  pthread_mutex_lock ( &TriggerDone );
 
 	}

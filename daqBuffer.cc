@@ -138,7 +138,7 @@ unsigned int daqBuffer::sendData ( int fd, struct sockaddr_in *si_remote)
   char *p = (char *) bptr;
   int sent = 0;
 
-  cout << "sending  buffer len = " << getLength()  << endl;
+  //  cout << "sending  buffer len = " << getLength()  << endl;
   while ( sent < getLength() )
     {
       if ( (l = sendto(fd, p, 1024, 0, (sockaddr *) si_remote, slen))==-1)
@@ -149,7 +149,7 @@ unsigned int daqBuffer::sendData ( int fd, struct sockaddr_in *si_remote)
       p+=l;
       sent += l;
       //      cout << "sent: " << sent  << " in this buffer: " << l << endl;
-      usleep(100);
+      usleep(10);
     }
 
 
