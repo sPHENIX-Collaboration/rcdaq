@@ -424,7 +424,7 @@ int switch_buffer()
   spare = transportBuffer;
   transportBuffer = fillBuffer;
   fillBuffer = spare;
-  fillBuffer->prepare_next(++Buffer_number);
+  fillBuffer->prepare_next(++Buffer_number, TheRun);
 
   pthread_mutex_unlock(&WriteSem);
   pthread_mutex_unlock(&SendSem);
@@ -525,10 +525,10 @@ int daq_end(std::ostream& os)
   Daq_Status ^= DAQ_RUNNING;
 		
   readout(ENDRUNEVENT);
+  switch_buffer();  // we force a buffer flush
 		
   if ( file_is_open )
     {
-      switch_buffer();  // we force a buffer flush
       pthread_mutex_lock(&WriteProtectSem);
       pthread_mutex_unlock(&WriteProtectSem);
 
