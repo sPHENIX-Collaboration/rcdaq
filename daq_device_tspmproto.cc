@@ -1,6 +1,4 @@
 
- 
-
 #include <iostream>
 
 #include <daq_device_tspmproto.h>
@@ -21,6 +19,48 @@ daq_device_tspmproto::daq_device_tspmproto(const int eventtype
   m_subeventid = subeventid;
   strcpy ( _ip, ipaddr);
   _s = 0;
+  _th = 0;
+
+  //  cout << __LINE__ << "  " << __FILE__ << " in init" << endl;
+  if ( _s ) 
+    {
+      close (_s);
+      _s = 0;
+    }
+
+  _broken = 0;
+
+
+  if ((_s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
+    {
+      _broken =1;
+      cout << __LINE__ << "  " << __FILE__ << " broken 1" << endl;
+      perror("xxx");
+    }
+
+  memset((char *) &_si_me, 0, sizeof(_si_me));
+  _si_me.sin_family = AF_INET;
+  _si_me.sin_port = htons(PORT);
+  _si_me.sin_addr.s_addr = htonl(INADDR_ANY);
+  if (bind(_s, (sockaddr *)&_si_me, sizeof(_si_me))==-1)
+   {
+      _broken =1;
+      cout << __LINE__ << "  " << __FILE__ << " broken 1" << endl;
+      perror("bind");
+
+    }
+
+  FD_ZERO(&read_flag);
+  FD_SET(_s, &read_flag);
+
+  //  cout << __LINE__ << "  " << __FILE__ << " registering triggerhandler " << endl;
+  _th  = new tspmTriggerHandler ( &read_flag, _s);
+  registerTriggerHandler ( _th);
+
+
+
+
+
 }
 
 daq_device_tspmproto::~daq_device_tspmproto()
@@ -69,10 +109,6 @@ int daq_device_tspmproto::put_data(const int etype, int * adr, const int length 
   unsigned int data;
 
   char *d = (char *) &sevt->data;
-
-  fd_set read_flag;
-  FD_ZERO(&read_flag);
-  FD_SET(_s, &read_flag);
 
   struct timeval tv;
 
@@ -140,34 +176,8 @@ int daq_device_tspmproto::max_length(const int etype) const
 int  daq_device_tspmproto::init()
 {
 
-  cout << __LINE__ << "  " << __FILE__ << " in init" << endl;
-  if ( _s ) 
-    {
-      close (_s);
-      _s = 0;
-    }
-
-  _broken = 0;
-
-
-  if ((_s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
-    {
-      _broken =1;
-      cout << __LINE__ << "  " << __FILE__ << " broken 1" << endl;
-      return 0;
-    }
-     
-  memset((char *) &_si_me, 0, sizeof(_si_me));
-  _si_me.sin_family = AF_INET;
-  _si_me.sin_port = htons(PORT);
-  _si_me.sin_addr.s_addr = htonl(INADDR_ANY);
-  if (bind(_s, (sockaddr *)&_si_me, sizeof(_si_me))==-1)
-   {
-      _broken =1;
-      cout << __LINE__ << "  " << __FILE__ << " broken 1" << endl;
-      return 0;
-    }
-  return start_tspm();
+  return 0;
+  //  return start_tspm();
 
 }
 

@@ -10,6 +10,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include <tspmTriggerHandler.h>
+
 class daq_device_tspmproto: public  daq_device {
 
 
@@ -45,6 +47,10 @@ private:
   int _s;
   struct sockaddr_in _si_me;
   int _broken;
+
+  tspmTriggerHandler *_th;
+  fd_set read_flag;
+
 };
 
 

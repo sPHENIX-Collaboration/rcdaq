@@ -687,6 +687,8 @@ int device_init()
 
   for ( d_it = DeviceList.begin(); d_it != DeviceList.end(); ++d_it)
     {
+      //      cout << "calling init on "; 
+      //(*d_it)->identify();
       (*d_it)->init();
     }
 
@@ -1076,6 +1078,7 @@ int daq_status (const int flag, std::ostream& os)
 	      os << "Event Limit:  " <<  max_events << endl;
 	    }
 	  os << "Buffer Sizes:     " <<  Buffer1.getMaxSize()/1024 << " KB" << endl;
+	  if ( TriggerH ) os << "have a trigger object" << endl;
 	}
       break;
 
