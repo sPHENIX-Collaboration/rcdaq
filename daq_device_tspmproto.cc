@@ -96,7 +96,7 @@ int daq_device_tspmproto::put_data(const int etype, int * adr, const int length 
   // update id's etc
   sevt->sub_id =  m_subeventid;
   sevt->sub_type=4;
-  sevt->sub_decoding = 61;
+  sevt->sub_decoding = 62;
   sevt->reserved[0] = 0;
   sevt->reserved[1] = 0;
 

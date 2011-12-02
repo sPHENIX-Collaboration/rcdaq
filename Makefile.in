@@ -64,7 +64,8 @@ LTLIBRARIES = $(lib_LTLIBRARIES)
 librcdaq_la_LIBADD =
 am_librcdaq_la_OBJECTS = rcdaq.lo daqEvent.lo daq_device_random.lo \
 	daq_device_file.lo daq_device_tspmproto.lo \
-	tspmTriggerHandler.lo daqBuffer.lo daq_device.lo
+	daq_device_tspmparams.lo tspmTriggerHandler.lo daqBuffer.lo \
+	daq_device.lo
 librcdaq_la_OBJECTS = $(am_librcdaq_la_OBJECTS)
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
@@ -250,6 +251,7 @@ allsources = \
   daq_device_random.cc \
   daq_device_file.cc \
   daq_device_tspmproto.cc \
+  daq_device_tspmparams.cc \
   rcdaq.cc \
   daqBuffer.cc \
   tspmTriggerHandler.cc \
@@ -268,6 +270,7 @@ noinst_HEADERS = \
   daq_device_random.h \
   daq_device_file.h \
   daq_device_tspmproto.h \
+  daq_device_tspmparams.h \
   rcdaq_rpc.h \
   all.h
 
@@ -284,6 +287,7 @@ librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daq_device_random.cc \
   daq_device_file.cc \
   daq_device_tspmproto.cc \
+  daq_device_tspmparams.cc \
   tspmTriggerHandler.cc \
   daqBuffer.cc \
   daq_device.cc 
@@ -294,7 +298,7 @@ elogtest_LDADD = eloghandler.lo
 rcdaq_client_SOURCES = rcdaq_client.cc rcdaq_rpc.h
 rcdaq_client_LDADD = rcdaq_rpc_clnt.lo rcdaq_rpc_xdr.lo
 rcdaq_server_SOURCES = rcdaq_server.cc 
-rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo -lpthread
+rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo -lpthread -ltspm
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -430,6 +434,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/daq_device.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/daq_device_file.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/daq_device_random.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/daq_device_tspmparams.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/daq_device_tspmproto.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elogtest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rcdaq.Plo@am__quote@
