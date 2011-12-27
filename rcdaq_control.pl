@@ -150,10 +150,11 @@ sub update()
 	$run = "n/a";
 	$evt =  "n/a";
 	$v =  "n/a";
+	$duration = 0;
     }
     else
     {
-	($run, $evt, $v, $openflag, $fn)= split (/\s/ ,$res);
+	($run, $evt, $v, $openflag, $fn, $duration)= split (/\s/ ,$res);
 #    print " run $run  evt $evt  vol $v open  $openflag file  $fn \n";
 	
 	if ( $run < 0)
@@ -194,7 +195,7 @@ sub update()
 	    $button_begin->configure(-text =>"End");
 	    $button_begin->configure(-command => [\&daq_end]);
 	    
-	    $runstatuslabel->configure(-text =>"Running");
+	    $runstatuslabel->configure(-text =>"Running for $duration s");
 	    $button_open->configure(-bg => $graycolor );
 	    $button_open->configure(-command => [\&dummy] );
 	    
