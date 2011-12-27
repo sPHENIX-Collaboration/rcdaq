@@ -115,6 +115,12 @@ shortResult * r_create_device_1_svc(actionblock *ab, struct svc_req *rqstp)
 					       ab->spar));
       break;
 
+    case DAQ_DEVICE_TSPMPARAMS:
+      add_readoutdevice ( new daq_device_tspmparams( ab->ipar[0],
+					       ab->ipar[1],
+					       ab->spar));
+      break;
+
     default:
       result.content=1;
       result.str= "Unknown device";

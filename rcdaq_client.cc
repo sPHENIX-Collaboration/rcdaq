@@ -142,6 +142,19 @@ int handle_device( int argc, char **argv, const int optind)
 
     }
 
+  else if ( strcasecmp(argv[optind+1],"device_tspmparams") == 0 ) 
+    {
+
+      if ( argc < optind + 4) return -1;
+
+      ab.spare = DAQ_DEVICE_TSPMPARAMS;
+
+      ab.ipar[0] = atoi ( argv[optind+2]); // event type
+      ab.ipar[1] = atoi ( argv[optind+3]); // subevent id
+      ab.spar = argv[optind+4]; // ip
+
+    }
+
   r = r_create_device_1(&ab, clnt);
   if (r == (shortResult *) NULL) 
     {

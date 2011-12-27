@@ -15,6 +15,7 @@ allsources = \
   daq_device_random.cc \
   daq_device_file.cc \
   daq_device_tspmproto.cc \
+  daq_device_tspmparams.cc \
   rcdaq.cc \
   daqBuffer.cc \
   tspmTriggerHandler.cc \
@@ -38,6 +39,7 @@ noinst_HEADERS = \
   daq_device_random.h \
   daq_device_file.h \
   daq_device_tspmproto.h \
+  daq_device_tspmparams.h \
   rcdaq_rpc.h \
   all.h
 
@@ -59,6 +61,7 @@ librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daq_device_random.cc \
   daq_device_file.cc \
   daq_device_tspmproto.cc \
+  daq_device_tspmparams.cc \
   tspmTriggerHandler.cc \
   daqBuffer.cc \
   daq_device.cc 
@@ -77,7 +80,7 @@ rcdaq_client_LDADD = rcdaq_rpc_clnt.lo rcdaq_rpc_xdr.lo
 
 
 rcdaq_server_SOURCES = rcdaq_server.cc 
-rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo -lpthread
+rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo -lpthread -ltspm
 
 
 

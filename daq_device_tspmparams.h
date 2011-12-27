@@ -1,5 +1,5 @@
-#ifndef __DAQ_DEVICE_TSPMPROTO__
-#define __DAQ_DEVICE_TSPMPROTO__
+#ifndef __DAQ_DEVICE_TSPMPARAMS__
+#define __DAQ_DEVICE_TSPMPARAMS__
 
 
 #include <daq_device.h>
@@ -12,17 +12,19 @@
 
 #include <tspmTriggerHandler.h>
 
-class daq_device_tspmproto: public  daq_device {
+class tspm_udp_communication;
+
+class daq_device_tspmparams: public  daq_device {
 
 
 public:
 
-  daq_device_tspmproto (const int eventtype
+  daq_device_tspmparams (const int eventtype
 			, const int subeventid
 			, const char *ipaddr);
 
 
-  ~daq_device_tspmproto();
+  ~daq_device_tspmparams();
 
 
   void identify(std::ostream& os = std::cout) const;
@@ -35,21 +37,16 @@ public:
 
   int init();
 
-  int rearm( const int etype);
+  //  int rearm( const int etype);
 
 private:
-  int start_tspm();
-
-  int set_value( const short reg, const int value, int s, struct sockaddr_in *server);
 
   subevtdata_ptr sevt;
   char _ip[512];
-  int _s;
-  struct sockaddr_in _si_me;
   int _broken;
 
-  tspmTriggerHandler *_th;
-  fd_set read_flag;
+  tspm_udp_communication *tspm;
+
 
 };
 
