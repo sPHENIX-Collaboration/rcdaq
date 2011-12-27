@@ -100,6 +100,7 @@ int Command_Todo;
 int Origin;
 
 int TheRun = 0;
+time_t StartTime = 0;
 int Buffer_number;
 int Event_number;
 
@@ -507,6 +508,8 @@ int daq_begin(const int irun, std::ostream& os)
   //now enable the interrupts and reset the deadtime
   enable_trigger();
   reset_deadtime();
+  StartTime = time(0);
+
   os << "Run " << TheRun << " started" << endl;;
 	  
   return 0;
@@ -535,18 +538,19 @@ int daq_end(std::ostream& os)
       double v = run_volume;
       v /= (1024*1024);
 
-      if (ElogH) ElogH->EndrunLog( TheRun,"RCDAQ", Event_number, v); 
+      if (ElogH) ElogH->EndrunLog( TheRun,"RCDAQ", Event_number, v, StartTime); 
       close (outfile_fd);
       outfile_fd = 0;
       file_is_open = 0;
  
     }
-   os << "Run " << TheRun << " ended" << endl;;
+  os << "Run " << TheRun << " ended" << endl;;
   Event_number = 0;
   run_volume = 0;    // volume in longwords 
   BytesInThisRun = 0;    // bytes actually written
   Buffer_number = 0;
   CurrentFilename = "";
+  StartTime = 0;
   return 0;
 }
 
@@ -1035,11 +1039,12 @@ int daq_status (const int flag, std::ostream& os)
 	  os << TheRun  << " " <<  Event_number << " " 
 	     << v << " " 
 	     << daq_open_flag << " " 
-	     << get_current_filename() << endl;
+	     << get_current_filename() << " "
+	     << time(0) - StartTime << endl;
 	}
       else
 	{
-	  os << "-1 0 0 " << daq_open_flag << " 0" << endl;
+	  os << "-1 0 0 " << daq_open_flag << " 0 0" << endl;
 	}
       
       break;
@@ -1054,6 +1059,7 @@ int daq_status (const int flag, std::ostream& os)
 	  os << "Run Volume:   " << v << " MB"<< endl;
 	  os << "Filename:     " << get_current_filename() << endl; 	  
 	  os << "Filerule:     " <<  daq_get_filerule() << endl;
+	  os << "Duration:     " <<  time(0) - StartTime << " s" <<endl;
 	  if (max_volume)
 	    {
 	      os << "Volume Limit: " <<  max_volume /(1024 *1024) << " Mb" << endl;
