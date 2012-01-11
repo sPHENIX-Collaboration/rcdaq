@@ -218,9 +218,6 @@ int disable_trigger()
   pthread_cancel(ThreadTrigger);
   pthread_join(ThreadTrigger, NULL);
 
-  pthread_mutex_lock(&M_cout);
-  cout << "trigger loop finished" << endl;
-  pthread_mutex_unlock(&M_cout);
 
   return 0;
 }
@@ -507,7 +504,7 @@ int daq_begin(const int irun, std::ostream& os)
   
   //now enable the interrupts and reset the deadtime
   enable_trigger();
-  reset_deadtime();
+
   StartTime = time(0);
 
   os << "Run " << TheRun << " started" << endl;;
@@ -580,7 +577,10 @@ void * daq_triggerloop (void * arg)
 	  Origin |= DAQ_TRIGGER;
 	  pthread_mutex_unlock ( &TriggerSem );
 
+	  //pthread_mutex_lock(&M_cout);
 	  //cout << __LINE__ << "  " << __FILE__ << " trigger" << endl;
+	  // pthread_mutex_unlock(&M_cout);
+
 	  pthread_mutex_lock ( &TriggerDone );
 
 	}
@@ -646,17 +646,21 @@ void * EventLoop( void *arg)
 		    case DAQ_READ:
 		      Daq_Status |= DAQ_READING;
 		      //		      cout << __LINE__ << "  " << __FILE__ << " reading out..." << endl;
-		      readout(DATAEVENT);
+		      int rstatus = readout(DATAEVENT);
 		      Daq_Status ^= DAQ_READING;
 		      // cout << __LINE__ << "  " << __FILE__ << " done" << endl;
-		      
+
 		      rearm(DATAEVENT);
 		      
 		      // reset todo, and the DAQ_TRIGGER bit. 
 		      Trigger_Todo = 0;
 		      Origin ^= DAQ_TRIGGER;
-		      
 		      reset_deadtime();
+			  
+		      if (  rstatus)    // we got an endrun signal
+			{
+			  daq_end ( std::cout);
+			}
 		    }
 		}
 	      else
@@ -731,22 +735,24 @@ int readout(const int etype)
   run_volume += 4*len;
   //  cout << "len, run_volume = " << len << "  " << run_volume << endl;
 
+  int returncode = 0;
+
   if (  Daq_Status & DAQ_RUNNING )
     {
-      if ( max_volume > 0 && run_volume >= max_volume) 
+      if ( etype == DATAEVENT && max_volume > 0 && run_volume >= max_volume) 
 	{
 	  cout << " automatic end after " << max_volume /(1024*1024) << " Mb" << endl;
-	  daq_end(std::cout);
+	  returncode = 1;
 	}
       
-      if ( max_events > 0 && Event_number >= max_events ) 
+      if ( etype == DATAEVENT && max_events > 0 && Event_number >= max_events ) 
 	{
 	  cout << " automatic end after " << max_events<< " events" << endl;
-	  daq_end(std::cout);
+	  returncode = 1;
 	}
     }
 
-  return 0;
+  return returncode;
 }
 
 

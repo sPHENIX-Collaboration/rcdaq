@@ -44,91 +44,138 @@ int server_setup(int argc, char **argv)
 //-------------------------------------------------------------
 
 
-shortResult * r_create_device_1_svc(actionblock *ab, struct svc_req *rqstp)
+shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 {
-  static shortResult  result;
+  static shortResult  result, error;
 
-  result.str=" ";
-  result.content = 0;
-  result.what = 0;
+  error.str     = "Wrong parameters for daq_device_random";
+  error.content = 1;
+  error.what    = 0;
+  error.status  = -1;
+
   result.status = 0;
+  result.what   = 0;
+  result.content= 0;
+  result.str    = " ";
 
 
-  switch (ab->spare)
+  int eventtype;
+  int subid;
+
+  int ipar[16];
+  int i;
+
+  // cout << __LINE__ << " " << __FILE__ << " " 
+  // 		<<  db->argv0  << "  "
+  // 		<<  db->argv1  << "  "
+  // 		<<  db->argv2  << "  "
+  // 		<<  db->argv3  << "  "
+  // 		<<  db->argv4  << "  "
+  // 		<<  db->argv5  << "  "
+  // 		<<  db->argv6  << endl;
+
+  // all devices need at least name, eventtype, subid, so we 
+  // return an error if we don't have at least as many
+  if ( db->npar < 3) return &error;
+  
+  // and we decode the event type and subid
+  eventtype  = atoi ( db->argv1); // event type
+  subid = atoi ( db->argv2); // subevent id
+
+
+  if ( strcasecmp(db->argv0,"device_random") == 0 ) 
     {
-    case DAQ_DEVICE_RANDOM:
-      switch ( ab->ipar[15])
+
+      // this happens to be the most complex contructor part
+      // so far since there are a few variants, 2-6 parameters
+      switch ( db->npar)
 	{
-
-	case 2:
-	  add_readoutdevice ( new daq_device_random( ab->ipar[0],
-						     ab->ipar[1]));
-	  break;
-
 	case 3:
-	  add_readoutdevice ( new daq_device_random( ab->ipar[0],
-						     ab->ipar[1],
-						     ab->ipar[2]));
-	  break;
+          add_readoutdevice ( new daq_device_random( eventtype,
+                                                     subid ));
+          break;
 
-	case 4:
-	  add_readoutdevice ( new daq_device_random( ab->ipar[0],
-						     ab->ipar[1],
-						     ab->ipar[2],
-						     ab->ipar[3]));
-	  break;
+        case 4:
+          add_readoutdevice ( new daq_device_random( eventtype,
+                                                     subid,
+						     atoi ( db->argv3)));
+          break;
 
-	case 5:
-	  add_readoutdevice ( new daq_device_random( ab->ipar[0],
-						     ab->ipar[1],
-						     ab->ipar[2],
-						     ab->ipar[3],
-						     ab->ipar[4]));
-	  break;
+        case 5:
+          add_readoutdevice ( new daq_device_random( eventtype,
+                                                     subid, 
+						     atoi ( db->argv3),
+						     atoi ( db->argv4)));
+          break;
 
-	case 6:
-	  add_readoutdevice ( new daq_device_random( ab->ipar[0],
-						     ab->ipar[1],
-						     ab->ipar[2],
-						     ab->ipar[3],
-						     ab->ipar[4],
-						     ab->ipar[5]));
-	  break;
+        case 6:
+          add_readoutdevice ( new daq_device_random( eventtype,
+                                                     subid, 
+						     atoi ( db->argv3),
+						     atoi ( db->argv4),
+						     atoi ( db->argv5)));
+          break;
 
-	default:
-	  result.content=1;
-	  result.str= "Wrong parameters for daq_device_random";
-	  return &result;
-	  break;
-	}
-      break;
+        case 7:
+          add_readoutdevice ( new daq_device_random( eventtype,
+                                                     subid, 
+						     atoi ( db->argv3),
+						     atoi ( db->argv4),
+						     atoi ( db->argv5),
+						     atoi ( db->argv6)));
+          break;
 
-    case DAQ_DEVICE_FILE:
-      add_readoutdevice ( new daq_device_file( ab->ipar[0],
-					       ab->ipar[1],
-					       ab->spar));
-      break;
+       default:
+          return &error;
+          break;
+        }
 
-    case DAQ_DEVICE_TSPMPROTO:
-      add_readoutdevice ( new daq_device_tspmproto( ab->ipar[0],
-					       ab->ipar[1],
-					       ab->spar));
-      break;
-
-    case DAQ_DEVICE_TSPMPARAMS:
-      add_readoutdevice ( new daq_device_tspmparams( ab->ipar[0],
-					       ab->ipar[1],
-					       ab->spar));
-      break;
-
-    default:
-      result.content=1;
-      result.str= "Unknown device";
       return &result;
-      break;
+    }
+
+
+  else if ( strcasecmp(db->argv0,"device_file") == 0 )  
+    {
+
+      if ( db->npar < 4) return &error;
+
+      add_readoutdevice ( new daq_device_file( eventtype,
+					       subid,
+					       db->argv3));
+      return &result;
 
     }
+
+  else if ( strcasecmp(db->argv0,"device_tspmproto") == 0 ) 
+    {
+
+      if ( db->npar < 4) return &error;
+
+      add_readoutdevice ( new daq_device_tspmproto( eventtype,
+						    subid,
+						    db->argv3));
+      return &result;
+
+    }
+
+  else if ( strcasecmp(db->argv0,"device_tspmparams") == 0 ) 
+    {
+      
+      if ( db->npar < 4) return &error;
+      
+      add_readoutdevice ( new daq_device_tspmparams( eventtype,
+						     subid,
+						     db->argv3));
+      return &result;
+      
+    }
+
+
+
+  result.content=1;
+  result.str= "Unknown device";
   return &result;
+
 }
 
 //-------------------------------------------------------------

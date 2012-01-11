@@ -64,98 +64,46 @@ void showHelp()
 int handle_device( int argc, char **argv, const int optind)
 {
 
+
   struct shortResult  *r;
-  struct actionblock ab;
-  ab.value=0;
-  ab.spare=0;
-  ab.spar = " ";
-  ab.spar2 = " ";
+  struct deviceblock db;
+
+
+  // this construct is here because RPC doesn't support
+  // 2-dim arrays (at least AFAIK). It saves a lot of if's 
+  // and else's:
+  char **arglist[NSTRINGPAR];
+
+  arglist[0] = &db.argv0;
+  arglist[1] = &db.argv1;
+  arglist[2] = &db.argv2;
+  arglist[3] = &db.argv3;
+  arglist[4] = &db.argv4;
+  arglist[5] = &db.argv5;
+  arglist[6] = &db.argv6;
+  arglist[7] = &db.argv7;
+
+  char empty[2] = {' ',0};
+
   int i;
-  for ( i = 0; i< 16; i++)
+  for ( i = 0; i < NSTRINGPAR; i++)
     {
-      ab.ipar[i] = 0;
+      *arglist[i] = empty;
     }
   
+  db.npar=0;
 
-  ab.action = DAQ_DEVICE;
-
-  if ( strcasecmp(argv[optind+1],"device_random") == 0 ) 
+  for ( i = optind+1; i < argc; i++)
     {
-
-      if ( argc < optind + 4) return -1;
-
-      ab.spare = DAQ_DEVICE_RANDOM;
-
-      ab.ipar[0] = atoi ( argv[optind+2]); // event type
-      ab.ipar[1] = atoi ( argv[optind+3]); // subevent id
-      ab.ipar[15] = 2; // how many params so far
-
-      if (  argc > optind + 4)
+      *arglist[db.npar++] = argv[i];
+      if ( db.npar >= NSTRINGPAR) 
 	{
-	  ab.ipar[2] =  atoi ( argv[optind+4]); // how many words
-	  ab.ipar[15]++;
-	  
+	  cout << "Too many parameters to handle for me" << endl;
+	  break;
 	}
-      if (  argc > optind + 5)
-	{
-	  ab.ipar[3] =  atoi ( argv[optind+5]); // start
-	  ab.ipar[15]++;
-	  
-	}
-      if (  argc > optind + 6)
-	{
-	  ab.ipar[4] =  atoi ( argv[optind+6]); // end
-	  ab.ipar[15]++;
-	  
-	}
-      if (  argc > optind + 7)
-	{
-	  ab.ipar[5] =  1;  //say that we are trigger-enabled
-	  ab.ipar[15]++;
-	  
-	}
-
     }
-  else if ( strcasecmp(argv[optind+1],"device_file") == 0 ) 
-    {
-
-      if ( argc < optind + 4) return -1;
-
-      ab.spare = DAQ_DEVICE_FILE;
-
-      ab.ipar[0] = atoi ( argv[optind+2]); // event type
-      ab.ipar[1] = atoi ( argv[optind+3]); // subevent id
-      ab.spar = argv[optind+4]; // file
-
-    }
-
-  else if ( strcasecmp(argv[optind+1],"device_tspmproto") == 0 ) 
-    {
-
-      if ( argc < optind + 4) return -1;
-
-      ab.spare = DAQ_DEVICE_TSPMPROTO;
-
-      ab.ipar[0] = atoi ( argv[optind+2]); // event type
-      ab.ipar[1] = atoi ( argv[optind+3]); // subevent id
-      ab.spar = argv[optind+4]; // ip
-
-    }
-
-  else if ( strcasecmp(argv[optind+1],"device_tspmparams") == 0 ) 
-    {
-
-      if ( argc < optind + 4) return -1;
-
-      ab.spare = DAQ_DEVICE_TSPMPARAMS;
-
-      ab.ipar[0] = atoi ( argv[optind+2]); // event type
-      ab.ipar[1] = atoi ( argv[optind+3]); // subevent id
-      ab.spar = argv[optind+4]; // ip
-
-    }
-
-  r = r_create_device_1(&ab, clnt);
+      
+  r = r_create_device_1(&db, clnt);
   if (r == (shortResult *) NULL) 
     {
       clnt_perror (clnt, "call failed");
@@ -175,7 +123,7 @@ int command_execute( int argc, char **argv)
   
   char tempSelection[1024];
   
-  char command[256];
+  char command[512];
   
   // the log and short flags are for qualifying the 
   // status output
@@ -458,7 +406,6 @@ int command_execute( int argc, char **argv)
   else if ( strcasecmp(command,"create_device") == 0)
     {
 
-
       return handle_device ( argc, argv, optind);
  
     }
@@ -492,6 +439,7 @@ int command_execute( int argc, char **argv)
 int
 main (int argc, char *argv[])
 {
+
 
   int status = command_execute( argc, argv);
   clnt_destroy (clnt);

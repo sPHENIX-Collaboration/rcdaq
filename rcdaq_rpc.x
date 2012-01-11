@@ -1,4 +1,5 @@
 
+
 struct shortResult {
   string str<>;
   int content;
@@ -16,6 +17,21 @@ struct actionblock {
 
 };
 
+const NSTRINGPAR = 8;
+
+struct deviceblock {
+	int npar;
+	string argv0<>;
+	string argv1<>;
+	string argv2<>;
+	string argv3<>;
+	string argv4<>;
+	string argv5<>;
+	string argv6<>;
+	string argv7<>;
+
+};
+
 
 
 program RCDAQ
@@ -24,7 +40,7 @@ program RCDAQ
     { 
 
       shortResult r_action(actionblock) = 1;
-      shortResult r_create_device(actionblock) = 2;
+      shortResult r_create_device(deviceblock) = 2;
       shortResult r_shutdown() = 3;
 
     } = 1;
