@@ -4,6 +4,7 @@
 
 #include "rcdaq.h"
 #include "daq_device.h" 
+#include "rcdaq_plugin.h" 
 #include "all.h" 
 
 
@@ -13,6 +14,7 @@
 #include <fstream>
 #include <string.h>
 #include <stdlib.h>
+#include <dlfcn.h>
 
 #include <rpc/pmap_clnt.h>
 
@@ -22,6 +24,8 @@
 #include "pthread.h"
 #include "signal.h"
 
+#include <vector>
+
 
 #include <set>
 #include <iostream>
@@ -29,6 +33,9 @@
 using namespace std;
 
 static pthread_mutex_t M_output;
+
+std::vector<RCDAQPlugin *> pluginlist;
+
 
 
 void rcdaq_1(struct svc_req *rqstp, register SVCXPRT *transp);
@@ -43,12 +50,44 @@ int server_setup(int argc, char **argv)
 
 //-------------------------------------------------------------
 
+void plugin_register(RCDAQPlugin * p )
+{
+  pluginlist.push_back(p);
+}
+
+void plugin_unregister(RCDAQPlugin * p )
+{
+  // do nothing for now
+  // we need to implement this once we add unloading of plugins
+  // as a feature (don't see why at this point)
+}
+
+int daq_load_plugin( const char *sharedlib, std::ostream& os)
+{
+  
+  void * voidpointer = dlopen(sharedlib, RTLD_GLOBAL | RTLD_NOW);
+  if (!voidpointer) 
+    {
+      std::cout << "Loading of the plugin " 
+		<< sharedlib << " failed: " << dlerror() << std::endl;
+      os << "Loading of the plugin " 
+		<< sharedlib << " failed: " << dlerror() << std::endl;
+      return -1;
+      
+    }
+  os << "Plugin " << sharedlib << " successfully loaded" << std::endl;
+  return 0;
+
+}
+
+//-------------------------------------------------------------
+
 
 shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 {
   static shortResult  result, error;
 
-  error.str     = "Wrong parameters for daq_device_random";
+  error.str     = "Device needs at least 2 parameters";
   error.content = 1;
   error.what    = 0;
   error.status  = -1;
@@ -65,19 +104,11 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
   int ipar[16];
   int i;
 
-  // cout << __LINE__ << " " << __FILE__ << " " 
-  // 		<<  db->argv0  << "  "
-  // 		<<  db->argv1  << "  "
-  // 		<<  db->argv2  << "  "
-  // 		<<  db->argv3  << "  "
-  // 		<<  db->argv4  << "  "
-  // 		<<  db->argv5  << "  "
-  // 		<<  db->argv6  << endl;
 
-  // all devices need at least name, eventtype, subid, so we 
-  // return an error if we don't have at least as many
   if ( db->npar < 3) return &error;
   
+  error.str     = "Wrong number of parameters";
+
   // and we decode the event type and subid
   eventtype  = atoi ( db->argv1); // event type
   subid = atoi ( db->argv2); // subevent id
@@ -171,6 +202,17 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
     }
 
 
+  std::vector<RCDAQPlugin *>::iterator it;
+
+  int status;
+  for ( it=pluginlist.begin(); it != pluginlist.end(); ++it)
+    {
+      status = (*it)->create_device(db);
+      // in both of the following cases we are done here:
+      if (status == 0) return &result;  // sucessfully created 
+      else if ( status == 1) return &error;  // it's my device but wrong params
+      // in all other cases we continue and try the next plugin
+    }
 
   result.content=1;
   result.str= "Unknown device";
@@ -326,6 +368,18 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     case DAQ_ELOG:
       // cout << "daq_elog " << ab->spar << "  " << ab->ipar[0] << endl;
       daq_set_eloghandler( ab->spar,  ab->ipar[0], ab->spar2);
+      break;
+
+    case DAQ_LOAD:
+      // 
+      result.status = daq_load_plugin( ab->spar, outputstream );
+      result.str = (char *) outputstream.str().c_str();
+      if (result.status) 
+	{
+	  result.content = 1;
+	}
+      pthread_mutex_unlock(&M_output);
+      return &result;
       break;
 
 

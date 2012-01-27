@@ -54,6 +54,7 @@ void showHelp()
   std::cout << "   daq_set_maxvolume n_MB 	set automatic end at n_MB MegaByte" << std::endl;
   std::cout << "   daq_set_maxbuffersize n_KB 	adjust the size of buffers written to n KB" << std::endl;
   std::cout << "   elog elog-server port	specify coordinates for an Elog server" << std::endl;
+  std::cout << "   load  shared_library_name	load a \"plugin\" shared library" << std::endl;
   std::cout << "   create_device [device-specific parameters] " << std::endl;
   std::cout << "   daq_shutdown  		terminate the rcdaq backend" << std::endl;
   exit(0);
@@ -180,6 +181,7 @@ int command_execute( int argc, char **argv)
     }
   
   ab.spar = " ";
+  ab.spar2 = " ";
 
   strcpy(command, argv[optind]);
 
@@ -403,6 +405,26 @@ int command_execute( int argc, char **argv)
  
     }
   
+
+  else if ( strcasecmp(command,"load") == 0)
+    {
+
+      if ( argc != optind + 2) return -1;
+
+      ab.action = DAQ_LOAD;
+      ab.spar = argv[optind + 1];
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+  
+
+
   else if ( strcasecmp(command,"create_device") == 0)
     {
 

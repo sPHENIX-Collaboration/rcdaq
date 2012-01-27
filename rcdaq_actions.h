@@ -18,6 +18,7 @@
 #define DAQ_FULLSTATUS    114
 
 #define DAQ_ELOG          120
+#define DAQ_LOAD          121
 
 #define DAQ_DEVICE_RANDOM         1001
 #define DAQ_DEVICE_FILE           1002

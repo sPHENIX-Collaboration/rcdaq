@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <signal.h>
 
+
 #include <stdio.h>
 #include <iostream>
 #include <iomanip>
@@ -260,6 +261,9 @@ int daq_set_eloghandler( const char *host, const int port, const char *logname)
   ElogH = new ElogHandler (host, port, logname );
   return 0;
 }
+
+
+
 
 
 //-------------------------------------------------------------

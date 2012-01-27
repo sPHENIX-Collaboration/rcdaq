@@ -4,10 +4,11 @@ allheaders = \
   EvtConstants.h \
   EvtStructures.h \
   TriggerHandler.h \
+  rcdaq_plugin.h \
   pulserTriggerHandler.h \
   tspmTriggerHandler.h \
   oBuffer.h \
-  oEvent.h .
+  oEvent.h 
 
 
 allsources = \
@@ -30,20 +31,23 @@ INCLUDES = -I$(includedir) -I$(ONLINE_MAIN)/include
 
 noinst_HEADERS = \
   EvtConstants.h \
-  SubevtConstants.h \
   daqBuffer.h \
-  daq_device.h \
   EvtStructures.h \
-  SubevtStructures.h \
   daqEvent.h \
   daq_device_random.h \
   daq_device_file.h \
   daq_device_tspmproto.h \
   daq_device_tspmparams.h \
-  rcdaq_rpc.h \
   all.h
 
-include_HEADERS = 
+include_HEADERS =  \
+  SubevtStructures.h \
+  SubevtConstants.h \
+  daq_device.h \
+  rcdaq_rpc.h \
+  TriggerHandler.h \
+  rcdaq_plugin.h
+
 
 RPCGEN = rpcgen
 
@@ -80,9 +84,9 @@ rcdaq_client_LDADD = rcdaq_rpc_clnt.lo rcdaq_rpc_xdr.lo
 
 
 rcdaq_server_SOURCES = rcdaq_server.cc 
-rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo -lpthread -ltspm
+rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo -lpthread -ldl -ltspm
 
-
+rcdaq_server_LDFLAGS =  -Wl,-export-dynamic
 
 #rcdaq_sa_SOURCES = rcdaq_frontend.cc 
 #rcdaq_sa_LDADD =  librcdaq.la -lpthread
