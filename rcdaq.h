@@ -52,4 +52,6 @@ int daq_setmaxbuffersize (const int n_mb, std::ostream& os);
 
 int daq_set_eloghandler( const char *host, const int port, const char *logname);
 
+int daq_load_plugin( const char *sharedlib, std::ostream& os);
+
 #endif
