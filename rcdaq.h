@@ -20,6 +20,7 @@ int Command( const int command);
 
 int switch_buffer();
 int device_init();
+int device_endrun();
 int readout(const int etype);
 int rearm(const int etype);
 int rcdaq_init(pthread_mutex_t &M );
