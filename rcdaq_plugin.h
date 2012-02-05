@@ -2,12 +2,15 @@
 #define __RCDAQ_PLUGIN_H__
 
 
-#include <rcdaq.h>
+//#include <rcdaq.h>
 #include <rcdaq_rpc.h>
 #include <iostream>
 
 
 class RCDAQPlugin;
+class daq_device;
+
+int add_readoutdevice( daq_device *d);
 
 void plugin_register(RCDAQPlugin * );
 void plugin_unregister(RCDAQPlugin *);
