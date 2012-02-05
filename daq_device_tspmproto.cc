@@ -58,9 +58,6 @@ daq_device_tspmproto::daq_device_tspmproto(const int eventtype
   registerTriggerHandler ( _th);
 
 
-
-
-
 }
 
 daq_device_tspmproto::~daq_device_tspmproto()
