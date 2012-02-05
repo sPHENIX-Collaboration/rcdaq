@@ -525,6 +525,7 @@ int daq_end(std::ostream& os)
       return -1;
     }
   disable_trigger();
+  device_endrun();
 
   Daq_Status ^= DAQ_RUNNING;
 		
@@ -702,6 +703,21 @@ int device_init()
       //      cout << "calling init on "; 
       //(*d_it)->identify();
       (*d_it)->init();
+    }
+
+  return 0;
+}
+
+int device_endrun()
+{
+
+  deviceiterator d_it;
+
+  for ( d_it = DeviceList.begin(); d_it != DeviceList.end(); ++d_it)
+    {
+      //      cout << "calling init on "; 
+      //(*d_it)->identify();
+      (*d_it)->endrun();
     }
 
   return 0;
