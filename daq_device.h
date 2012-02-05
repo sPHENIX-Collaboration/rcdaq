@@ -32,6 +32,7 @@ public:
 
   // functions to do the work
   virtual int init(){return 0;};
+  virtual int endrun(){return 0;};
   virtual int rearm( const int etype){return 0;};
   virtual int put_data(const int, int *, const int) =0;
 
