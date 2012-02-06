@@ -128,8 +128,7 @@ int command_execute( int argc, char **argv)
   
   // the log and short flags are for qualifying the 
   // status output
-  int long_flag = 0;
-  int short_flag = 0;
+  int long_flag = 1;
 
   int c;
   
@@ -145,19 +144,17 @@ int command_execute( int argc, char **argv)
 	  verbose_flag = 1;
 	  break;
 
-	case 'l': // set the long flag
-	  long_flag = 1;
+	case 'l': // set the long flag; we can step up the verbosity with multiple -l's 
+	  long_flag++;
 	  break;
 
-	case 's': // set the verbose flag
-	  short_flag = 1;
+	case 's': // set the short flag (0) (note that long_flag is pre-set to 1 for "normal") 
+	  long_flag=0;
 	  break;
 
 	}
     }
 
-  // long takes precedence over short
-  if (  long_flag ) short_flag = 0;
 
   //  std::cout << "Server number is " << servernumber << std::endl;
 
@@ -323,8 +320,7 @@ int command_execute( int argc, char **argv)
 
       ab.action = DAQ_STATUS;
 
-      if ( long_flag) ab.ipar[0] = 1;
-      else if ( short_flag) ab.ipar[0] = 2;
+      ab.ipar[0] = long_flag; 
 
       r = r_action_1(&ab, clnt);
       if (r == (shortResult *) NULL) 

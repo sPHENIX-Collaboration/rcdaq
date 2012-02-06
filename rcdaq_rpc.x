@@ -1,4 +1,10 @@
 
+const STATUSFORMAT_SHORT  = 0;
+const STATUSFORMAT_NORMAL = 1;
+const STATUSFORMAT_LONG   = 2;
+const STATUSFORMAT_VLONG  = 3;
+
+
 
 struct shortResult {
   string str<>;

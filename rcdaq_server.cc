@@ -82,6 +82,35 @@ int daq_load_plugin( const char *sharedlib, std::ostream& os)
 
 //-------------------------------------------------------------
 
+// for certain flags we add some info to the status output
+// with this routine. It is called from daq_status. 
+
+int daq_status_plugin (const int flag, std::ostream& os )
+{
+
+  // in case we do have plugins, list them
+  // if not, we just say "no plugins loded"
+  if (   pluginlist.size() )
+    {
+      os << "List of loaded Plugins:" << endl;
+    }
+  else
+    {
+      os << "No Plugins loaded" << endl;
+    }
+
+
+  std::vector<RCDAQPlugin *>::iterator it;
+
+  for ( it=pluginlist.begin(); it != pluginlist.end(); ++it)
+    {
+      (*it)->identify(os, flag);
+    }
+  return 0;
+}
+
+//-------------------------------------------------------------
+
 
 shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 {
@@ -177,29 +206,6 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 
     }
 
-  else if ( strcasecmp(db->argv0,"device_tspmproto") == 0 ) 
-    {
-
-      if ( db->npar < 4) return &error;
-
-      add_readoutdevice ( new daq_device_tspmproto( eventtype,
-						    subid,
-						    db->argv3));
-      return &result;
-
-    }
-
-  else if ( strcasecmp(db->argv0,"device_tspmparams") == 0 ) 
-    {
-      
-      if ( db->npar < 4) return &error;
-      
-      add_readoutdevice ( new daq_device_tspmparams( eventtype,
-						     subid,
-						     db->argv3));
-      return &result;
-      
-    }
 
 
   std::vector<RCDAQPlugin *>::iterator it;

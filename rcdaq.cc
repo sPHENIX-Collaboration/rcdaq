@@ -36,6 +36,7 @@
 #include "TriggerHandler.h" 
 
 #include "rcdaq.h"
+#include "rcdaq_rpc.h"
 
 pthread_mutex_t WriteSem;
 pthread_mutex_t WriteProtectSem;
@@ -1060,7 +1061,7 @@ int daq_status (const int flag, std::ostream& os)
   switch (flag)
     {
 
-    case 2:    // "short format"
+    case STATUSFORMAT_SHORT:    // "short format"
       
       if ( Daq_Status & DAQ_RUNNING ) 
 	{
@@ -1077,7 +1078,20 @@ int daq_status (const int flag, std::ostream& os)
       
       break;
 
-    case 1:
+    case STATUSFORMAT_NORMAL:
+      if ( Daq_Status & DAQ_RUNNING ) 
+	{
+	  os << "Run " << TheRun  
+	     << " Event: " << Event_number 
+	     << " Volume: " << v << endl;
+	}
+      else
+	{
+	  os << "Stopped " << endl;
+	}
+      break;
+
+    default:  // flag 2++
       
       if ( Daq_Status & DAQ_RUNNING ) 
 	{
@@ -1112,20 +1126,10 @@ int daq_status (const int flag, std::ostream& os)
 	  os << "Buffer Sizes:     " <<  Buffer1.getMaxSize()/1024 << " KB" << endl;
 	  if ( TriggerH ) os << "have a trigger object" << endl;
 	}
+      daq_status_plugin(flag, os);
+
       break;
 
-    default:
-      if ( Daq_Status & DAQ_RUNNING ) 
-	{
-	  os << "Run " << TheRun  
-	     << " Event: " << Event_number 
-	     << " Volume: " << v << endl;
-	}
-      else
-	{
-	  os << "Stopped " << endl;
-	}
-      break;
     }
 
   return 0;

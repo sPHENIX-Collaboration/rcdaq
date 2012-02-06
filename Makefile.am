@@ -6,7 +6,6 @@ allheaders = \
   TriggerHandler.h \
   rcdaq_plugin.h \
   pulserTriggerHandler.h \
-  tspmTriggerHandler.h \
   oBuffer.h \
   oEvent.h 
 
@@ -15,11 +14,8 @@ allsources = \
   daqEvent.cc \
   daq_device_random.cc \
   daq_device_file.cc \
-  daq_device_tspmproto.cc \
-  daq_device_tspmparams.cc \
   rcdaq.cc \
   daqBuffer.cc \
-  tspmTriggerHandler.cc \
   daq_device.cc 
 
 
@@ -36,8 +32,6 @@ noinst_HEADERS = \
   daqEvent.h \
   daq_device_random.h \
   daq_device_file.h \
-  daq_device_tspmproto.h \
-  daq_device_tspmparams.h \
   all.h
 
 include_HEADERS =  \
@@ -59,19 +53,17 @@ BUILT_SOURCES = \
         rcdaq_rpc.h
 
 
-lib_LTLIBRARIES =  librcdaq.la
+lib_LTLIBRARIES =  librcdaq.la  librcdacplugin_example.la
 
 librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daq_device_random.cc \
   daq_device_file.cc \
-  daq_device_tspmproto.cc \
-  daq_device_tspmparams.cc \
-  tspmTriggerHandler.cc \
   daqBuffer.cc \
   daq_device.cc 
 
+librcdacplugin_example_la_SOURCES = daq_device_pluginexample.cc example_plugin.cc
 
-bin_SCRIPTS =  rcdaq_control.pl
+bin_SCRIPTS =  rcdaq_control.pl aliases.csh
 
 bin_PROGRAMS =  rcdaq_client rcdaq_server elogtest
 

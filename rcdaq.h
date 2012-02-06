@@ -44,6 +44,7 @@ std::string& get_current_filename();
 std::string& daq_get_filerule();
 
 int daq_status(const int flag, std::ostream& os = std::cout );
+int daq_status_plugin(const int flag =0, std::ostream& os = std::cout );
 
 int daq_setmaxevents (const int n, std::ostream& os);
 int daq_setmaxvolume (const int n_mb, std::ostream& os);

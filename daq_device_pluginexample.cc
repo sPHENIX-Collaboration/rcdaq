@@ -2,49 +2,10 @@
 
 #include <strings.h>
 
-int eventtype;
-int subid;
-
-
-int example_plugin::create_device(deviceblock *db)
-{
-
-  //std::cout << __LINE__ << "  " << __FILE__ << "  " << db->argv0 << std::endl;
-
-  if ( strcasecmp(db->argv0,"device_plugin") == 0 ) 
-    {
-      // we need at least 4 params
-      if ( db->npar <4 ) return 1; // indicate wrong params
-      
-      eventtype  = atoi ( db->argv1); // event type
-      subid = atoi ( db->argv2); // subevent id
-
-      if  ( db->npar == 4)
-	{
-
-	  add_readoutdevice ( new daq_device_plugin( eventtype,
-                                                     subid,
-						     atoi ( db->argv3)));
-	  return 0;  // say "we handled this request" 
-	}
-      else
-	{
-
-	  add_readoutdevice ( new daq_device_plugin( eventtype,
-                                                     subid,
-						     atoi ( db->argv3),
-						     atoi ( db->argv4)));
-	  return 0;  // say "we handled this request" 
-	}
-    }
-
-  return -1; // say " this is not out device"
-}
-
  
 using namespace std;
 
-daq_device_plugin::daq_device_plugin(const int eventtype
+daq_device_pluginexample::daq_device_pluginexample(const int eventtype
     , const int subeventid
     , const int n_words
     , const int trigger_enabled)
@@ -64,7 +25,7 @@ daq_device_plugin::daq_device_plugin(const int eventtype
     }
 }
 
-daq_device_plugin::~daq_device_plugin()
+daq_device_pluginexample::~daq_device_pluginexample()
 {
   clearTriggerHandler();
   delete th;
@@ -74,7 +35,7 @@ daq_device_plugin::~daq_device_plugin()
 
 // the put_data function
 
-int daq_device_plugin::put_data(const int etype, int * adr, const int length )
+int daq_device_pluginexample::put_data(const int etype, int * adr, const int length )
 {
 
   int len = 0;
@@ -116,7 +77,7 @@ int daq_device_plugin::put_data(const int etype, int * adr, const int length )
 }
 
 
-void daq_device_plugin::identify(std::ostream& os) const
+void daq_device_pluginexample::identify(std::ostream& os) const
 {
   
   os  << "Plugin Device  Event Type: " << m_eventType << " Subevent id: " << m_subeventid 
@@ -131,24 +92,23 @@ void daq_device_plugin::identify(std::ostream& os) const
 
 }
 
-int daq_device_plugin::max_length(const int etype) const
+int daq_device_pluginexample::max_length(const int etype) const
 {
   if (etype != m_eventType) return 0;
   return  (number_of_words + SEVTHEADERLENGTH);
 }
 
-int  daq_device_plugin::init()
+int  daq_device_pluginexample::init()
 {
 
   return 0;
 }
 
 // the rearm() function
-int  daq_device_plugin::rearm(const int etype)
+int  daq_device_pluginexample::rearm(const int etype)
 {
   if (etype != m_eventType) return 0;
   return 0;
 }
 
-example_plugin _ep;
 
