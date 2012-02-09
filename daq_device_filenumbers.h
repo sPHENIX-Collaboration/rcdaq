@@ -1,22 +1,22 @@
-#ifndef __DAQ_DEVICE_FILE__
-#define __DAQ_DEVICE_FILE__
+#ifndef __DAQ_DEVICE_FILENUMBERS__
+#define __DAQ_DEVICE_FILENUMBERS__
 
 
 #include <daq_device.h>
 #include <stdio.h>
 #include <string>
 
-class daq_device_file: public  daq_device {
+class daq_device_filenumbers: public  daq_device {
 
 
 public:
 
-  daq_device_file (const int eventtype,
-		   const int subeventid, const char * fn,
-		   const int maxlength = 1280);
+  daq_device_filenumbers (const int eventtype,
+			  const int subeventid, const char * fn,
+			  const int maxfilesize = 1280 );
 
 
-  ~daq_device_file();
+  ~daq_device_filenumbers();
 
 
   void identify(std::ostream& os = std::cout) const;
@@ -27,13 +27,14 @@ public:
 
   int put_data(const int etype, int * adr, const int length);
 
+
 private:
   subevtdata_ptr sevt;
+  unsigned int number_of_words;
   int m_eventType;
   int m_subeventid;
   std::string filename;
   int _maxlength;
-
 };
 
 

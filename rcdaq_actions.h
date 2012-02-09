@@ -24,6 +24,7 @@
 #define DAQ_DEVICE_FILE           1002
 #define DAQ_DEVICE_TSPMPROTO      1003
 #define DAQ_DEVICE_TSPMPARAMS     1004
+#define DAQ_DEVICE_FILENUMBERS    1005
 
 
 #endif

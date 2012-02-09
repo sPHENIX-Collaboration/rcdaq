@@ -14,42 +14,21 @@
 using namespace std;
 
 daq_device_file::daq_device_file(const int eventtype
-    , const int subeventid , const char *fn)
+				 , const int subeventid 
+				 , const char *fn, const int maxlength)
 
 {
 
   m_eventType  = eventtype;
   m_subeventid = subeventid;
   filename = fn;
+  _maxlength = maxlength;
 
-  struct stat buf;
-
-  int status = stat (filename.c_str(), &buf); 
-  if ( status) 
-    {
-      my_fd = 0;
-      defunct  = 1;
-      nbytes = 0;
-    }
-  else
-    {
-      nbytes = buf.st_size;
-
-      my_fd = open (filename.c_str(), O_RDONLY | O_LARGEFILE);
-      if  ( my_fd < 0) 
-	{
-	  my_fd = 0;
-	  nbytes = 0;
-	  defunct = 1;
-	}
-      defunct = 0;
-    }
 
 }
 
 daq_device_file::~daq_device_file()
 {
-  if ( my_fd > 0) close( my_fd);
 }
 
 
@@ -59,15 +38,42 @@ daq_device_file::~daq_device_file()
 int daq_device_file::put_data(const int etype, int * adr, const int length )
 {
   
-  
-  if ( defunct || my_fd <=0 ) return 0;
+  int my_fd;
+  int nbytes;
+
+  struct stat buf;
 
   if (etype != m_eventType )  // not our id
     {
       return 0;
     }
   
+
+  int status = stat (filename.c_str(), &buf); 
+  if ( status) 
+    {
+      return 0;
+    }
+  else
+    {
+      nbytes = buf.st_size;
+      my_fd = open (filename.c_str(), O_RDONLY | O_LARGEFILE);
+      if  ( my_fd < 0) 
+	{
+	  return 0;
+	}
+    }
   
+
+  if ( (nbytes+3)/4 +  SEVTHEADERLENGTH + 1 >= length)
+    {
+      cout << __FILE__ << "  " << __LINE__ 
+	   <<" too large payload in Packet " <<  m_subeventid 
+	   << "  size " <<  (nbytes+3)/4 +SEVTHEADERLENGTH +1  
+	   << "  max is " << length << " -- truncated" << endl;
+      nbytes = 4*(length - SEVTHEADERLENGTH -2);
+    }
+ 
   sevt =  (subevtdata_ptr) adr;
   // set the initial subevent length
   sevt->sub_length =  SEVTHEADERLENGTH;
@@ -83,7 +89,6 @@ int daq_device_file::put_data(const int etype, int * adr, const int length )
   
   char  *d = (char *) &sevt->data;
 
-  off_t x = lseek ( my_fd, 0, SEEK_SET);
   int c = read( my_fd, d, nbytes);
 
   sevt->sub_padding = c%8;
@@ -104,18 +109,6 @@ void daq_device_file::identify(std::ostream& os) const
 int daq_device_file::max_length(const int etype) const
 {
   if (etype != m_eventType) return 0;
-  return  (nbytes + (nbytes%8))/4  + SEVTHEADERLENGTH;
-}
-
-int  daq_device_file::init()
-{
-
-  return 0;
-}
-
-// the rearm() function
-int  daq_device_file::rearm(const int etype)
-{
-  return 0;
+  return  _maxlength  + SEVTHEADERLENGTH +1;
 }
 

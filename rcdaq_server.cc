@@ -199,13 +199,50 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 
       if ( db->npar < 4) return &error;
 
-      add_readoutdevice ( new daq_device_file( eventtype,
-					       subid,
-					       db->argv3));
-      return &result;
+      if ( db->npar >= 5) 
+	{
+
+	  add_readoutdevice ( new daq_device_file( eventtype,
+						   subid,
+						   db->argv3,
+						   atoi(db->argv4)));
+	  return &result;
+	}
+      else 
+	{
+
+	  add_readoutdevice ( new daq_device_file( eventtype,
+						   subid,
+						   db->argv3));
+	  return &result;
+	}
 
     }
 
+  else if ( strcasecmp(db->argv0,"device_filenumbers") == 0 )  
+    {
+
+      if ( db->npar < 4) return &error;
+
+      if ( db->npar >= 5) 
+	{
+
+	  add_readoutdevice ( new daq_device_filenumbers( eventtype,
+							  subid,
+							  db->argv3,
+							  atoi(db->argv4)));
+	  return &result;
+	}
+      else 
+	{
+
+	  add_readoutdevice ( new daq_device_filenumbers( eventtype,
+							  subid,
+							  db->argv3));
+	  return &result;
+	}
+
+    }
 
 
   std::vector<RCDAQPlugin *>::iterator it;

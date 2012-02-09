@@ -14,6 +14,7 @@ allsources = \
   daqEvent.cc \
   daq_device_random.cc \
   daq_device_file.cc \
+  daq_device_filenumbers.cc \
   rcdaq.cc \
   daqBuffer.cc \
   daq_device.cc 
@@ -32,6 +33,7 @@ noinst_HEADERS = \
   daqEvent.h \
   daq_device_random.h \
   daq_device_file.h \
+  daq_device_filenumbers.h \
   all.h
 
 include_HEADERS =  \
@@ -58,12 +60,13 @@ lib_LTLIBRARIES =  librcdaq.la  librcdacplugin_example.la
 librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daq_device_random.cc \
   daq_device_file.cc \
+  daq_device_filenumbers.cc \
   daqBuffer.cc \
   daq_device.cc 
 
 librcdacplugin_example_la_SOURCES = daq_device_pluginexample.cc example_plugin.cc
 
-bin_SCRIPTS =  rcdaq_control.pl aliases.csh
+bin_SCRIPTS =  rcdaq_control.pl aliases.csh automated_run_example.sh
 
 bin_PROGRAMS =  rcdaq_client rcdaq_server elogtest
 
