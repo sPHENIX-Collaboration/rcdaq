@@ -591,13 +591,13 @@ void * daq_triggerloop (void * arg)
 
 	}
       else
-	{
-	  Trigger_Todo=DAQ_READ;
-	  Origin |= DAQ_TRIGGER;
-	  pthread_mutex_unlock ( &TriggerSem );
-	  pthread_mutex_lock ( &TriggerDone );
-	  usleep (10000);
-	}
+      	{
+	  //      	  Trigger_Todo=DAQ_READ;
+	  // Origin |= DAQ_TRIGGER;
+      	  //pthread_mutex_unlock ( &TriggerSem );
+      	  //pthread_mutex_lock ( &TriggerDone );
+      	  usleep (100000);
+      	}
     }
 }
 
