@@ -76,6 +76,7 @@ int daq_load_plugin( const char *sharedlib, std::ostream& os)
       
     }
   os << "Plugin " << sharedlib << " successfully loaded" << std::endl;
+  cout  << "Plugin " << sharedlib << " successfully loaded" << std::endl;
   return 0;
 
 }

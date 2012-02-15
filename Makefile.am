@@ -55,7 +55,7 @@ BUILT_SOURCES = \
         rcdaq_rpc.h
 
 
-lib_LTLIBRARIES =  librcdaq.la  librcdacplugin_example.la
+lib_LTLIBRARIES =  librcdaq.la  librcdaqplugin_example.la
 
 librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daq_device_random.cc \
@@ -64,7 +64,7 @@ librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daqBuffer.cc \
   daq_device.cc 
 
-librcdacplugin_example_la_SOURCES = daq_device_pluginexample.cc example_plugin.cc
+librcdaqplugin_example_la_SOURCES = daq_device_pluginexample.cc example_plugin.cc
 
 bin_SCRIPTS =  rcdaq_control.pl aliases.csh automated_run_example.sh
 

@@ -21,7 +21,7 @@ daqBuffer::daqBuffer (const int irun, const int length
 }
 
 
-// the constructor first ----------------
+// the destructor... ----------------
 daqBuffer::~daqBuffer ()
 {
   int *b = (int *)  bptr;
@@ -49,8 +49,6 @@ int daqBuffer::prepare_next( const int iseq
 // ---------------------------------------------------------
 int daqBuffer::nextEvent(const int etype, const int evtseq, const int evtsize)
 {
-  //  cout << "in nextEvent " << endl;
-
   if (current_event) delete current_event;
   current_event = 0;
   current_etype = -1;
@@ -74,8 +72,6 @@ int daqBuffer::nextEvent(const int etype, const int evtseq, const int evtsize)
 int daqBuffer::addSubevent( daq_device *dev)
 {
   int len;
-
-  //  cout << "in addSubevent " << endl;
 
   len = current_event->addSubevent(current_etype, dev);
 
