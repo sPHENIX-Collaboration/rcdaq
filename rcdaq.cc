@@ -494,11 +494,32 @@ int daq_begin(const int irun, std::ostream& os)
   fillBuffer      = &Buffer1;
   transportBuffer = &Buffer2;
 
-
+  // a safety check: see that the buffers haven't been adjusted 
+  // to a smaller value than the event size
+  int wantedmaxsize = 0;
+  for (int i = 0; i< MAXEVENTID; i++)
+    {
+      if ( 4*Eventsize[i] + 4*32 > fillBuffer->getMaxSize()
+	   || 4*Eventsize[i] * 4*32 > transportBuffer->getMaxSize()) 
+	{  
+	  int x = 4*Eventsize[i] + 4*32;   // this is now in bytes
+	  if ( x > wantedmaxsize ) wantedmaxsize = x;
+	}
+    }
+  if ( wantedmaxsize)
+    {
+      if ( fillBuffer->setMaxSize(wantedmaxsize) || transportBuffer->setMaxSize(wantedmaxsize))
+	{ 
+	  os << "Cannot start run - event sizes larger than buffer, size " 
+	     <<  wantedmaxsize/1024 << " Buffer size " 
+	     << transportBuffer->getMaxSize()/1024 << endl;
+	  return -1;
+	}
+      os << " Buffer size increased to " << transportBuffer->getMaxSize()/1024 << " KB"<< endl;
+      
+    }
+      
   fillBuffer->prepare_next(Buffer_number,TheRun);
-
-
-  
 
   run_volume = 0;
   
