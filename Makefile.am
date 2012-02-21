@@ -79,7 +79,7 @@ rcdaq_client_LDADD = rcdaq_rpc_clnt.lo rcdaq_rpc_xdr.lo
 
 
 rcdaq_server_SOURCES = rcdaq_server.cc 
-rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo -lpthread -ldl -ltspm
+rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo -lpthread -ldl 
 
 rcdaq_server_LDFLAGS =  -Wl,-export-dynamic
 
