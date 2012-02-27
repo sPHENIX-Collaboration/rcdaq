@@ -202,11 +202,13 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 
       if ( db->npar >= 5) 
 	{
-
+	  // we give the size in bytes but we want it in words 
+	  int s = (atoi(db->argv4)+3)/4;
+	  if ( s < 1280) s = 1280;    // this is the default size
 	  add_readoutdevice ( new daq_device_file( eventtype,
 						   subid,
 						   db->argv3,
-						   atoi(db->argv4)));
+						   s ) );
 	  return &result;
 	}
       else 

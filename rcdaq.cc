@@ -499,8 +499,8 @@ int daq_begin(const int irun, std::ostream& os)
   int wantedmaxsize = 0;
   for (int i = 0; i< MAXEVENTID; i++)
     {
-      if ( 4*Eventsize[i] + 4*32 > fillBuffer->getMaxSize()
-	   || 4*Eventsize[i] * 4*32 > transportBuffer->getMaxSize()) 
+      if ( (4*Eventsize[i] + 4*32) > fillBuffer->getMaxSize()
+      	   || (4*Eventsize[i] + 4*32) > transportBuffer->getMaxSize() ) 
 	{  
 	  int x = 4*Eventsize[i] + 4*32;   // this is now in bytes
 	  if ( x > wantedmaxsize ) wantedmaxsize = x;
