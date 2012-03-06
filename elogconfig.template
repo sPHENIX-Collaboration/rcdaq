@@ -1,0 +1,16 @@
+[global]
+port = 666
+logbook tabs = 0
+SMTP host = <rcf.rhic.bnl.gov>
+Welcome title = RCDAQ Logbook
+
+[RCDAQLog]
+Theme = default
+Comment = The RCDAQ logbook
+Data dir = /home/elog/RCDAQ
+Attributes = Author, Subject
+Reverse sort = 1
+Required Attributes = Subject, Author
+Page Title = RCDAQ Logbook
+Display mode = full
+Thumbnail size = 100

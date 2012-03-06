@@ -12,7 +12,7 @@ AC_PROG_INSTALL
 
 AC_PROG_LIBTOOL
 
-CXXFLAGS=" -fkeep-inline-functions"
+CXXFLAGS=" -g -O2"
 
 
 AC_OUTPUT(Makefile)

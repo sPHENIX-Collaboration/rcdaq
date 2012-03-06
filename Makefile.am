@@ -66,7 +66,7 @@ librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
 
 librcdaqplugin_example_la_SOURCES = daq_device_pluginexample.cc example_plugin.cc
 
-bin_SCRIPTS =  rcdaq_control.pl aliases.csh automated_run_example.sh
+bin_SCRIPTS =  rcdaq_control.pl aliases.csh aliases.sh automated_run_example.sh
 
 bin_PROGRAMS =  rcdaq_client rcdaq_server elogtest
 
