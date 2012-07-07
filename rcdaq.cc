@@ -217,8 +217,11 @@ int disable_trigger()
 {
   TriggerControl=0;  // this makes the trigger process terminate
 
+  sleep (1);
   pthread_cancel(ThreadTrigger);
+  //cout << __FILE__ << " " << __LINE__ << " waiting for trigger loop to exit " << endl;
   pthread_join(ThreadTrigger, NULL);
+  //cout << __FILE__ << " " << __LINE__ << " done " << endl;
 
 
   return 0;
@@ -599,16 +602,18 @@ void * daq_triggerloop (void * arg)
 	{
 	  status = TriggerH->wait_for_trigger();
 	  
+	  if (!status) 
+	    {
+	      Trigger_Todo=DAQ_READ;
+	      Origin |= DAQ_TRIGGER;
+	      pthread_mutex_unlock ( &TriggerSem );
 
-	  Trigger_Todo=DAQ_READ;
-	  Origin |= DAQ_TRIGGER;
-	  pthread_mutex_unlock ( &TriggerSem );
-
-	  //pthread_mutex_lock(&M_cout);
-	  //cout << __LINE__ << "  " << __FILE__ << " trigger" << endl;
-	  // pthread_mutex_unlock(&M_cout);
-
-	  pthread_mutex_lock ( &TriggerDone );
+	      //pthread_mutex_lock(&M_cout);
+	      //cout << __LINE__ << "  " << __FILE__ << " trigger" << endl;
+	      // pthread_mutex_unlock(&M_cout);
+	      
+	      pthread_mutex_lock ( &TriggerDone );
+	    }
 
 	}
       else
@@ -620,6 +625,10 @@ void * daq_triggerloop (void * arg)
       	  usleep (100000);
       	}
     }
+  pthread_mutex_lock(&M_cout);
+  cout << __LINE__ << "  " << __FILE__ << " trigger loop exits" << endl;
+  pthread_mutex_unlock(&M_cout);
+
 }
 
 
