@@ -274,9 +274,18 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
   static shortResult  result;
 
   static std::ostringstream outputstream;
+  static int currentmaxresultlength = 10*2048;
+  static char *resultstring = new char[currentmaxresultlength+1];
 
+  if ( outputstream.str().size() > currentmaxresultlength )
+    {
+      currentmaxresultlength = outputstream.str().size();
+      std::cout << __LINE__<< "  " << __FILE__ 
+		<< " *** warning: extended result string to " << currentmaxresultlength << std::endl;
+      delete [] resultstring;
+      resultstring = new char[currentmaxresultlength+1];
+    }
 
-  //  std::cout << ab->action << std::endl;
 
   pthread_mutex_lock(&M_output);
   result.str=" ";
@@ -294,7 +303,9 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     case DAQ_BEGIN:
       //  cout << "daq_begin " << ab->ipar[0] << endl;
       result.status = daq_begin (  ab->ipar[0], outputstream);
-      result.str = (char *) outputstream.str().c_str();
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
       result.content = 1;
       pthread_mutex_unlock(&M_output);
       return &result;
@@ -303,7 +314,9 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     case DAQ_END:
         // cout << "daq_end "  << endl;
       result.status = daq_end(outputstream);
-      result.str = (char *) outputstream.str().c_str();
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
       result.content = 1;
       pthread_mutex_unlock(&M_output);
       return &result;
@@ -319,7 +332,9 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       result.status = daq_open(outputstream);
       if (result.status) 
 	{
-	  result.str = (char *) outputstream.str().c_str();
+	  outputstream.str().copy(resultstring,outputstream.str().size());
+	  resultstring[outputstream.str().size()] = 0;
+	  result.str = resultstring;
 	  result.content = 1;
 	}
       pthread_mutex_unlock(&M_output);
@@ -331,7 +346,9 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       result.status = daq_close(outputstream);
       if (result.status) 
 	{
-	  result.str = (char *) outputstream.str().c_str();
+	  outputstream.str().copy(resultstring,outputstream.str().size());
+	  resultstring[outputstream.str().size()] = 0;
+	  result.str = resultstring;
 	  result.content = 1;
 	}
       pthread_mutex_unlock(&M_output);
@@ -346,7 +363,9 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     case DAQ_LISTREADLIST:
       // cout << "daq_list_readlist "  << endl;
       result.status = daq_list_readlist(outputstream);
-      result.str = (char *) outputstream.str().c_str();
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
       result.content = 1;
       pthread_mutex_unlock(&M_output);
       return &result;
@@ -355,7 +374,9 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     case DAQ_CLEARREADLIST:
       // cout << "daq_clear_readlist "  << endl;
       result.status = daq_clear_readlist(outputstream);
-      result.str = (char *) outputstream.str().c_str();
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
       result.content = 1;
       pthread_mutex_unlock(&M_output);
       return &result;
@@ -365,7 +386,9 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 
       //      cout << "daq_status "  << endl;
       result.status = daq_status(ab->ipar[0], outputstream);
-      result.str = (char *) outputstream.str().c_str();
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
       result.content = 1;
       pthread_mutex_unlock(&M_output);
       return &result;
@@ -374,10 +397,11 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     case DAQ_SETMAXEVENTS:
       //  cout << "daq_setmaxevents " << ab->ipar[0] << endl;
       result.status = daq_setmaxevents (  ab->ipar[0], outputstream);
-      result.str = (char *) outputstream.str().c_str();
       if (result.status) 
 	{
-	  result.str = (char *) outputstream.str().c_str();
+	  outputstream.str().copy(resultstring,outputstream.str().size());
+	  resultstring[outputstream.str().size()] = 0;
+	  result.str = resultstring;
 	  result.content = 1;
 	}
       pthread_mutex_unlock(&M_output);
@@ -387,10 +411,11 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     case DAQ_SETMAXVOLUME:
       //  cout << "daq_setmaxvolume " << ab->ipar[0] << endl;
       result.status = daq_setmaxvolume (  ab->ipar[0], outputstream);
-      result.str = (char *) outputstream.str().c_str();
       if (result.status) 
 	{
-	  result.str = (char *) outputstream.str().c_str();
+	  outputstream.str().copy(resultstring,outputstream.str().size());
+	  resultstring[outputstream.str().size()] = 0;
+	  result.str = resultstring;
 	  result.content = 1;
 	}
       pthread_mutex_unlock(&M_output);
@@ -400,10 +425,11 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     case DAQ_SETMAXBUFFERSIZE:
       //  cout << "daq_setmaxvolume " << ab->ipar[0] << endl;
       result.status = daq_setmaxbuffersize (  ab->ipar[0], outputstream);
-      result.str = (char *) outputstream.str().c_str();
       if (result.status) 
 	{
-	  result.str = (char *) outputstream.str().c_str();
+	  outputstream.str().copy(resultstring,outputstream.str().size());
+	  resultstring[outputstream.str().size()] = 0;
+	  result.str = resultstring;
 	  result.content = 1;
 	}
       pthread_mutex_unlock(&M_output);
@@ -419,9 +445,11 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     case DAQ_LOAD:
       // 
       result.status = daq_load_plugin( ab->spar, outputstream );
-      result.str = (char *) outputstream.str().c_str();
       if (result.status) 
 	{
+	  outputstream.str().copy(resultstring,outputstream.str().size());
+	  resultstring[outputstream.str().size()] = 0;
+	  result.str = resultstring;
 	  result.content = 1;
 	}
       pthread_mutex_unlock(&M_output);

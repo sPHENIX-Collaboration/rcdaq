@@ -1156,7 +1156,9 @@ int daq_status (const int flag, std::ostream& os)
 	  os << "Buffer Sizes:     " <<  Buffer1.getMaxSize()/1024 << " KB" << endl;
 	  if ( TriggerH ) os << "have a trigger object" << endl;
 	}
+
       daq_status_plugin(flag, os);
+
 
       break;
 
