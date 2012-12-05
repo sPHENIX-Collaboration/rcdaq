@@ -1,5 +1,7 @@
 #include <daqBuffer.h>
 
+#include <unistd.h>
+
 using namespace std;
 
 // the constructor first ----------------
