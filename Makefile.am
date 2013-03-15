@@ -58,7 +58,7 @@ BUILT_SOURCES = \
         rcdaq_rpc.h
 
 
-lib_LTLIBRARIES =  librcdaq.la  librcdaqplugin_example.la
+lib_LTLIBRARIES =  librcdaq.la librcdaqutils.la  librcdaqplugin_example.la 
 
 librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daq_device_random.cc \
@@ -67,6 +67,8 @@ librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daqBuffer.cc \
   daq_device.cc \
   parseargument.cc
+
+librcdaqutils_la_SOURCES =  parseargument.cc
 
 librcdaqplugin_example_la_SOURCES = daq_device_pluginexample.cc example_plugin.cc
 
