@@ -6,6 +6,7 @@
 #include <getopt.h>
 
 #include <sstream>
+#include "parseargument.h"
 #include "rcdaq_rpc.h"
 #include "rcdaq_actions.h"
 
@@ -182,6 +183,8 @@ int command_execute( int argc, char **argv)
   ab.spar = " ";
   ab.spar2 = " ";
 
+  int convertstatus;
+
   strcpy(command, argv[optind]);
 
 
@@ -196,7 +199,7 @@ int command_execute( int argc, char **argv)
       ab.action = DAQ_BEGIN;
       if ( argc == optind + 2)
 	{
-	  ab.ipar[0] = atoi(argv[optind + 1]);
+	  ab.ipar[0] = get_value(argv[optind + 1]);
 	}
       else
 	{
@@ -272,11 +275,11 @@ int command_execute( int argc, char **argv)
       if ( argc < optind + 2) return -1;
 
       ab.action = DAQ_FAKETRIGGER;
-      ab.ipar[0] = atoi(argv[optind + 1]);
+      ab.ipar[0] = get_value(argv[optind + 1]);
       // see if we have a 2nd parameter
       if ( argc > optind + 2)
 	{
-	  ab.ipar[1] =  atoi(argv[optind + 1]);
+	  ab.ipar[1] =  get_value(argv[optind + 1]);
 	}
 
       r = r_action_1(&ab, clnt);
@@ -338,7 +341,7 @@ int command_execute( int argc, char **argv)
       if ( argc < optind + 2) return -1;
 
       ab.action = DAQ_SETMAXEVENTS;
-      ab.ipar[0] = atoi(argv[optind + 1]);
+      ab.ipar[0] = get_value(argv[optind + 1]);
 
       r = r_action_1(&ab, clnt);
       if (r == (shortResult *) NULL) 
@@ -354,7 +357,7 @@ int command_execute( int argc, char **argv)
       if ( argc < optind + 2) return -1;
 
       ab.action = DAQ_SETMAXVOLUME;
-      ab.ipar[0] = atoi(argv[optind + 1]);
+      ab.ipar[0] = get_value(argv[optind + 1]);
 
       r = r_action_1(&ab, clnt);
       if (r == (shortResult *) NULL) 
@@ -370,7 +373,7 @@ int command_execute( int argc, char **argv)
       if ( argc < optind + 2) return -1;
 
       ab.action = DAQ_SETMAXBUFFERSIZE;
-      ab.ipar[0] = atoi(argv[optind + 1]);
+      ab.ipar[0] = get_value(argv[optind + 1]);
 
       r = r_action_1(&ab, clnt);
       if (r == (shortResult *) NULL) 
@@ -391,7 +394,7 @@ int command_execute( int argc, char **argv)
 
       ab.action = DAQ_ELOG;
       ab.spar = argv[optind + 1];
-      ab.ipar[0] = atoi(argv[optind + 2]);
+      ab.ipar[0] = get_value(argv[optind + 2]);
       ab.spar2 = argv[optind +3];
 
       r = r_action_1(&ab, clnt);

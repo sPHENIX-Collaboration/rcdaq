@@ -2,6 +2,7 @@
 #include "rcdaq_rpc.h"
 #include "rcdaq_actions.h"
 
+#include "parseargument.h"
 #include "rcdaq.h"
 #include "daq_device.h" 
 #include "rcdaq_plugin.h" 
@@ -140,8 +141,8 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
   error.str     = "Wrong number of parameters";
 
   // and we decode the event type and subid
-  eventtype  = atoi ( db->argv1); // event type
-  subid = atoi ( db->argv2); // subevent id
+  eventtype  = get_value ( db->argv1); // event type
+  subid = get_value ( db->argv2); // subevent id
 
 
   if ( strcasecmp(db->argv0,"device_random") == 0 ) 
@@ -159,31 +160,31 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
         case 4:
           add_readoutdevice ( new daq_device_random( eventtype,
                                                      subid,
-						     atoi ( db->argv3)));
+						     get_value ( db->argv3)));
           break;
 
         case 5:
           add_readoutdevice ( new daq_device_random( eventtype,
                                                      subid, 
-						     atoi ( db->argv3),
-						     atoi ( db->argv4)));
+						     get_value ( db->argv3),
+						     get_value ( db->argv4)));
           break;
 
         case 6:
           add_readoutdevice ( new daq_device_random( eventtype,
                                                      subid, 
-						     atoi ( db->argv3),
-						     atoi ( db->argv4),
-						     atoi ( db->argv5)));
+						     get_value ( db->argv3),
+						     get_value ( db->argv4),
+						     get_value ( db->argv5)));
           break;
 
         case 7:
           add_readoutdevice ( new daq_device_random( eventtype,
                                                      subid, 
-						     atoi ( db->argv3),
-						     atoi ( db->argv4),
-						     atoi ( db->argv5),
-						     atoi ( db->argv6)));
+						     get_value ( db->argv3),
+						     get_value ( db->argv4),
+						     get_value ( db->argv5),
+						     get_value ( db->argv6)));
           break;
 
        default:
@@ -203,7 +204,7 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
       if ( db->npar >= 5) 
 	{
 	  // we give the size in bytes but we want it in words 
-	  int s = (atoi(db->argv4)+3)/4;
+	  int s = (get_value(db->argv4)+3)/4;
 	  if ( s < 1280) s = 1280;    // this is the default size
 	  add_readoutdevice ( new daq_device_file( eventtype,
 						   subid,
@@ -233,7 +234,7 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 	  add_readoutdevice ( new daq_device_filenumbers( eventtype,
 							  subid,
 							  db->argv3,
-							  atoi(db->argv4)));
+							  get_value(db->argv4)));
 	  return &result;
 	}
       else 
@@ -523,7 +524,7 @@ main (int argc, char **argv)
 
   if ( argc > 1)
     {
-      servernumber = atoi(argv[1]);
+      servernumber = get_value(argv[1]);
     }
   std::cout << "Server number is " << servernumber << std::endl;
 

@@ -7,7 +7,8 @@ allheaders = \
   rcdaq_plugin.h \
   pulserTriggerHandler.h \
   oBuffer.h \
-  oEvent.h 
+  oEvent.h \
+  parseargument.h
 
 
 allsources = \
@@ -42,7 +43,9 @@ include_HEADERS =  \
   daq_device.h \
   rcdaq_rpc.h \
   TriggerHandler.h \
-  rcdaq_plugin.h
+  rcdaq_plugin.h \
+  parseargument.h
+
 
 
 RPCGEN = rpcgen
@@ -62,7 +65,8 @@ librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daq_device_file.cc \
   daq_device_filenumbers.cc \
   daqBuffer.cc \
-  daq_device.cc 
+  daq_device.cc \
+  parseargument.cc
 
 librcdaqplugin_example_la_SOURCES = daq_device_pluginexample.cc example_plugin.cc
 
@@ -74,8 +78,8 @@ elogtest_SOURCES = elogtest.cc
 elogtest_LDADD = eloghandler.lo 
 
 
-rcdaq_client_SOURCES = rcdaq_client.cc rcdaq_rpc.h
-rcdaq_client_LDADD = rcdaq_rpc_clnt.lo rcdaq_rpc_xdr.lo
+rcdaq_client_SOURCES = rcdaq_client.cc  rcdaq_rpc.h
+rcdaq_client_LDADD = rcdaq_rpc_clnt.lo rcdaq_rpc_xdr.lo parseargument.lo
 
 
 rcdaq_server_SOURCES = rcdaq_server.cc 
