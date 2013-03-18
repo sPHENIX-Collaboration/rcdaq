@@ -23,7 +23,7 @@ struct actionblock {
 
 };
 
-const NSTRINGPAR = 10;
+const NSTRINGPAR = 14;
 
 struct deviceblock {
 	int npar;
@@ -37,7 +37,10 @@ struct deviceblock {
 	string argv7<>;
 	string argv8<>;
 	string argv9<>;
-
+	string argv10<>;
+	string argv11<>;
+	string argv12<>;
+	string argv13<>;
 };
 
 

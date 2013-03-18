@@ -86,6 +86,10 @@ int handle_device( int argc, char **argv, const int optind)
   arglist[7] = &db.argv7;
   arglist[8] = &db.argv8;
   arglist[9] = &db.argv9;
+  arglist[10] = &db.argv10;
+  arglist[11] = &db.argv11;
+  arglist[12] = &db.argv12;
+  arglist[13] = &db.argv13;
 
   char empty[2] = {' ',0};
 

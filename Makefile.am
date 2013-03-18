@@ -16,6 +16,7 @@ allsources = \
   daq_device_random.cc \
   daq_device_file.cc \
   daq_device_filenumbers.cc \
+  daq_device_command.cc \
   rcdaq.cc \
   daqBuffer.cc \
   daq_device.cc 
@@ -35,6 +36,7 @@ noinst_HEADERS = \
   daq_device_random.h \
   daq_device_file.h \
   daq_device_filenumbers.h \
+  daq_device_command.h \
   all.h
 
 include_HEADERS =  \
@@ -64,6 +66,7 @@ librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daq_device_random.cc \
   daq_device_file.cc \
   daq_device_filenumbers.cc \
+  daq_device_command.cc \
   daqBuffer.cc \
   daq_device.cc \
   parseargument.cc

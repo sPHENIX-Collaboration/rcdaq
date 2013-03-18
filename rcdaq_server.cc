@@ -248,6 +248,32 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 
     }
 
+  else if ( strcasecmp(db->argv0,"device_command") == 0 )  
+    {
+
+      if ( db->npar < 4) return &error;
+
+      if ( db->npar >= 5) 
+	{
+	  int s = (get_value(db->argv4)+3)/4;
+	  if ( s < 1280) s = 1280;    // this is the default size
+	  add_readoutdevice ( new daq_device_file( eventtype,
+						   subid,
+						   db->argv3,
+						   get_value(db->argv4) ) );
+	  return &result;
+	}
+      else 
+	{
+
+	  add_readoutdevice ( new daq_device_command( eventtype,
+						   subid,
+						   db->argv3));
+	  return &result;
+	}
+
+    }
+
 
   std::vector<RCDAQPlugin *>::iterator it;
 
