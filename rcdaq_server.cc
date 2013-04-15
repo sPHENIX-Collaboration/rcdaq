@@ -195,6 +195,39 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
       return &result;
     }
 
+  if ( strcasecmp(db->argv0,"device_deadtime") == 0 ) 
+    {
+
+      // this happens to be the most complex contructor part
+      // so far since there are a few variants, 2-6 parameters
+      switch ( db->npar)
+	{
+	case 3:
+          add_readoutdevice ( new daq_device_deadtime( eventtype,
+						       subid ));
+          break;
+
+        case 4:
+          add_readoutdevice ( new daq_device_deadtime( eventtype,
+						       subid,
+						       get_value ( db->argv3)));
+          break;
+
+        case 5:
+          add_readoutdevice ( new daq_device_deadtime( eventtype,
+						       subid, 
+						       get_value ( db->argv3),
+						       get_value ( db->argv4)));
+          break;
+
+       default:
+          return &error;
+          break;
+        }
+
+      return &result;
+    }
+
 
   else if ( strcasecmp(db->argv0,"device_file") == 0 )  
     {

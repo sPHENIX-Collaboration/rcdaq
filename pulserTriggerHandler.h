@@ -7,7 +7,7 @@ class pulserTriggerHandler : public TriggerHandler {
 
 public:
 
-  pulserTriggerHandler(const int sleeptime = 10000)
+  pulserTriggerHandler(const int sleeptime = 0)
     {
       _sleeptime = sleeptime;
       _count = 0;
@@ -23,7 +23,7 @@ public:
     int sleeptime = _sleeptime;
     if ( moreinfo) sleeptime = moreinfo;
     //std::cout << "trigger " << _count++ << std::endl; 
-    usleep ( sleeptime);
+    if ( sleeptime) usleep ( sleeptime);
     return 0;
   }
  protected:

@@ -14,6 +14,7 @@ allheaders = \
 allsources = \
   daqEvent.cc \
   daq_device_random.cc \
+  daq_device_deadtime.cc \
   daq_device_file.cc \
   daq_device_filenumbers.cc \
   daq_device_command.cc \
@@ -34,6 +35,7 @@ noinst_HEADERS = \
   EvtStructures.h \
   daqEvent.h \
   daq_device_random.h \
+  daq_device_deadtime.h \
   daq_device_file.h \
   daq_device_filenumbers.h \
   daq_device_command.h \
@@ -64,6 +66,7 @@ lib_LTLIBRARIES =  librcdaq.la librcdaqutils.la  librcdaqplugin_example.la
 
 librcdaq_la_SOURCES = rcdaq.cc   daqEvent.cc \
   daq_device_random.cc \
+  daq_device_deadtime.cc \
   daq_device_file.cc \
   daq_device_filenumbers.cc \
   daq_device_command.cc \

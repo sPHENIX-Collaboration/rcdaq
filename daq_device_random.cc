@@ -34,8 +34,11 @@ daq_device_random::daq_device_random(const int eventtype
 daq_device_random::~daq_device_random()
 {
   if ( rfp) fclose( rfp);
-  clearTriggerHandler();
-  delete th;
+  if ( th) 
+    {
+      clearTriggerHandler();
+      delete th;
+    }
 }
 
 
