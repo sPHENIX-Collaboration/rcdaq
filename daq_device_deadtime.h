@@ -15,6 +15,7 @@ public:
   daq_device_deadtime (const int eventtype
     , const int subeventid
     , const int n_ticks = 100
+    , const int n_words = 0
     , const int trigger_enabled=0);
 
 
@@ -36,6 +37,7 @@ public:
 protected:
   subevtdata_ptr sevt;
   unsigned int number_of_ticks;
+  unsigned int number_of_words;
   pulserTriggerHandler *th;
 
 };

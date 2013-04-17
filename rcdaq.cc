@@ -201,14 +201,6 @@ int enable_trigger()
 
       ThreadTrigger = 0;
     }
-  else
-    {
-      pthread_mutex_lock(&M_cout);
-      cout << "trigger loop created " << endl;
-      pthread_mutex_unlock(&M_cout);
-
-    }
-
   return 0;
   
 }
@@ -537,6 +529,7 @@ int daq_begin(const int irun, std::ostream& os)
   StartTime = time(0);
 
   os << "Run " << TheRun << " started" << endl;;
+  cout  << "Run " << TheRun << " started" << endl;;
 	  
   return 0;
 }
@@ -585,7 +578,8 @@ int Command (const int command)
 {
   Command_Todo = command;
   Origin |= DAQ_COMMAND;
-  
+  cout << __FILE__ << "  " << __LINE__ << " Command " << endl;
+
   pthread_mutex_unlock ( &TriggerSem );
 
   return 0;
@@ -618,16 +612,13 @@ void * daq_triggerloop (void * arg)
 	}
       else
       	{
-	  //      	  Trigger_Todo=DAQ_READ;
-	  // Origin |= DAQ_TRIGGER;
-      	  //pthread_mutex_unlock ( &TriggerSem );
-      	  //pthread_mutex_lock ( &TriggerDone );
+
       	  usleep (100000);
       	}
     }
-  pthread_mutex_lock(&M_cout);
-  cout << __LINE__ << "  " << __FILE__ << " trigger loop exits" << endl;
-  pthread_mutex_unlock(&M_cout);
+  // pthread_mutex_lock(&M_cout);
+  // cout << __LINE__ << "  " << __FILE__ << " trigger loop exits" << endl;
+  // pthread_mutex_unlock(&M_cout);
 
 }
 
@@ -641,8 +632,8 @@ int daq_fake_trigger (const int n, const int waitinterval)
       
       Trigger_Todo=DAQ_READ;
       Origin |= DAQ_TRIGGER;
-      pthread_mutex_unlock ( &TriggerSem );
-      pthread_mutex_lock ( &TriggerDone );
+      //      pthread_mutex_unlock ( &TriggerSem );
+      //pthread_mutex_lock ( &TriggerDone );
 	  
 //       pthread_mutex_lock(&M_cout);
 //       cout << "trigger" << endl;
@@ -663,57 +654,53 @@ void * EventLoop( void *arg)
     {
 
       pthread_mutex_lock ( &TriggerSem );
-      //      cout << __LINE__ << "  " << __FILE__ << " Origin "  << Origin<< dec << endl;
-      Origin &= ( DAQ_TRIGGER | DAQ_COMMAND | DAQ_SPECIAL);
+      // cout << __LINE__ << "  " << __FILE__ << " Origin "  << Origin<< dec << endl;
+      //      Origin &= ( DAQ_TRIGGER | DAQ_COMMAND | DAQ_SPECIAL);
+      Origin &= DAQ_TRIGGER;
 
-      while (Origin)
+      if ( Origin & DAQ_TRIGGER )
+	// yep, a trigger.
 	{
-	  
-	  if ( Origin & DAQ_TRIGGER )
-	    // yep, a trigger.
+	  if ( Daq_Status & DAQ_RUNNING ) 
 	    {
-	      if ( Daq_Status & DAQ_RUNNING ) 
-		// accept it only when we are running
+	      switch (Trigger_Todo)
 		{
-		  
-		  // now see what we have to do.
-		  switch (Trigger_Todo)
-		    {
-		    case DAQ_READ:
-		      Daq_Status |= DAQ_READING;
-		      //		      cout << __LINE__ << "  " << __FILE__ << " reading out..." << endl;
-		      int rstatus = readout(DATAEVENT);
-		      Daq_Status ^= DAQ_READING;
-		      // cout << __LINE__ << "  " << __FILE__ << " done" << endl;
+		case DAQ_READ:
+		  Daq_Status |= DAQ_READING;
+		  //		      cout << __LINE__ << "  " << __FILE__ << " reading out..." << endl;
+		  int rstatus = readout(DATAEVENT);
+		  Daq_Status ^= DAQ_READING;
+		  // cout << __LINE__ << "  " << __FILE__ << " done" << endl;
 
-		      rearm(DATAEVENT);
+		  rearm(DATAEVENT);
 		      
-		      // reset todo, and the DAQ_TRIGGER bit. 
-		      Trigger_Todo = 0;
-		      Origin ^= DAQ_TRIGGER;
-		      reset_deadtime();
-			  
-		      if (  rstatus)    // we got an endrun signal
-			{
-			  daq_end ( std::cout);
-			}
-		    }
-		}
-	      else
-		// no, we are not running
-		{
-		  cout << "Run not active" << endl;
 		  // reset todo, and the DAQ_TRIGGER bit. 
 		  Trigger_Todo = 0;
 		  Origin ^= DAQ_TRIGGER;
+		  reset_deadtime();
+			  
+		  if (  rstatus)    // we got an endrun signal
+		    {
+		      daq_end ( std::cout);
+		    }
+		
 		}
 	    }
-	  
-	  
+	  else
+	    // no, we are not running
+	    {
+	      cout << "Run not active" << endl;
+	      // reset todo, and the DAQ_TRIGGER bit. 
+	      Trigger_Todo = 0;
+	      Origin ^= DAQ_TRIGGER;
+	      reset_deadtime();
+	    }
 	}
+      
+      
     }
-  
 }
+  
 
 
 int add_readoutdevice ( daq_device *d)
@@ -883,27 +870,6 @@ int daq_shutdown (std::ostream& os)
   return 0;
 }
 
-
-
-//   if (outfile_fd)
-//     {
-//       os << "File already open" << endl;
-//       return -1;
-//     }
-
-//   outfile_fd = open(filename, O_WRONLY | O_CREAT | O_LARGEFILE ,
-//                   S_IRWXU | S_IROTH | S_IRGRP );
-
-//   cout << "outfile_fd = "  << outfile_fd << endl;
-
-//   if ( outfile_fd < 0 ) 
-//     {
-//       perror ("open file");
-//       outfile_fd = 0;
-//       return -1;
-//     }
-//   return 0;
-// }
 
 int is_open()
 {

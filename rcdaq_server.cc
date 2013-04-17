@@ -207,17 +207,25 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 						       subid ));
           break;
 
-        case 4:
+        case 4:  // plus number of ticks
           add_readoutdevice ( new daq_device_deadtime( eventtype,
 						       subid,
 						       get_value ( db->argv3)));
           break;
 
-        case 5:
+        case 5:  // plus number of words
           add_readoutdevice ( new daq_device_deadtime( eventtype,
 						       subid, 
 						       get_value ( db->argv3),
 						       get_value ( db->argv4)));
+          break;
+
+        case 6:   // plus trigger flag
+          add_readoutdevice ( new daq_device_deadtime( eventtype,
+						       subid, 
+						       get_value ( db->argv3),
+						       get_value ( db->argv4),
+						       get_value ( db->argv5)));
           break;
 
        default:
