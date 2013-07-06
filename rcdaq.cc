@@ -537,7 +537,7 @@ int daq_define_runtype(const char *type, const char *rule)
 int daq_status_runtypes (std::ostream& os )
 {
   os << " -- defined Run Types: ";
-  return daq_list_runtypes(1, os);
+  return daq_list_runtypes(2, os);
 }
 
 int daq_list_runtypes(const int flag, std::ostream& os)
@@ -548,7 +548,7 @@ int daq_list_runtypes(const int flag, std::ostream& os)
       os << " (none)" <<endl;
       return 0;
     }
-  if (flag) os << endl;
+  if (flag ==2) os << endl;
 
   std::map <string,string>::const_iterator iter = RunTypes.begin();
   for ( ; iter != RunTypes.end(); ++iter)
