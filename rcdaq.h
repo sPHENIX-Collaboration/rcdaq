@@ -30,8 +30,18 @@ int daq_begin(const int irun,std::ostream& os = std::cout );
 int daq_end(std::ostream& os = std::cout);
 int daq_fake_trigger (const int n, const int waitinterval);
 
+int daq_write_runnumberfile(const int run);
+
+int daq_set_runnumberfile(const char *file);
+
 int daq_set_filerule(const char *rule);
+
+int daq_setruntype(const char *type, std::ostream& os = std::cout);
+int daq_define_runtype(const char *type, const char * rule);
+int daq_list_runtypes(const int flag, std::ostream& os = std::cout );
 std::string& daq_get_filerule();
+
+
 int daq_open(std::ostream& os = std::cout);
 int daq_shutdown(std::ostream& os = std::cout);
 int is_open();
@@ -51,6 +61,7 @@ int daq_setmaxvolume (const int n_mb, std::ostream& os);
 
 int daq_setmaxbuffersize (const int n_mb, std::ostream& os);
 
+int daq_setadaptivebuffering (const int usecs, std::ostream& os);
 
 int daq_set_eloghandler( const char *host, const int port, const char *logname);
 

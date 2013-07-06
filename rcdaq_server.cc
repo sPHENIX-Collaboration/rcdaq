@@ -390,9 +390,43 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       return &result;
       break;
 
+    case DAQ_RUNNUMBERFILE:
+      // cout << "daq_set_filerule " << ab->spar << endl;
+      daq_set_runnumberfile(ab->spar);
+      break;
+
     case DAQ_SETFILERULE:
       // cout << "daq_set_filerule " << ab->spar << endl;
       daq_set_filerule(ab->spar);
+      break;
+
+    case DAQ_SETRUNTYPE:
+      result.status = daq_setruntype(ab->spar,outputstream);
+      if ( result.status)
+	{
+	  outputstream.str().copy(resultstring,outputstream.str().size());
+	  resultstring[outputstream.str().size()] = 0;
+	  result.str = resultstring;
+	  result.content = 1;
+	}
+      pthread_mutex_unlock(&M_output);
+      return &result; 
+      break;
+
+    case DAQ_DEFINERUNTYPE:
+      // cout << "daq_set_filerule " << ab->spar << endl;
+      daq_define_runtype(ab->spar, ab->spar2);
+      break;
+
+    case DAQ_LISTRUNTYPES:
+      // cout << "daq_list_runtypes "  << endl;
+      result.status = daq_list_runtypes(ab->ipar[0], outputstream);
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
       break;
 
     case DAQ_OPEN:
@@ -493,6 +527,20 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     case DAQ_SETMAXBUFFERSIZE:
       //  cout << "daq_setmaxvolume " << ab->ipar[0] << endl;
       result.status = daq_setmaxbuffersize (  ab->ipar[0], outputstream);
+      if (result.status) 
+	{
+	  outputstream.str().copy(resultstring,outputstream.str().size());
+	  resultstring[outputstream.str().size()] = 0;
+	  result.str = resultstring;
+	  result.content = 1;
+	}
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
+    case DAQ_SETADAPTIVEBUFFER:
+      //  cout << "daq_setmaxevents " << ab->ipar[0] << endl;
+      result.status = daq_setadaptivebuffering (  ab->ipar[0], outputstream);
       if (result.status) 
 	{
 	  outputstream.str().copy(resultstring,outputstream.str().size());

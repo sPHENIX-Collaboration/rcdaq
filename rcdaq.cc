@@ -1,4 +1,3 @@
-
 #include <pthread.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -27,6 +26,7 @@
 #include <netpacket/packet.h>
 
 #include <vector>
+#include <map>
 
 #include "getopt.h"
 
@@ -71,8 +71,15 @@ pthread_mutex_t TriggerLoop;
 
 using namespace std;
 
+static std::map<string,string> RunTypes;
+
 static std::string TheFileRule = "rcdaq-%08d-%04d.evt";
 static std::string CurrentFilename = "";
+
+static std::string TheRunnumberfile = " ";
+static int RunnumberfileIsSet = 0;
+
+
 static int daq_open_flag = 0;  //no files written unless asked for
 static int file_is_open = 0;
 static int current_filesequence = 0;
@@ -150,6 +157,10 @@ int packetid = 1001;
 int max_buffers=0;
 int go_on =1;
 
+int adaptivebuffering = 15;
+int last_bufferwritetime  = 0;
+
+
 int registerTriggerHandler ( TriggerHandler *th)
 {
   // we already have one
@@ -201,6 +212,14 @@ int enable_trigger()
 
       ThreadTrigger = 0;
     }
+  else
+    {
+      pthread_mutex_lock(&M_cout);
+      cout << "trigger loop created " << endl;
+      pthread_mutex_unlock(&M_cout);
+
+    }
+
   return 0;
   
 }
@@ -248,6 +267,16 @@ int daq_setmaxbuffersize (const int n_kb, std::ostream& os)
   Buffer2.setMaxSize(n_kb*1024);
   return 0;
 }
+
+int daq_setadaptivebuffering (const int usecs, std::ostream& os)
+{
+
+  adaptivebuffering = usecs;
+  return 0;
+
+}
+
+
 
 
 int daq_set_eloghandler( const char *host, const int port, const char *logname)
@@ -381,6 +410,7 @@ void *writebuffers ( void * arg)
       pthread_mutex_lock( &WriteSem); // we wait for an unlock
 
 
+      last_bufferwritetime  = time(0);
       if ( outfile_fd) 
 	{
 	  unsigned int bytecount = transportBuffer->writeout(outfile_fd);
@@ -429,12 +459,113 @@ int switch_buffer()
   return 0;
 
 }
+
+int daq_set_runnumberfile(const char *file)
+{
+  TheRunnumberfile = file;
+  RunnumberfileIsSet = 1;
+  FILE *fp = fopen(TheRunnumberfile.c_str(), "r");
+  int r = 0;
+  if (fp > 0)
+    {
+      fscanf(fp, "%d", &r);
+      cout << "runnumber read " << r << endl;      
+      if ( ! TheRun )
+	{
+	  TheRun = r;
+	}
+      fclose(fp);
+    }
+
+  return 0;
+}
+
+int daq_write_runnumberfile(const int run)
+{
+  if ( !RunnumberfileIsSet ) return 1;
+
+  FILE *fp = fopen(TheRunnumberfile.c_str(), "w");
+  if (fp > 0)
+    {
+      fprintf(fp, "%d\n", run);
+      fclose(fp);
+    }
+
+  return 0;
+}
   
 int daq_set_filerule(const char *rule)
 {
   TheFileRule = rule;
   return 0;
 }
+
+// this is selecting from any of the existing run types 
+int daq_setruntype(const char *type, std::ostream& os )
+{
+  std::string _type = type;
+  std::map <string,string>::const_iterator iter = RunTypes.begin();
+  for ( ; iter != RunTypes.end(); ++iter)
+    {
+      if ( iter->first == _type )
+	{
+	  TheFileRule = iter->second;
+	  return 0;
+	}
+    }
+  os << " Run type " << type << " is not defined " << endl;
+  return 1;
+}
+
+// this is selecting from any of the exisiting run types 
+int daq_define_runtype(const char *type, const char *rule)
+{
+  std::string _type = type;
+  // std::map <string,string>::const_iterator iter = RunTypes.begin();
+  // for ( ; iter != RunTypes.end(); ++iter)
+  //   {
+  //     if ( iter->first == _type )
+  // 	{
+  // 	  RunTypes[_type] = rule;
+  // 	  return 0;
+  // 	}
+  //   }
+  RunTypes[_type] = rule;
+  return 0;
+}
+
+int daq_status_runtypes (std::ostream& os )
+{
+  os << " -- defined Run Types: ";
+  return daq_list_runtypes(1, os);
+}
+
+int daq_list_runtypes(const int flag, std::ostream& os)
+{
+
+  if ( flag && RunTypes.size() == 0 )
+    {
+      os << " (none)" <<endl;
+      return 0;
+    }
+  if (flag) os << endl;
+
+  std::map <string,string>::const_iterator iter = RunTypes.begin();
+  for ( ; iter != RunTypes.end(); ++iter)
+    {
+      if (flag)
+	{
+	  os << "     " << setw(12) << iter->first 	 << " - " << iter->second << endl;
+	}
+      else
+	{
+	  os << iter->first << endl;
+	}
+      
+    }
+  return 0;
+}    
+
 
 std::string& daq_get_filerule()
 {
@@ -471,6 +602,10 @@ int daq_begin(const int irun, std::ostream& os)
 	{
 	  if (ElogH) ElogH->BegrunLog( TheRun,"RCDAQ",  
 				       get_current_filename());
+
+	  daq_write_runnumberfile(TheRun);
+	  last_bufferwritetime  = time(0);  // initialize this at begin-run
+
 	}
       else
 	{
@@ -529,7 +664,6 @@ int daq_begin(const int irun, std::ostream& os)
   StartTime = time(0);
 
   os << "Run " << TheRun << " started" << endl;;
-  cout  << "Run " << TheRun << " started" << endl;;
 	  
   return 0;
 }
@@ -578,8 +712,7 @@ int Command (const int command)
 {
   Command_Todo = command;
   Origin |= DAQ_COMMAND;
-  cout << __FILE__ << "  " << __LINE__ << " Command " << endl;
-
+  
   pthread_mutex_unlock ( &TriggerSem );
 
   return 0;
@@ -612,13 +745,16 @@ void * daq_triggerloop (void * arg)
 	}
       else
       	{
-
+	  //      	  Trigger_Todo=DAQ_READ;
+	  // Origin |= DAQ_TRIGGER;
+      	  //pthread_mutex_unlock ( &TriggerSem );
+      	  //pthread_mutex_lock ( &TriggerDone );
       	  usleep (100000);
       	}
     }
-  // pthread_mutex_lock(&M_cout);
-  // cout << __LINE__ << "  " << __FILE__ << " trigger loop exits" << endl;
-  // pthread_mutex_unlock(&M_cout);
+  //  pthread_mutex_lock(&M_cout);
+  //  cout << __LINE__ << "  " << __FILE__ << " trigger loop exits" << endl;
+  //  pthread_mutex_unlock(&M_cout);
 
 }
 
@@ -632,8 +768,8 @@ int daq_fake_trigger (const int n, const int waitinterval)
       
       Trigger_Todo=DAQ_READ;
       Origin |= DAQ_TRIGGER;
-      //      pthread_mutex_unlock ( &TriggerSem );
-      //pthread_mutex_lock ( &TriggerDone );
+      pthread_mutex_unlock ( &TriggerSem );
+      pthread_mutex_lock ( &TriggerDone );
 	  
 //       pthread_mutex_lock(&M_cout);
 //       cout << "trigger" << endl;
@@ -700,8 +836,6 @@ void * EventLoop( void *arg)
       
     }
 }
-  
-
 
 int add_readoutdevice ( daq_device *d)
 {
@@ -790,6 +924,12 @@ int readout(const int etype)
 	}
     }
 
+  if ( adaptivebuffering  &&  time(0) - last_bufferwritetime > adaptivebuffering )
+    {
+      switch_buffer();
+      //      cout << "adaptive buffer switching" << endl;
+    }
+
   return returncode;
 }
 
@@ -870,6 +1010,27 @@ int daq_shutdown (std::ostream& os)
   return 0;
 }
 
+
+
+//   if (outfile_fd)
+//     {
+//       os << "File already open" << endl;
+//       return -1;
+//     }
+
+//   outfile_fd = open(filename, O_WRONLY | O_CREAT | O_LARGEFILE ,
+//                   S_IRWXU | S_IROTH | S_IRGRP );
+
+//   cout << "outfile_fd = "  << outfile_fd << endl;
+
+//   if ( outfile_fd < 0 ) 
+//     {
+//       perror ("open file");
+//       outfile_fd = 0;
+//       return -1;
+//     }
+//   return 0;
+// }
 
 int is_open()
 {
@@ -1096,7 +1257,6 @@ int daq_status (const int flag, std::ostream& os)
 	  os << "Event:        " << Event_number << endl;;
 	  os << "Run Volume:   " << v << " MB"<< endl;
 	  os << "Filename:     " << get_current_filename() << endl; 	  
-	  os << "Filerule:     " <<  daq_get_filerule() << endl;
 	  os << "Duration:     " <<  time(0) - StartTime << " s" <<endl;
 	  if (max_volume)
 	    {
@@ -1110,7 +1270,6 @@ int daq_status (const int flag, std::ostream& os)
       else
 	{
 	  os << "Stopped"  << endl;;
-	  os << "Filerule:   " <<  daq_get_filerule() << endl; 	
 	  if (max_volume)
 	    {
 	      os << "Volume Limit: " <<  max_volume /(1024 *1024) << " Mb" << endl;
@@ -1119,12 +1278,18 @@ int daq_status (const int flag, std::ostream& os)
 	    {
 	      os << "Event Limit:  " <<  max_events << endl;
 	    }
-	  os << "Buffer Sizes:     " <<  Buffer1.getMaxSize()/1024 << " KB" << endl;
 	  if ( TriggerH ) os << "have a trigger object" << endl;
 	}
+      os << "Filerule:     " <<  daq_get_filerule() << endl;
+      os << "Buffer Sizes:     " <<  Buffer1.getMaxSize()/1024 << " KB";
+      if ( adaptivebuffering) 
+	{
+	  os << " adaptive buffering: " << adaptivebuffering << " s"; 
+	}
+      os << endl;
 
+      daq_status_runtypes ( os);
       daq_status_plugin(flag, os);
-
 
       break;
 
