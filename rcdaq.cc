@@ -85,6 +85,8 @@ static int file_is_open = 0;
 static int current_filesequence = 0;
 static int outfile_fd;
 
+static int CurrentEventType = 0;
+
 static ElogHandler *ElogH =0;
 static TriggerHandler  *TriggerH =0;
 
@@ -726,18 +728,19 @@ int Command (const int command)
 
 void * daq_triggerloop (void * arg)
 {
-  int status;
+  int evttype;
   while (TriggerControl)
     {
       // let's se if we have a TriggerHelper object
       if (TriggerH)
 	{
-	  status = TriggerH->wait_for_trigger();
+	  evttype = TriggerH->wait_for_trigger();
 	  
-	  if (!status) 
+	  if (evttype) 
 	    {
 	      Trigger_Todo=DAQ_READ;
 	      Origin |= DAQ_TRIGGER;
+	      CurrentEventType = evttype;
 	      pthread_mutex_unlock ( &TriggerSem );
 
 	      //pthread_mutex_lock(&M_cout);
@@ -809,7 +812,7 @@ void * EventLoop( void *arg)
 		case DAQ_READ:
 		  Daq_Status |= DAQ_READING;
 		  //		      cout << __LINE__ << "  " << __FILE__ << " reading out..." << endl;
-		  int rstatus = readout(DATAEVENT);
+		  int rstatus = readout(CurrentEventType);
 		  Daq_Status ^= DAQ_READING;
 		  // cout << __LINE__ << "  " << __FILE__ << " done" << endl;
 
