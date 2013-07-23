@@ -2,7 +2,8 @@ alias daq_begin                  rcdaq_client  daq_begin
 alias daq_end                    rcdaq_client  daq_end
 alias daq_setrunnumberfile       rcdaq_client  daq_setrunnumberfile
 alias daq_define_runtype         rcdaq_client  daq_define_runtype
-alias daq_setruntype             rcdaq_client  daq_setruntype
+alias daq_set_runtype            rcdaq_client  daq_set_runtype
+alias daq_get_runtype            rcdaq_client  daq_get_runtype
 alias daq_list_runtypes          rcdaq_client  daq_list_runtypes
 alias daq_setfilerule            rcdaq_client  daq_setfilerule
 alias daq_open                   rcdaq_client  daq_open

@@ -40,28 +40,33 @@ rcdaq_client_Init(char *host, const int servernumber)
 
 void showHelp()
 {
-  std::cout << "  help                 show this help text"  << std::endl; 
-  std::cout << std::endl; 
+  std::cout << "   help                                 show this help text"  << std::endl; 
+  std::cout << "   daq_status [-s] [-l]                 display status [short] [long]" << std::endl;
+  std::cout << "   daq_open                             enable logging" << std::endl;
   std::cout << "   daq_begin [run-number]             	start taking data for run-number, or auto-increment" << std::endl;
-  std::cout << "   daq_end   		 	        end the run " << std::endl;
-  std::cout << "   daq_setrunnumberfile file 	        define a file to maintain the current run number" << std::endl;
-  std::cout << "   daq_setfilerule file-rule 	        set the file rule default rcdaq-%08d-%04d.evt" << std::endl;
-  std::cout << "   daq_define_runtype type file-rule 	define a run type, such as \"calibration\"" << std::endl;
-  std::cout << "   daq_setruntype type 	                activate a predefined run type" << std::endl;
+  std::cout << "   daq_end                              end the run " << std::endl;
+  std::cout << "   daq_close                            disable logging" << std::endl;
+  std::cout << "   daq_setfilerule file-rule            set the file rule default rcdaq-%08d-%04d.evt" << std::endl;
+  std::cout << std::endl; 
+  std::cout << "   daq_list_readlist                    display the current readout list" << std::endl;
+  std::cout << "   daq_clear_readlist                   clear the current readout list " << std::endl;
+  std::cout << std::endl; 
+  std::cout << "   daq_define_runtype type file-rule    define a run type, such as \"calibration\"" << std::endl;
+  std::cout << "   daq_set_runtype type                 activate a predefined run type" << std::endl;
+  std::cout << "   daq_get_runtype [-l]                 list the active runtype (if any)" << std::endl;
   std::cout << "   daq_list_runtypes [-s]               list defined run types" << std::endl;
-  std::cout << "   daq_open  	 		        enable logging" << std::endl;
-  std::cout << "   daq_close  			        disable logging" << std::endl;
-  std::cout << "   daq_fake_trigger n 		        create n artificial triggers" << std::endl;
-  std::cout << "   daq_list_readlist  		        display the current readout list" << std::endl;
-  std::cout << "   daq_clear_readlist  		        clear the current readout list " << std::endl;
-  std::cout << "   daq_status [-s] [-l] 	        display status [short] [long]" << std::endl;
-  std::cout << "   daq_set_maxevents nevt 	        set automatic end at so many events" << std::endl;
-  std::cout << "   daq_set_maxvolume n_MB 	        set automatic end at n_MB MegaByte" << std::endl;
-  std::cout << "   daq_set_maxbuffersize n_KB 	        adjust the size of buffers written to n KB" << std::endl;
-  std::cout << "   elog elog-server port	        specify coordinates for an Elog server" << std::endl;
-  std::cout << "   load  shared_library_name	        load a \"plugin\" shared library" << std::endl;
+  std::cout << std::endl; 
+  std::cout << "   daq_set_maxevents nevt               set automatic end at so many events" << std::endl;
+  std::cout << "   daq_set_maxvolume n_MB               set automatic end at n_MB MegaByte" << std::endl;
+  std::cout << std::endl; 
+  std::cout << "   load  shared_library_name            load a \"plugin\" shared library" << std::endl;
   std::cout << "   create_device [device-specific parameters] " << std::endl;
-  std::cout << "   daq_shutdown  		        terminate the rcdaq backend" << std::endl;
+  std::cout << std::endl; 
+  std::cout << "   daq_setrunnumberfile file            define a file to maintain the current run number" << std::endl;
+  std::cout << "   daq_set_maxbuffersize n_KB           adjust the size of buffers written to n KB" << std::endl;
+  std::cout << "   elog elog-server port                specify coordinates for an Elog server" << std::endl;
+  std::cout << std::endl; 
+  std::cout << "   daq_shutdown                         terminate the rcdaq backend" << std::endl;
   exit(0);
 }
 
@@ -266,7 +271,8 @@ int command_execute( int argc, char **argv)
  
     }
   
-  else if ( strcasecmp(command,"daq_setruntype") == 0)
+  // the 2nd half is not to break scripts that may use the older name 
+  else if ( strcasecmp(command,"daq_set_runtype") == 0 || strcasecmp(command,"daq_setruntype") == 0)
     {
       if ( argc != optind + 2) return -1;
 
@@ -279,6 +285,21 @@ int command_execute( int argc, char **argv)
 	}
       if (r->content) std::cout <<  r->str << std::flush;
  
+    }
+
+  else if ( strcasecmp(command,"daq_get_runtype") == 0)
+    {
+      
+      ab.action = DAQ_GETRUNTYPE;
+      ab.ipar[0] = long_flag; 
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+      
     }
   
   else if ( strcasecmp(command,"daq_define_runtype") == 0)

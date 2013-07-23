@@ -413,8 +413,17 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       return &result; 
       break;
 
+    case DAQ_GETRUNTYPE:
+      result.status = daq_getruntype(ab->ipar[0], outputstream);
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
     case DAQ_DEFINERUNTYPE:
-      // cout << "daq_set_filerule " << ab->spar << endl;
       daq_define_runtype(ab->spar, ab->spar2);
       break;
 

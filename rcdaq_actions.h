@@ -7,25 +7,26 @@
 #define DAQ_CLOSE             104
 #define DAQ_SETFILERULE       105
 #define DAQ_SETRUNTYPE        106
-#define DAQ_DEFINERUNTYPE     107
-#define DAQ_LISTRUNTYPES      108
+#define DAQ_GETRUNTYPE        107
+#define DAQ_DEFINERUNTYPE     108
+#define DAQ_LISTRUNTYPES      109
 
-#define DAQ_FAKETRIGGER       109
-#define DAQ_SETMAXEVENTS      110
-#define DAQ_SETMAXVOLUME      111
-#define DAQ_SETMAXBUFFERSIZE  112
+#define DAQ_FAKETRIGGER       110
+#define DAQ_SETMAXEVENTS      111
+#define DAQ_SETMAXVOLUME      112
+#define DAQ_SETMAXBUFFERSIZE  113
 
-#define DAQ_DEVICE        113
-#define DAQ_LISTREADLIST  114
-#define DAQ_CLEARREADLIST 115
-#define DAQ_STATUS        116
-#define DAQ_FULLSTATUS    117
+#define DAQ_DEVICE        114
+#define DAQ_LISTREADLIST  115
+#define DAQ_CLEARREADLIST 116
+#define DAQ_STATUS        117
+#define DAQ_FULLSTATUS    118
 
-#define DAQ_RUNNUMBERFILE    118
-#define DAQ_SETADAPTIVEBUFFER    119
+#define DAQ_RUNNUMBERFILE    119
+#define DAQ_SETADAPTIVEBUFFER    120
 
-#define DAQ_ELOG          120
-#define DAQ_LOAD          121
+#define DAQ_ELOG          121
+#define DAQ_LOAD          122
 
 #define DAQ_DEVICE_RANDOM         1001
 #define DAQ_DEVICE_FILE           1002

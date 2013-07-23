@@ -524,7 +524,29 @@ int daq_setruntype(const char *type, std::ostream& os )
   return 1;
 }
 
-// this is selecting from any of the exisiting run types 
+int daq_getruntype(const int flag, std::ostream& os)
+{
+  std::map <string,string>::const_iterator iter = RunTypes.begin();
+  for ( ; iter != RunTypes.end(); ++iter)
+    {
+      if ( iter->second == TheFileRule )
+	{
+	  if ( flag == 2) 
+	    {
+	      os << iter->first 	 << " - " << iter->second << endl;
+	      return 0;
+	    }
+	  else
+	    {
+	      os << iter->first << endl;
+	      return 0;
+	    }
+	}
+    }
+  return 0;
+}
+
+// this is defining a new run type (or re-defining an old one) 
 int daq_define_runtype(const char *type, const char *rule)
 {
   std::string _type = type;
@@ -1248,11 +1270,15 @@ int daq_status (const int flag, std::ostream& os)
 	{
 	  os << "Run " << TheRun  
 	     << " Event: " << Event_number 
-	     << " Volume: " << v << endl;
+	     << " Volume: " << v;
+	  if ( daq_open_flag )  os << "  Logging enabled";
+	  os<< endl;
 	}
       else
 	{
-	  os << "Stopped " << endl;
+	  os << "Stopped";
+	  if ( daq_open_flag )  os << " Logging enabled";
+	  os<< endl;
 	}
       break;
 
@@ -1277,7 +1303,9 @@ int daq_status (const int flag, std::ostream& os)
 	}
       else
 	{
-	  os << "Stopped"  << endl;;
+	  os << "Stopped"  << endl;
+	  if ( daq_open_flag )  os << "Logging enabled"  << endl;
+
 	  if (max_volume)
 	    {
 	      os << "Volume Limit: " <<  max_volume /(1024 *1024) << " Mb" << endl;

@@ -37,6 +37,7 @@ int daq_set_runnumberfile(const char *file);
 int daq_set_filerule(const char *rule);
 
 int daq_setruntype(const char *type, std::ostream& os = std::cout);
+int daq_getruntype(const int flag, std::ostream& os = std::cout);
 int daq_define_runtype(const char *type, const char * rule);
 int daq_list_runtypes(const int flag, std::ostream& os = std::cout );
 std::string& daq_get_filerule();
