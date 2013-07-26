@@ -1160,6 +1160,7 @@ int rcdaq_init( pthread_mutex_t &M)
   pthread_mutex_lock( &WriteSem);
   pthread_mutex_lock( &SendSem);
 
+  pthread_mutex_lock( &TriggerDone);
   pthread_mutex_lock( &TriggerSem);
   pthread_mutex_lock( &TriggerLoop);
 
