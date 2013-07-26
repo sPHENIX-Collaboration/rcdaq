@@ -3,14 +3,15 @@
 use Tk;
 
 use Getopt::Long;
-GetOptions('help','display:s','large');
+GetOptions('help','display:s','geometry:s','large');
 
 if ($opt_help)
 {
     print"
     hv_display.pl [ options ... ]
     --help                      this text
-    --display=<remote_display>  display on the remote display, e.g va053:0.
+    --display=<remote_display>  display on the remote display, e.g over.head.display:0.
+    --geometry=<geometry>       set a geometry, e.g. +200+400
     --large                     size suitable for showing on an overhead display
 
 \n";
@@ -92,6 +93,10 @@ else
 
 $mw = MainWindow->new();
 
+if ($opt_geometry)
+{
+    $mw->geometry($opt_geometry);
+}
 
 
 $mw->title("RCDAQ Status");

@@ -63,7 +63,10 @@ void showHelp()
   std::cout << "   create_device [device-specific parameters] " << std::endl;
   std::cout << std::endl; 
   std::cout << "   daq_setrunnumberfile file            define a file to maintain the current run number" << std::endl;
+
+
   std::cout << "   daq_set_maxbuffersize n_KB           adjust the size of buffers written to n KB" << std::endl;
+  std::cout << "   daq_set_adaptivebuffering seconds    enable adaptive buffering at n seconds (0 = off)" << std::endl;
   std::cout << "   elog elog-server port                specify coordinates for an Elog server" << std::endl;
   std::cout << std::endl; 
   std::cout << "   daq_shutdown                         terminate the rcdaq backend" << std::endl;
