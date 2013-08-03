@@ -1,0 +1,951 @@
+\documentclass{article}[11pt]
+%
+% 
+%
+%-------------------------------------------------------------------
+\parindent 0pt
+\parskip 0.45ex
+\renewcommand{\baselinestretch}{1.03}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\textfraction}{0.01}
+\renewcommand{\floatpagefraction}{0.99} 
+\addtolength{\textwidth}{6mm}
+\addtolength{\textheight}{1cm}
+\usepackage{graphicx}
+
+
+\begin{document}
+
+
+
+\title{RCDAQ, a lightweight yet powerful data acquisition system}
+\author{Martin L. Purschke}
+\maketitle
+
+
+\section{Introduction}
+
+
+\subsection{What This is About}
+
+RCDAQ is a data acquisition package which is used in the R\&D efforts
+of the PHENIX experiment at the Relativistic Heavy Ion Collider.  The
+experiment has its main data acquisition which fills a room about
+size of a squash court. For a variety of R\&D efforts, it was
+necessary to get a smaller, portable, and lightweight data acquisition
+system which would support test beams, electronic developments,
+cosmic ray test, and the like.
+
+Meanwhile, the system is in use for a number of other projects, such
+as a number of PET scanners for medical Imaging applications, the
+readout of a GEM detector, and for tests and characterizations of
+Silicon Photomultipliers.
+
+
+The development of RCDAQ was governed by a number of design principles:
+
+\begin{description}
+
+\item {\bf format-compatible with the main PHENIX data acquisition
+  system.} In this way, the readout of a new device needs to get
+  implemented and debugged only once, and is ready to go once the new
+  component is integrated in the main DAQ system. This also allows to
+  reuse most tools, such as online monitoring components, during the
+  running of the main experiment.
+
+\item {\bf compatible with the PHENIX online monitoring and analysis
+  framework.}  This allows to reuse the code developed during the R\&D
+  phase and test beams once the new detector or component is installed
+  in PHENIX. The online monitoring of several new detectors has its
+  roots in the online monitoring used and refined in a test beam.
+
+\item {\bf lightweight and able to run on most modern Linux distributions.}
+  You do not have to devote your system to the task of running the
+  DAQ. (As a rule of thumb, if your system has a working version of the 
+  root package, you will be able to install RCDAQ and the assorted
+  components). 
+
+\item {\bf powerful and fast.} The most demanding device supported by
+  RCDAQ produces sustained data rates of 400\,MB/s.
+
+\item {\bf client-server based.} This will allow you to work in a
+  network-transparent way, for example, control the main DAQ running on
+  a powerful server natively from your desktop or laptop.
+
+\item {\bf based on a plugin concept.} In order to make the package
+  adaptable to a large number of tasks, most of the actual readout
+  capabilities and support for the readout of particular devices is
+  added through plugins. In this way, we are able to make the core
+  package available outside the PHENIX collaboration because no
+  proprietary or commercial libraries or drivers (which are needed for
+  some PHENIX hardware) need to be distributed.
+
+\item {\bf support for automated interactions with electronic
+  logbooks}.  Also adding slow control data to the data stream for
+  documentation and record-keeping purposes.
+
+\item {\bf extensive support for automated, scripted acquisitions.}
+
+\item {\bf no configuration \emph{files}}. By definition,
+  configuration files require you to learn their syntax. In most
+  cases, configuration file formats, say, XML, do not support loops,
+  conditions, formal parameters, or error handling, which is why most
+  systems have moved away from the much-hyped XML format. We already
+  have the best parser for configuration input -- the Unix shell. It
+  fulfills all of the above requirements (loops, conditions, parameters,
+  and error handling). Each interaction `with RCDAQ is a Unix shell
+  command. In this way, there are no configuration files, but
+  configuration \emph{scripts} which you execute to configure your
+  system.
+
+\item {\bf Elog Support}. RCDAQ natively supports the \emph{elog}
+  electronic logbook, developed and maintained by Stefan Ritt at the
+  Paul-Scherrer Institute in Switzerland. RCDAQ can be configured to
+  make automated elog entries to help you keep track of the data you
+  acquire.  You can add to the automatically generated entries, for
+  example, detailing that the High Voltage tripped during the
+  acquisition, or attach plots or other image files. It gives you an
+  easily accessible timeline of your data taking efforts. 
+
+\end{description}
+
+In the following discussions, you will see the term \emph{``Run''} a
+lot. A Run is a collection of events, say, a certain time interval
+worth of data, or data taken with a given settings of some
+parameters. It is identified by a Run Number that should always
+increase during the course of your acquisition. The combination of run
+number and event number in that run uniquely identifies an Event that
+was read out.
+
+
+\subsection{Data Format Basics}
+
+The PHENIX raw data format defines a number of data structures, 
+most importantly the concept of \emph{Events} and \emph{Packets}.
+
+Think of a Packet as the data from a given readout device, such as an
+ADC board, a digitizer, or something similar. Typically, modern
+readout devices provide their data in some form of compact data
+structure, which needs to be unpacked later. All that RCDAQ does is to
+store the data unmodified with what we call \emph{envelope
+  information}. That envelope information, here the Packet header,
+holds a packet id which uniquely identifies \emph{what} is being read
+out.
+
+That id is a number chosen by you more or less arbitrarily, as long 
+you keep that assignment the same. For example, a typical event in
+PHENIX consists of data from about 600 different readout devices
+(which we call FEM, Front-End Module), and the same number of packets
+in one event. We chose to assign the ids by ``subsystem number''.  The
+PHENIX Pad Chamber, Subsystem number 4, gets Packet IDs 4001, 4002,
+and so on. A given Packet id is meant to identify a particular set of
+channels on the detector (those connected to the FEM), and it is your
+responsibility to make sure that a given id assignment remains the
+same. It is not uncommon in PHENIX to refer to a given Front-End
+Module by its never-changing Packet id (``Last night we had trouble
+with Pad Chamber Packets 4036 and 4037, and had to adjust the supply
+voltage slightly'').
+
+The Packet id, however, does not specify how the data are stored
+within the Packet. That is done by another field, historically called
+the \emph{hitformat}, which indicates what kind of data is kept in
+that Packet. This is the field which in the end identifies a decoding
+algorithm for the data, and which assures that your analysis code is
+shielded from changes in the low-level data format of a given FEM or other
+readout device. 
+
+Over the course of the operation of the PHENIX detector, the low-level
+data format of the FEMs of a given subsystem have changed several
+times, usually to make the data more compact by improving the
+bit-packing of data, or by removing redundancy in the data which was
+initially needed to test and certify the data integrity. Packets with
+data in such a different format are simply tagged with a different
+hitfomat number, which in turn selects a different decoding
+algorithm. Your analysis code is never exposed to those internals. In
+this way we are free to change the FEM data formats without ever
+breaking existing analysis code.
+
+An \emph{Event} structure is simply a collection/concatenation of such
+packets, with the next layer of envelope information, this time the
+Event header. This header holds an Event number, event type, a timestamp,
+length, and similar bookkeeping information.
+
+Events and Packets are the only objects you will likely encounter in
+the course of analyzing data taken with RCDAQ. The raw data files
+group a number of Events in what we call a \emph{Buffer}, although
+this is just a storage-technology concept and mostly invisible to
+you. I say ``mostly'' because the design is such that, although your
+code is shielded from internals such as buffers and hitformat
+differences, the interface libraries still make it easy to access this
+kind of information for debugging purposes.
+
+The raw data files are lightweight, and have a number of convenient
+features, most notably the fact that one can concatenate two valid 
+raw data files and obtain again a valid file.
+
+All interfaces to the raw data are provided in what we call the
+\emph{Event Library}, which loads in root and teaches root how to deal
+with our data format. Although it is rare to write an actual main
+program, the library also exists without root bindings. 
+
+\subsection{RCDAQ Principles of Operation}
+
+The rcdaq main process is formally a server running in the
+background. It writes a very modest amount of output to a log file,
+but does not accept any kind of input directly.
+
+All control is performed by clients connecting to the rcdaq process
+and instructing it to perform a particular task, such as loading a
+plugin, start or stop taking data, setting parameters, and the
+like. The underlying protocol is a \emph{Remote Procedure Call} (RPC),
+a network protocol for client-server interaction. It is widely used
+and stable because the extremely common Network File system (NFS) is
+based on the RPC protocol, and is available on virtually any operating
+system.
+
+At the core of the readout is the \emph{readlist}. This is a list of
+devices registered with RCDAQ to be read out. When an external trigger
+arrives (more about this is a minute), RCDAQ goes through the
+readlist, and each defined readout device adds a Packet to the Event
+structure under construction.
+
+The RPC protocol makes the interaction with RCDAQ
+network-transparent. Your client doesn't need to run on the same
+machine (of course it can); in fact, it can be anywhere as long as
+the RPC protocol is able to traverse the routers and firewalls. 
+
+
+\section{Running RCDAQ}
+
+Let's take RCDAQ for a quick spin. RCDAQ knows a built-in ``pseudo
+device'' which pretends to be reading out some kind of ADC or TDC,
+except that it fills in some random numbers. I made this ``device'' in
+order to allow to test-drive RCDAQ without the need for any actual
+acquisition hardware.
+
+
+For now, get yourself two terminal windows on the machine that has
+RCDAQ installed. We will run the rcdaq server and clients
+interactively. Later, you sill likely run the actual server in the
+background that writes to a logfile.
+
+In terminal 1 (after the one sole command we will leave this alone), type
+\begin{verbatim}
+rcdaq_server 
+\end{verbatim}
+
+Just to see that we communicate to the just-started server, we type, in terminal 2,
+\begin{verbatim}
+rcdaq_client daq_status 
+\end{verbatim}
+
+and you should see the answer ``Stopped''. In a moment, we will see
+how to make those unwieldy ``rcdaq\_client ....'' commands more
+convenient, but for now, we will continue with this style for a few
+more commands.
+
+The ``-l'' switch we will see in the next command stands for
+``long''. Multiple ``-l'' switches will accumulate, although 
+at this stage there is no more information to be had. Later we will look
+at a ``double-ell'' -- ``-ll'' -- switch output.  
+
+\begin{verbatim}
+$ rcdaq_client daq_status -l
+Stopped
+Filerule:   rcdaq-%08d-%04d.evt
+Buffer Sizes:     65536 KB
+No Plugins loaded
+$
+\end{verbatim}
+
+The last line says that we have not acquainted RCDAQ with any particular
+hardware -- as I said in the introduction, except for a very small
+number of natively built-in ``devices'', all support for actual
+readout hardware is loaded by the assorted plugin.
+
+The ``Buffer Sizes'' and their setting are of interest and can be
+tweaked in a number of situations; we will ignore this for now.
+
+The Filerule will govern the generation of data file names later. It
+is used as a ``printf''-style format statement, where the printf takes
+two integer parameters. The ``\%08d'' and ``\%04d'' formats make an 8-
+and 4-digit number field padded with leading zeroes:
+
+\begin{verbatim}
+$ printf rcdaq-%08d-%04d.evt 1333 0 
+rcdaq-00001333-0000.evt$
+\end{verbatim}
+
+The first number is the current run number, and the second is a ``file
+sequence number'' which is in use in the main PHENIX DAQ but currently
+unused and 0 in RCDAQ. I may implement it later; it is used to make
+data of a given run roll over into a new file if that file is getting
+too large for convenient handling. 
+
+The file rule can be changed at any time. The next data file will be
+named according to the current rule.
+
+Note that the rule above with the zero-padded fields will prevent
+spaces in file names, but the rule can really be set to anything. You
+must check that your rule generates valid and useful file names. You
+would normally choose a full path, such as
+\begin{verbatim}
+/data/rcdaq/beamdata-%08d-%04d.evt 
+\end{verbatim}
+
+
+Finally we create a new readout device that fills our pretend-ADC data
+with random numbers:
+\begin{verbatim}
+rcdaq_client create_device device_random 1 1001 32 0 2048 1
+\end{verbatim}
+The command ``create\_device'' takes the device type (device\_random),
+the event type in which it is read out (1), the packet id (1001), how
+many ``channels'' we want out device to have (32), the lower and upper
+bounds of the random number distribution (0 - 2048). In general, the
+parameters past the packet id are highly device-specific and will
+configure the device as in this example.  The final ``1'' means that
+we designate this device as the one which actually generates the
+trigger for the DAQ. We might have multiple devices which are
+trigger-capable, so we need to specify this. If you do not specify any
+trigger device, you will not get any events.
+
+As a convention (which you can ignore, of course), most RCDAQ users
+use packet ids above 1000 in devices read in data events, and in the
+800 or 900 block for other event types (which we haven't mentioned
+yet). It's just a convention.
+
+
+We can look at the defined readlist with  
+\begin{verbatim}
+$ rcdaq_client daq_list_readlist
+Random Device  Event Type: 1 Subevent id: 1001 n_words: 32 range: 0 - 2048 ** Trigger enabled
+$ 
+\end{verbatim}
+which gives a brief description of the device and the parameters.
+
+
+Now we start a run with number 1 (but keep in mind that we have not specified that we want to write any 
+data to disk yet):
+
+\begin{verbatim}
+$ rcdaq_client daq_begin 1
+Run 1 started
+\end{verbatim}
+
+After a moment, we look at the status:
+
+\begin{verbatim}
+$ rcdaq_client daq_status 
+Run 1 Event: 1054 Volume: 0.176605
+\end{verbatim}
+
+It now indicates that we have a run 1, and we are currently at event
+1054. The volume is given in megabytes.
+
+After a while we end the run:
+
+\begin{verbatim}
+$ rcdaq_client daq_end
+Run 1 ended
+\end{verbatim}
+
+When we start the next run without a number, the next number will be used:
+
+\begin{verbatim}
+$ rcdaq_client daq_begin
+Run 2 started
+$ rcdaq_client daq_end
+Run 2 ended
+\end{verbatim}
+
+Now we specify that we want to actually write data to disk, start a
+run (number 3), and look at the ``long'' status:
+
+\begin{verbatim}
+$ rcdaq_client daq_open
+$ rcdaq_client daq_begin
+Run 3 started
+$ rcdaq_client daq_status -l
+Running
+Run Number:   3
+Event:        436
+Run Volume:   0.072876 MB
+Filename:     rcdaq-00000003-0000.evt
+Filerule:     rcdaq-%08d-%04d.evt
+Duration:     5 s
+No Plugins loaded
+\end{verbatim}
+
+We see that in addition to the file rule, we now also see the actual open file name that was
+derived from the rule.  
+
+After you end the run, you will find (in this case with the default
+file rule) that file in the directory where you started the
+rcdaq\_server.
+
+Let's take a quick peek at the data file. Without going into all
+the details, let's run ``dlist'', which lists the packets found in a data event:
+
+\begin{verbatim}
+$ dlist -O -i rcdaq-00000003-0000.evt 
+ -- Event     2 Run:     3 length:    44 type:  1 (Data Event)  1363583279
+Packet  1001    36 -1 (ONCS Packet)  6 (ID4EVT)
+$
+\end{verbatim}
+
+ddump will inspect a packet and print out its content in an
+interpreted fashion. ddump is a versatile utility which allows to
+inspect the data in a myriad of ways. Here is one:
+
+\begin{verbatim}
+$ ddump -O -i rcdaq-00000003-0000.evt
+ -- Event     2 Run:     3 length:    44 type:  1 (Data Event)  1363583279
+Packet  1001    36 -1 (ONCS Packet)  6 (ID4EVT)
+
+    0 |       5dd      512      403      152 
+    4 |       160      51d      380      399 
+    8 |       6d8       12      557      19d 
+    c |       672      4f4      525       48 
+   10 |       759      33a      759      51a 
+   14 |       6aa      7fd      270       c8 
+   18 |       4bd      4df      22a      6cf 
+   1c |       1cb      7ff      3fa      653 
+$ 
+\end{verbatim}
+
+This says it is event number 2. We can look at event 3 with the ``-e 3'' switch:
+
+\begin{verbatim}
+$ ddump -O -i -e 3 rcdaq-00000003-0000.evt
+ -- Event     3 Run:     3 length:    44 type:  1 (Data Event)  1363583279
+Packet  1001    36 -1 (ONCS Packet)  6 (ID4EVT)
+
+    0 |        b0      529       22      306 
+    4 |       77e      4e1      3a0       bd 
+    8 |       1c0      7ce      717      6a0 
+    c |       1dd      343      4db      3e0 
+   10 |       5e5      4e9      761      179 
+   14 |       324      50f      705      3a6 
+   18 |        f7       17       c8      178 
+   1c |       127       16      409      11a 
+$ 
+\end{verbatim}
+
+This is just to show that the next event has different (random) numbers. 
+
+
+\subsection{Event types and what they are good for}
+
+A program able to read the data from your detector and writing the data
+to a file does not yet qualify as a data acquisition - what is needed
+are features that allow you to automate acquisitions, and add
+arbitrary ``outside'' data to your data stream. It also needs to
+support your online monitoring needs.
+
+Let's say that you want to perform a gain scan by varying some HV
+setting for your detector in a number of steps. In the old days, you
+would probably have made a table in a paper logbook: 
+
+\begin{center}
+
+\begin{tabular}{|c|r|r|}
+\hline
+Run Number & HV & Gain \\
+\hline
+\hline
+    2001 & 1710 &  \\ \hline
+    2002 & 1720 &  \\ \hline
+    2003 & 1730 &  \\ \hline
+    2004 & 1740 &  \\ \hline
+    2005 & 1750 &  \\ \hline
+    \dots & \dots &  \\ \hline
+\hline
+\end{tabular}
+\end{center}
+
+In the analysis phase, you would need to communicate
+these values to your analysis process somehow, probably ending up with
+a text file which tabulates HV and gain values with some error
+information which you use to finally produce the desired plot.
+
+This looks like a lot of tedious, manual, and error-prone labor -- it
+is easy to make a mistake transcribing the HV values to the table, or
+``slip'' an entry and get the alignment of the columns wrong. It is
+also largely not automated. In my experience, you will re-do the
+analysis of such data sets many times over, and automation of the
+procedure will help save a lot of time.
+
+One of the most powerful feature of RCDAQ, which is at the core of
+those acquisitions and later analysis of the data ``on autopilot'', are
+different \emph{Event Types}. You would typically think of a data
+acquisition as something that ``reads out your detector'' -- the ADCs
+and TDCs and whatever it is you want to read out. In addition,
+however, there is often the need to read other devices at different times. 
+
+Here is a real-world example from a previous DAQ of mine at the
+CERN-SPS, which has also been used at BNL's AGS. Both accelerators
+feature an extraction cycle -- the ring gets filled, the beam
+accelerated, and then the beam is extracted and delivered to your
+beamline. The SPS cycle is about 14s, 10s of acceleration followed by
+about 4s of extracted beam. The accelerator furnishes you with two
+signals, one that indicates that the extraction is imminent (``Spill
+on''), the other saying that the extraction has ended (``Spill
+off''). During the extraction, you obviously want to ``read your
+detector'', but most likely you will also need to know what the
+intensity of each extraction (spill) was, in order to make
+intensity-dependent corrections later, or study the effects on the
+detector's gain by the delivered beam intensity. In order to do that,
+you will need to read out some scalers which count the signals from
+your beam counter, and likely other signals as well.
+
+At CERN and at the AGS, I used the accelerator signals to trigger special
+``spill on'' and ``spill off'' events.\footnote{At this point in time,
+  RCDAQ has no built-in support to generate spill-on or -off special
+  events with an external trigger. This only serves as an example.}
+They get assigned different event types, and when those events are
+generated, they traverse different readlists. You would typically set
+the different readlists up in a way that the spill-on event doesn't
+actually read anything, but simply resets the scalers. The readlist of
+the spill-off event has then the actual readout of the scaler.  This
+setup allows you to know the intensity of each spill. Remember --
+different event types mean different readlists.
+
+In addition, two more special events are automatically generated in
+each run.  One is the \emph{Begin-Run Event}, the other the
+\emph{End-Run Event}. You cannot prevent the generation of those
+events, and all the promised benefits come with these two event types.
+
+Let me convince you that the begin- and end-run events are actually present in
+the data file we just took. dlist and dpipe, by default, only look at
+data events, and we have to explicitly ask to see special events:
+
+\begin{verbatim}
+$ dlist -O -i -t S rcdaq-00000003-0000.evt
+ -- Event     1 Run:     3 length:     8 type:  9 (Begin Run Event)  1363583279
+$ dlist -O -i -t 12 rcdaq-00000003-0000.evt
+ -- Event 23125 Run:     3 length:     8 type: 12 (End Run Event)  1363583519
+$ 
+\end{verbatim}
+
+Since we have not specified any devices to be read in the begin- or end-run event,
+no packets are listed. Those events are just empty.
+
+Before I explain why those special events are so tremendously useful,
+let me first list the defined event types. You should \emph{not}
+invent new event types, since those are not known and understood by the
+analysis software (never mind that RCDAQ cannot generate them anyway,
+unless you modify the code).
+
+\begin{center}
+\begin{tabular}{|r|l|l|}
+\hline
+Event type & meaning & comment \\
+\hline
+\hline
+    1 & Data Event &  Readout of your detector hardware\\ \hline
+    2 \dots 7 & Data Events & Not normally used by RCDAQ \\ \hline
+    8  & Spill-On Event &  \\ \hline
+    9  & Begin-Run Event & Automatically generated by RCDAQ \\ \hline
+    12 & End-Run Event & Automatically generated by RCDAQ  \\ \hline
+    14 & Scaler Event  & Not normally used by RCDAQ \\ \hline
+    16 & Spill-Off Event  &  \\ \hline
+\hline
+\end{tabular}
+\end{center}
+
+You may notice that the events which can be triggered by a hardware
+signal ( Data, spill-on, spill-off) have numbers which are powers of
+2. The historic reason for this is that you typically use some kind of
+input register to distinguish the source of a hardware trigger, and
+the binary value of such a register then reads 1,2,4,8,... for the different
+inputs.
+
+At long last, here's why those special events (the ones
+actually generated by RCDAQ) are so useful.
+
+\begin{itemize}
+\item it is guaranteed that the begin-run event is the first event of
+  a given run in the data stream. Similarly, the end-run event will be
+  the last event in the run. If you have a continuous data stream that
+  keeps on delivering events, such as the stream that feeds your
+  online monitoring processes, those events can serve as convenient
+  markers that a run has started or ended. On receipt of the begin-run
+  event, you would typically clear your monitoring histograms and start
+  histogramming the data from the new run. When you recognize the
+  end-run event, you might choose to save the histograms for later
+  review.
+
+\item you can add information such as the aforementioned HV setting to
+  the begin-run event (this is not actually specific to special
+  events, but it will probably only make sense here). I will show you
+  in the next chapter how to accomplish this. In the begin-run event
+  you will then find some packets that contain the data which you are
+  interested in.
+
+\end{itemize}
+
+Lets now see how you would go about adding some arbitrary information to your data 
+stream.
+
+\subsection{Pseudo Devices}
+
+``Pseudo Devices'' are those which do not connect to any actual
+readout hardware, or just perform some action without reading any
+data.  The ``device\_random'' we have used before is in this group.
+
+The most prominent pseudo devices are 
+\begin{description}
+
+\item{device\_file} this device absorbs the contents of another
+  (small) file as its readout. In this way, you can add the contents
+  of any other file to your data stream. You can use this to add a
+  description, or add automatically generated files, or even an image to
+  the data stream.
+
+\item{device\_filenumbers} this device reads a text file and looks for
+  (integer) numbers on a line all by themselves. While the
+  device\_file adds the original text, device\_filenumbers discards
+  the text and adds those numbers in binary form.  This makes them
+  much easier accessible in the later analysis.
+
+\item{device\_command} this device does not add any data but executes
+  an arbitrary command.  This way, you can trigger actions at certain times.
+
+\item{device\_random} we have already seen the random
+  number-generating device in the example above.
+
+\item{device\_deadtime} this device can add a configurable amount of
+  artificial deadtime anywhere in the traversal of the readlist.  I
+  could envision a few applications in actual data taking, but mostly
+  this is a debugging tool that can be used to slow down the data
+  rate, but also to make the event loop run as fast as possible
+  (enable this device to trigger but set zero deadtime) for benchmarks
+  or debugging. It can optionally pretend to generate adjustable
+  amounts of data. Different from daq\_device\_random, it wastes no
+  time to fill in any meaningful values. If you then enable writing, 
+  one can benchmark the ``empty'' DAQ speed. 
+
+
+\end{description}
+
+Be sure to read to the end of the chapter where, after the following
+explanations, I point out a nice self-documentation feature.
+
+Now let's go and get the HV setting of our detector added to the data
+stream. We typically have some kind of command interface to the HV
+system. I use the PHENIX hclient here in the example, but let me
+stress that any such utility which can print some output to the screen
+will fit the bill.
+
+We add two devices to the begin-run event:
+\begin{verbatim}
+$ rcdaq_client create_device device_file 9 910 hv_readback.txt 
+$ rcdaq_client create_device device_filenumbers 9 911 hv_readings.txt
+\end{verbatim}
+
+Out readlist now looks like this:
+
+\begin{verbatim}
+$ rcdaq_client daq_list_readlist
+Random Device  Event Type: 1 Subevent id: 1001 n_words: 32 range: 0 - 2048 ** Trigger enabled
+File Device  Event Type: 9 Subevent id: 910 reading from  hv_readback.txt
+File Number Reader  Event Type: 9 Subevent id: 911 reading from  hv_readings.txt
+$ 
+\end{verbatim}
+
+
+I then capture the output of the HV command interface in the
+``hv\_readback.txt'' file:
+
+\begin{verbatim}
+$ hvclient -b -s BB dv > hv_readback.txt
+$ cat hv_readback.txt
+HV_BB_S-1                  1461   -1724.2 -1725.7 -2443.8  1     1    13
+HV_BB_S-2                  1461   -2057.4   -2059 -2578.3  1     1    13
+HV_BB_S-3                  1461   -1809.8 -1811.5 -2886.6  1     1    13
+HV_BB_S-4                  1461   -2227.1 -2227.6 -3157.1  1     1    13
+HV_BB_S-5                  1461   -2170.4 -2171.2 -3075.6  1     1    13
+HV_BB_S-6                  1461   -1563.2 -1563.7 -1938.1  1     1    13
+HV_BB_S-7                  1461   -1739.4 -1738.8   -2785  1     1    13
+HV_BB_S-8                  1461   -2080.9 -2081.8 -2955.1  1     1    13
+HV_BB_N-1                  1461   -1641.6 -1641.8   -2276  1     1    13
+HV_BB_N-2                  1461   -2494.2 -2494.5 -3089.6  1     1    13
+HV_BB_N-3                  1461   -1779.7 -1781.3 -2839.2  1     1    13
+HV_BB_N-4                  1461   -1956.6 -1957.9 -2711.5  1     1    13
+HV_BB_N-5                  1461   -1492.8 -1493.2 -2107.1  1     1    13
+HV_BB_N-6                  1461   -2220.2 -2221.1 -2754.8  1     1    13
+HV_BB_N-7                  1461   -1998.8 -1999.2 -3192.7  1     1    13
+HV_BB_N-8     
+$
+\end{verbatim}
+
+This gives the name of the HV channel, the hardware (LeCroy 1461), the
+demand voltage, the actual voltage, and so on.
+
+We process the file to take the 4th column (the actual voltage),
+multiply by 100 to get an integer with the right range, and write to a
+new file ``hv\_readings.txt'':
+
+\begin{verbatim}
+$ cat hv_readback.txt | awk '{print $4 , "*100"}' | bc | sed 's/\..*//' > hv_readings.txt
+$ cat hv_readings.txt
+-172570
+-205900
+-181150
+-222760
+-217120
+-156370
+-173880
+-208180
+-164180
+-249450
+-178130
+-195790
+-149320
+-222110
+-199920
+-175350
+\end{verbatim}
+
+And now I start and end a run:
+
+\begin{verbatim}
+$ rcdaq_client daq_begin
+Run 4 started
+$ rcdaq_client daq_status -l
+Running
+Run Number:   4
+Event:        764
+Run Volume:   0.129135 MB
+Filename:     rcdaq-00000004-0000.evt
+Filerule:     rcdaq-%08d-%04d.evt
+Duration:     8 s
+No Plugins loaded
+$ rcdaq_client daq_end
+Run 4 ended
+$ 
+\end{verbatim}
+
+If we now look what the begin-run event has, we see
+
+\begin{verbatim}
+$ dlist -O -i -t 9 rcdaq-00000004-0000.evt
+ -- Event     1 Run:     4 length:   324 type:  9 (Begin Run Event)  1363614653
+Packet   910   296 -1 (ONCS Packet)  4 (IDCSTR)
+Packet   911    20 -1 (ONCS Packet)  6 (ID4EVT)
+$
+\end{verbatim}
+
+We see packet 910, which says it is a "IDCSTR" packet, meaning it
+contains text, and 911, which is of type "I4EVT" (the same as our
+random-number packet), which contains a vector of integer
+numbers. Let's look inside:
+
+
+\begin{verbatim}
+$ ddump -O -i -t 9 -p 910 rcdaq-00000004-0000.evt
+ -- Event     1 Run:     4 length:   324 type:  9 (Begin Run Event)  1363614653
+HV_BB_S-1                  1461   -1724.2 -1725.7 -2443.8  1     1    13
+HV_BB_S-2                  1461   -2057.4   -2059 -2578.3  1     1    13
+HV_BB_S-3                  1461   -1809.8 -1811.5 -2886.6  1     1    13
+HV_BB_S-4                  1461   -2227.1 -2227.6 -3157.1  1     1    13
+HV_BB_S-5                  1461   -2170.4 -2171.2 -3075.6  1     1    13
+HV_BB_S-6                  1461   -1563.2 -1563.7 -1938.1  1     1    13
+HV_BB_S-7                  1461   -1739.4 -1738.8   -2785  1     1    13
+HV_BB_S-8                  1461   -2080.9 -2081.8 -2955.1  1     1    13
+HV_BB_N-1                  1461   -1641.6 -1641.8   -2276  1     1    13
+HV_BB_N-2                  1461   -2494.2 -2494.5 -3089.6  1     1    13
+HV_BB_N-3                  1461   -1779.7 -1781.3 -2839.2  1     1    13
+HV_BB_N-4                  1461   -1956.6 -1957.9 -2711.5  1     1    13
+HV_BB_N-5                  1461   -1492.8 -1493.2 -2107.1  1     1    13
+HV_BB_N-6                  1461   -2220.2 -2221.1 -2754.8  1     1    13
+HV_BB_N-7                  1461   -1998.8 -1999.2 -3192.7  1     1    13
+HV_BB_N-8                  1461   -1752.2 -1753.5 -2485.3  1     1    13
+$ ddump -O -t 9 -p 911 -g -d rcdaq-00000004-0000.evt
+Packet   911    20 -1 (ONCS Packet)  6 (ID4EVT)
+
+    0 |     -172570    -205900    -181150    -222760    -217120    -156370 
+    6 |     -173880    -208180    -164180    -249450    -178130    -195790 
+   12 |     -149320    -222110    -199920    -175350 
+$ 
+\end{verbatim}
+
+Mission (almost) accomplished. If you run an HV scan from a script
+that steps through a number of HV settings, it is easy to add the
+HV-capturing commands to that script.  However, if you are in a mode
+where you start and stop runs manually, it is easy to forget to update
+the files each time.
+
+This is where our final pseudo device is coming in, the
+``device\_command''. We will use this to automatically execute the
+HV-capturing commands at begin-run. Since especially the second
+command has a large number of characters which would need to be
+escaped when used on the command line, we sidestep all those issues
+and put the two commands into a script, and then just execute the
+script.
+
+\begin{verbatim}
+$ cat hvcapture.sh
+#! /bin/sh
+hvclient -b -s BB dv > hv_readback.txt
+cat hv_readback.txt | awk '{print $4 , "*100"}' | bc | sed 's/\..*//' > hv_readings.txt
+$ 
+\end{verbatim}
+
+First, we need to start over with our readlist, because we have to make it so that the
+new command is executed \emph{before} the files are accessed. We delete the readlist:
+
+\begin{verbatim}
+$ rcdaq_client daq_clear_readlist
+Readlist cleared
+$
+\end{verbatim}
+
+Now we add the command, and the two file-reading devices. You need to make sure
+that the script is executable and properly found by the server process. You would probably 
+want to specify an absolute path to the script later. 
+
+\begin{verbatim}
+$ rcdaq_client create_device device_command 9 0 './hvcapture.sh'
+$ rcdaq_client create_device device_file 9 910 hv_readback.txt
+$ rcdaq_client create_device device_filenumbers 9 911 hv_readings.txt
+$ rcdaq_client daq_list_readlist
+Command Device  Event Type: 9 executing ./hvcapture.sh
+File Device  Event Type: 9 Subevent id: 910 reading from  hv_readback.txt
+File Number Reader  Event Type: 9 Subevent id: 911 reading from  hv_readings.txt
+$ 
+\end{verbatim}
+
+Now all this  is on autopilot, and we will always  have the current HV
+readback in the data file.
+
+ 
+\subsection{Self-documenting your setup}
+
+Let me quickly point out a trick that allows you to go back to your 
+raw data and see how RCDAQ was configured in the first place.
+
+We have seen the commands
+
+\begin{verbatim}
+rcdaq_client create_device device_file 9 910 hv_readback.txt 
+rcdaq_client create_device device_filenumbers 9 911 hv_readings.txt
+\end{verbatim}
+
+which we gave, ostensibly from the command line, to configure rcdaq.
+
+Of course, in almost all cases, you are not going to type this in on
+the fly, but put this into a script, such as this ``setup.sh'':
+
+\begin{verbatim} 
+#! /bin/sh
+
+rcdaq_client create_device device_file 9 910 hv_readback.txt 
+rcdaq_client create_device device_filenumbers 9 911 hv_readings.txt
+\end{verbatim}
+
+Now you could (but wait!) just add another device
+
+\begin{verbatim} 
+#! /bin/sh
+
+rcdaq_client create_device device_file 9 900 "$0" 
+rcdaq_client create_device device_file 9 910 hv_readback.txt 
+rcdaq_client create_device device_filenumbers 9 911 hv_readings.txt
+\end{verbatim}
+
+You see packet 900 with ``\$0''? That of course refers to the name of
+the script itself, ``setup.sh'', and it will then be added and
+captured in packet 900 in the begin-run, so you can later see how
+rcdaq was configured to begin with.
+
+However, there is one small problem. You will likely invoke the script as 
+\begin{verbatim} 
+./setup.sh
+\end{verbatim}
+so the ``\$0'' parameter will be ``setup.sh''. If the rcdaq server
+process is not run from the exact same directory where that script
+resides, it will not be able to find the script.
+
+You could either be disciplined enough to \emph{always} invoke the
+script by its full pathname (not very likely to succeed), or you could
+rewrite it as follows:
+
+
+\begin{verbatim} 
+#! /bin/sh
+
+D=`dirname "$0"`
+B=`basename "$0"`
+MYSELF="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
+
+rcdaq_client create_device device_file 9 900 "$MYSELF"
+rcdaq_client create_device device_file 9 910 hv_readback.txt 
+rcdaq_client create_device device_filenumbers 9 911 hv_readings.txt
+\end{verbatim}
+
+
+In the standard setup is a full-blown example which we will explain
+next.
+
+
+\subsection{GUIs}
+
+\subsection{pmonitor, the Monitoring and Analysis Framework}
+
+Virtually all analysis of raw data in PHENIX takes place in a
+framework called \emph{pmonitor}. Designed as an online monitoring
+framework to be run within root, it has a number of features which
+make it a true monitoring package, most importantly, the ability to
+look at or in general manipulate histograms or similar objects
+\emph{while} they are filled with new data. However, if you leave the
+online capabilities alone, you have an offline analysis framework. An
+existing online monitoring project can be run in an offline setting
+without changes.
+
+Pmonitor is not a program but a framework, which allows you to quickly
+code up the monitoring or analysis needed for your specific setup.  It
+relieves you from most repetitive and mundane tasks, such as opening or
+closing data streams, programming an event loop, adding code to save
+histograms, and the like. It also shields you from the effort and
+pitfalls of programming a multi-threaded program; it is already
+multi-threaded to allow the analysis of the event stream (and filling
+of histograms etc) in the background. 
+
+The setup-specific pmonitor projects (a ``project'' is what we call a
+particular piece of code running in the pmonitor framework) are easy
+to make, and usually lightweight. It is not uncommon to have a number
+of different projects, for example, one to help timing in the
+detector, one for the expert-level online monitoring, and more for the
+offline analysis (although that ``offline'' analysis can be run just
+the same in an online setting if this makes sense for your setup).
+
+The pmonitor package comes with a script to generate the code for an
+``empty'' pmonitor skeleton project which you can hash out with code
+to analyze your data. The script writes a Makefile for you, the
+required Linkdef file so it can get root bindings, a header file, and
+the C++ code stub which has all required routines. The unmodified skeleton
+code compiles and can be run, but doesn't do anything useful,
+obviously. The distribution ships with several examples which you can
+build and run with data taken with RCDAQ.
+
+\section{Installation}
+
+
+
+\end{document}
+
+%% Also, think of a ``device'' as something that in general
+%% reaches out to some hardware, usually to extract data from
+%% it. However, it comes down to calling a routine which can do anything,
+%% really, and there are ``devices'' which do something to a piece of
+%% hardware without actually taking any data (or actually adding a packet
+%% to the data stream). In the example with the scaler readout above (which is
+%% from a different data acquisition system entirely), the
+%% clearing of the scaler was accomplished by an entry in the readlist
+%% \begin{verbatim}
+%% LC4432CLR 8 0 <some more device-specific parameters>
+%% \end{verbatim
+%% The only purpose is to reach out to the LeCroy 4432 scaler in question and 
+%% reset the counters to 0. It will not generate any data. 
