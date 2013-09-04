@@ -191,6 +191,7 @@ void sig_handler(int i)
 
 int reset_deadtime() 
 {
+  if ( TriggerH) TriggerH->rearm();
   pthread_mutex_unlock ( &TriggerDone );
 
 }
@@ -199,6 +200,7 @@ int enable_trigger()
 {
 
   TriggerControl=1;
+  if ( TriggerH) TriggerH->enable();
 
   int status = pthread_create(&ThreadTrigger, NULL, 
   			  daq_triggerloop, 
@@ -217,6 +219,7 @@ int enable_trigger()
       pthread_mutex_lock(&M_cout);
       cout << "trigger loop created " << endl;
       pthread_mutex_unlock(&M_cout);
+      if ( TriggerH) TriggerH->rearm();
 
     }
 
@@ -227,12 +230,14 @@ int enable_trigger()
 int disable_trigger() 
 {
   TriggerControl=0;  // this makes the trigger process terminate
+  if ( TriggerH) TriggerH->disable();
+  
 
   sleep (1);
   pthread_cancel(ThreadTrigger);
-  //cout << __FILE__ << " " << __LINE__ << " waiting for trigger loop to exit " << endl;
+  cout << __FILE__ << " " << __LINE__ << " waiting for trigger loop to exit " << endl;
   pthread_join(ThreadTrigger, NULL);
-  //cout << __FILE__ << " " << __LINE__ << " done " << endl;
+  cout << __FILE__ << " " << __LINE__ << " done " << endl;
 
 
   return 0;
