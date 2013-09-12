@@ -350,13 +350,18 @@ void *sendMonitorData( void *arg)
   fd_set read_flag;
   struct timeval tv;
 
+  static int requestid  = 0;
 
   while (1)
     {
 
       pthread_mutex_lock( &SendSem); // we wait for an unlock
 
-      
+      // pthread_mutex_lock(&M_cout);
+      // cout << "buffer ready  signal " << endl;
+      // pthread_mutex_unlock(&M_cout);
+
+
       FD_ZERO(&read_flag); 
       FD_SET(MonitoringSocket, &read_flag);
 
@@ -371,11 +376,12 @@ void *sendMonitorData( void *arg)
       int retval = select(MonitoringSocket+1, &read_flag, NULL, NULL, &tv);
       if ( retval >0) 
 	{
+	  requestid++;
 	  if (recvfrom(MonitoringSocket, &flag, sizeof(flag)
 		       , 0, (sockaddr *) &si_remote, &slen)==-1)
 	    {
 	      pthread_mutex_lock(&M_cout);
-	      cout << "error receiving the monitor request" << endl;
+	      cout << "error receiving the monitor request, req id = " << requestid << endl;
 	      pthread_mutex_unlock(&M_cout);
 	      
 	    }
@@ -384,9 +390,14 @@ void *sendMonitorData( void *arg)
 	      // pthread_mutex_lock(&M_cout);
 	      // cout << "monitor data request from "
 	      // 	   << inet_ntoa ( si_remote.sin_addr ) 
-	      // 	   << "  reqvalue= " << flag << endl;
+	      // 	   << "  reqvalue= " << flag << " req id " << requestid << endl;
 	      // pthread_mutex_unlock(&M_cout);
+
 	      transportBuffer->sendData(MonitoringSocket, &si_remote);
+
+	      // pthread_mutex_lock(&M_cout);
+	      // cout << "monitor data sent " << endl;
+	      // pthread_mutex_unlock(&M_cout);
 
 	      
 	    }
@@ -398,9 +409,12 @@ void *sendMonitorData( void *arg)
       // 	  pthread_mutex_unlock(&M_cout);
       // 	}
       
-      if ( end_thread) pthread_exit(0);
-      
+      // pthread_mutex_lock(&M_cout);
+      // cout << "releasing semaphore " << endl;
+      // pthread_mutex_unlock(&M_cout);
+
       pthread_mutex_unlock(&SendProtectSem);
+      if ( end_thread) pthread_exit(0);
     }
 
 }

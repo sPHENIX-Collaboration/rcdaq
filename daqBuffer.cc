@@ -137,20 +137,38 @@ unsigned int daqBuffer::sendData ( int fd, struct sockaddr_in *si_remote)
   int sent = 0;
 
   //  cout << "sending  buffer len = " << getLength()  << endl;
-  while ( sent < getLength() )
+
+  int total = getLength();
+  if ( (l = sendto(fd, &total, 4, 0, (sockaddr *) si_remote, slen))==-1)
     {
-      if ( (l = sendto(fd, p, 1024, 0, (sockaddr *) si_remote, slen))==-1)
+      perror( "sendto " );
+      return 0;
+    }
+
+  int quantum;
+  int max_sock_length = 48*1024;
+
+  while ( total >0 )
+    {
+      if ( total > max_sock_length) 
+	{
+	  quantum = max_sock_length;
+	}
+      else
+	{
+	  quantum = total;
+	}
+
+      if ( (l = sendto(fd, p, quantum , 0, (sockaddr *) si_remote, slen))==-1)
 	{
 	  perror( "sendto " );
 	  return 0;
 	}
       p+=l;
-      sent += l;
-      //      cout << "sent: " << sent  << " in this buffer: " << l << endl;
-      usleep(10);
+      total -= l;
+      //  cout << "rest: " << total  << " in this call : " << l << " of " << getLength() << endl;
+      usleep(1);
     }
-
-
 
   return sent;
 }
