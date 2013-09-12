@@ -24,7 +24,7 @@ public:
     if ( moreinfo) sleeptime = moreinfo;
     //std::cout << "trigger " << _count++ << std::endl; 
     if ( sleeptime) usleep ( sleeptime);
-    return 0;
+    return 1;
   }
  protected:
   
