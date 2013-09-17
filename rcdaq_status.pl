@@ -174,6 +174,8 @@ sub update()
 	
 	if ( $run < 0)
 	{
+	    $runstatuslabel->configure(-text =>"Stopped   Run $old_run");
+
 	    if ( $openflag )
 	    {
 		
