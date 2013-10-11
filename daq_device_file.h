@@ -13,7 +13,7 @@ public:
 
   daq_device_file (const int eventtype,
 		   const int subeventid, const char * fn,
-		   const int maxlength = 1280);
+		   const int maxlength = 256*1024);
 
 
   ~daq_device_file();
