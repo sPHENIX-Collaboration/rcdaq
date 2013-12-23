@@ -12,7 +12,11 @@
 \addtolength{\textwidth}{6mm}
 \addtolength{\textheight}{1cm}
 \usepackage{graphicx}
+\usepackage{hyperref}
 
+\makeatletter
+\def\verbatim{\footnotesize\@verbatim \frenchspacing\@vobeyspaces \@xverbatim}
+\makeatother
 
 \begin{document}
 
@@ -22,6 +26,7 @@
 \author{Martin L. Purschke}
 \maketitle
 
+\tableofcontents
 
 \section{Introduction}
 
@@ -117,11 +122,36 @@ increase during the course of your acquisition. The combination of run
 number and event number in that run uniquely identifies an Event that
 was read out.
 
+\subsection{What? No configuration files?}
+In my opinion, the above-mentioned fact that there are no
+configuration files, only scripts, is one of the most versatile
+features of this DAQ. \emph{Each} instruction is a seperate command
+executed on the shell. Besides the facts that you do not need to learn
+a new command interpreter, have loops, conditions, etc, at your
+fingertips, the most important feature is that you are not trapped
+within the always limited command set of an application. You can freely 
+interleave rcdaq commands with other shell commands, and so write 
+a scripted data acquisition protocol tailored to your needs.
 
-\subsection{Data Format Basics}
+To the best of my knowledge, a group from the Physics Department at
+Stony Brook has so far designed the most versatile application of this
+concept. The task at hand was to certify a readout plane of a GEM
+detector. It involved connecting a probe to a specific pad on the
+plane, taking some data, and verify that the correct channel did see the
+signal, then moving on to the next pad. It was hard to take either the
+probe or your eyes off the board without losing the position.
 
-The PHENIX raw data format defines a number of data structures, 
-most importantly the concept of \emph{Events} and \emph{Packets}.
+The group came up with a script that would loop through the pads,
+\emph{reading} the pad coordinates and other commands to the operator
+by way of a text-to-speech program (festival), so the operator was
+free to keep the eyes (and the probe) on the plane at all times. This
+is possible because you never leave the shell to interact with rcdaq. 
+
+
+\section{Data Format Basics}
+
+The PHENIX raw data format defines a number of data structures, most
+importantly the concept of \emph{Events} and \emph{Packets}.
 
 Think of a Packet as the data from a given readout device, such as an
 ADC board, a digitizer, or something similar. Typically, modern
@@ -188,7 +218,20 @@ All interfaces to the raw data are provided in what we call the
 with our data format. Although it is rare to write an actual main
 program, the library also exists without root bindings. 
 
-\subsection{RCDAQ Principles of Operation}
+There is a ton of documentation on the PHENIX web pages about the software, to be
+found at 
+\url{http://www.phenix.bnl.gov/~phoncs/oncs/code_documentation/Event/index.html}.
+
+You should definitely familiarize yourself with the concepts and read
+the ``Events and Packets'' chapter
+\url{http://www.phenix.bnl.gov/~phoncs/oncs/code_documentation/Event/Eventsandpackets.html},
+and also learn about the indispensable data inspection tools such as
+\verb|dlist| and \verb|ddump| in 
+\url{http://www.phenix.bnl.gov/~phoncs/oncs/code_documentation/Event/dlistddumpanddpipe.html}.
+
+
+
+\section{RCDAQ Principles of Operation}
 
 The rcdaq main process is formally a server running in the
 background. It writes a very modest amount of output to a log file,
@@ -226,7 +269,7 @@ acquisition hardware.
 
 For now, get yourself two terminal windows on the machine that has
 RCDAQ installed. We will run the rcdaq server and clients
-interactively. Later, you sill likely run the actual server in the
+interactively. Later, you will likely run the actual server in the
 background that writes to a logfile.
 
 In terminal 1 (after the one sole command we will leave this alone), type
@@ -234,7 +277,8 @@ In terminal 1 (after the one sole command we will leave this alone), type
 rcdaq_server 
 \end{verbatim}
 
-Just to see that we communicate to the just-started server, we type, in terminal 2,
+Just to see that we communicate to the just-started server, we type,
+in terminal 2,
 \begin{verbatim}
 rcdaq_client daq_status 
 \end{verbatim}
@@ -273,7 +317,7 @@ and 4-digit number field padded with leading zeroes:
 
 \begin{verbatim}
 $ printf rcdaq-%08d-%04d.evt 1333 0 
-rcdaq-00001333-0000.evt$
+rcdaq-00001333-0000.evt
 \end{verbatim}
 
 The first number is the current run number, and the second is a ``file
@@ -301,7 +345,7 @@ rcdaq_client create_device device_random 1 1001 32 0 2048 1
 \end{verbatim}
 The command ``create\_device'' takes the device type (device\_random),
 the event type in which it is read out (1), the packet id (1001), how
-many ``channels'' we want out device to have (32), the lower and upper
+many ``channels'' we want our device to have (32), the lower and upper
 bounds of the random number distribution (0 - 2048). In general, the
 parameters past the packet id are highly device-specific and will
 configure the device as in this example.  The final ``1'' means that
@@ -325,8 +369,8 @@ $
 which gives a brief description of the device and the parameters.
 
 
-Now we start a run with number 1 (but keep in mind that we have not specified that we want to write any 
-data to disk yet):
+Now we start a run with number 1 (but keep in mind that we have not
+specified that we want to write any data to disk yet):
 
 \begin{verbatim}
 $ rcdaq_client daq_begin 1
@@ -377,15 +421,16 @@ Duration:     5 s
 No Plugins loaded
 \end{verbatim}
 
-We see that in addition to the file rule, we now also see the actual open file name that was
-derived from the rule.  
+We see that in addition to the file rule, we now also see the actual
+open file name that was derived from the rule.
 
 After you end the run, you will find (in this case with the default
 file rule) that file in the directory where you started the
 rcdaq\_server.
 
-Let's take a quick peek at the data file. Without going into all
-the details, let's run ``dlist'', which lists the packets found in a data event:
+Let's take a quick peek at the data file. Without going into all the
+details, let's run ``dlist'', which lists the packets found in a data
+event:
 
 \begin{verbatim}
 $ dlist -O -i rcdaq-00000003-0000.evt 
@@ -435,7 +480,64 @@ $
 This is just to show that the next event has different (random) numbers. 
 
 
-\subsection{Event types and what they are good for}
+\section{Making the commands more convenient}
+
+We have so far used the ``long'' versions of each rdaq command, such as
+\begin{verbatim}
+$ rcdaq_client daq_begin 1
+\end{verbatim}
+
+That is a lot of typing, and so we provide a script which you can source and
+which sets up each command as a short-hand alias, for example,
+\verb|daq_begin| will be an alias for \verb|rcdaq_client daq_begin|. 
+
+There are two versions of the script, one for the bash shell (aliases.sh), and 
+one for csh and its derivatives. You simple execute (note the back-ticks)
+
+\begin{verbatim}
+$ source `which aliases.sh`
+\end{verbatim}
+
+ or
+ 
+\begin{verbatim}
+> source `which aliases.csh`
+\end{verbatim}
+
+depending on your preferred shell. 
+
+In scripts you should \emph{always} use the long form of the commands. 
+
+Here are the aliases which you get:
+
+\begin{verbatim}
+alias daq_begin='rcdaq_client  daq_begin'
+alias daq_clear_readlist='rcdaq_client  daq_clear_readlist'
+alias daq_close='rcdaq_client  daq_close'
+alias daq_define_runtype='rcdaq_client  daq_define_runtype'
+alias daq_end='rcdaq_client  daq_end'
+alias daq_fake_trigger='rcdaq_client  daq_fake_trigger'
+alias daq_get_runtype='rcdaq_client  daq_get_runtype'
+alias daq_list_readlist='rcdaq_client  daq_list_readlist'
+alias daq_list_runtypes='rcdaq_client  daq_list_runtypes'
+alias daq_open='rcdaq_client  daq_open'
+alias daq_set_adaptivebuffering='rcdaq_client  daq_set_adaptivebuffering'
+alias daq_set_maxbuffersize='rcdaq_client  daq_set_maxbuffersize'
+alias daq_set_maxevents='rcdaq_client  daq_set_maxevents'
+alias daq_set_maxvolume='rcdaq_client  daq_set_maxvolume'
+alias daq_set_runtype='rcdaq_client  daq_set_runtype'
+alias daq_setfilerule='rcdaq_client  daq_setfilerule'
+alias daq_setrunnumberfile='rcdaq_client  daq_setrunnumberfile'
+alias daq_setruntype='rcdaq_client  daq_setruntype'
+alias daq_shutdown='rcdaq_client  daq_shutdown'
+alias daq_status='rcdaq_client  daq_status'
+\end{verbatim}
+
+If you routinely use a specific account for rcdaq work, you should add the 
+respective source command to the login files.  
+
+
+\section{Event types and what they are good for}
 
 A program able to read the data from your detector and writing the data
 to a file does not yet qualify as a data acquisition - what is needed
@@ -499,17 +601,17 @@ detector's gain by the delivered beam intensity. In order to do that,
 you will need to read out some scalers which count the signals from
 your beam counter, and likely other signals as well.
 
-At CERN and at the AGS, I used the accelerator signals to trigger special
-``spill on'' and ``spill off'' events.\footnote{At this point in time,
-  RCDAQ has no built-in support to generate spill-on or -off special
-  events with an external trigger. This only serves as an example.}
-They get assigned different event types, and when those events are
-generated, they traverse different readlists. You would typically set
-the different readlists up in a way that the spill-on event doesn't
-actually read anything, but simply resets the scalers. The readlist of
-the spill-off event has then the actual readout of the scaler.  This
-setup allows you to know the intensity of each spill. Remember --
-different event types mean different readlists.
+At CERN and at the AGS, I used the accelerator signals to trigger
+special ``spill on'' and ``spill off'' events.\footnote{At this point
+  in time, spill-on or -off special events can only be generated if
+  you use a CAEN V1718 VME-USB bridge.  } They get assigned different
+event types, and when those events are generated, they traverse
+different readlists. You would typically set the different readlists
+up in a way that the spill-on event doesn't actually read anything,
+but simply resets the scalers. The readlist of the spill-off event has
+then the actual readout of the scaler.  This setup allows you to know
+the intensity of each spill. Remember -- different event types mean
+different readlists.
 
 In addition, two more special events are automatically generated in
 each run.  One is the \emph{Begin-Run Event}, the other the
@@ -529,7 +631,7 @@ $
 \end{verbatim}
 
 Since we have not specified any devices to be read in the begin- or end-run event,
-no packets are listed. Those events are just empty.
+no packets are listed. Those events are present but empty.
 
 Before I explain why those special events are so tremendously useful,
 let me first list the defined event types. You should \emph{not}
@@ -598,10 +700,15 @@ The most prominent pseudo devices are
 \begin{description}
 
 \item{device\_file} this device absorbs the contents of another
-  (small) file as its readout. In this way, you can add the contents
-  of any other file to your data stream. You can use this to add a
-  description, or add automatically generated files, or even an image to
-  the data stream.
+  (small\footnote{Without going into all the details: if your file is
+  expected to be larger than 128KB, you need to say how big it is. RCDAQ
+  needs to calculate the worst-case maximum event size per event type,
+  although virtually all events will be smaller due to
+  zero-suppression. RCDAQ knows the maximum sizes of each device
+  except this one.}) file as its readout. In this way, you can add the
+  contents of any other file to your data stream. You can use this to
+  add a description, or add automatically generated files, or even an
+  image to the data stream.
 
 \item{device\_filenumbers} this device reads a text file and looks for
   (integer) numbers on a line all by themselves. While the
@@ -634,7 +741,7 @@ explanations, I point out a nice self-documentation feature.
 
 Now let's go and get the HV setting of our detector added to the data
 stream. We typically have some kind of command interface to the HV
-system. I use the PHENIX hclient here in the example, but let me
+system. I use the PHENIX hvclient here in the example, but let me
 stress that any such utility which can print some output to the screen
 will fit the bill.
 
@@ -681,9 +788,10 @@ $
 \end{verbatim}
 
 This gives the name of the HV channel, the hardware (LeCroy 1461), the
-demand voltage, the actual voltage, and so on.
+demand voltage, the actual voltage, and so on. This file will end up
+in packet 910 as normal text.
 
-We process the file to take the 4th column (the actual voltage),
+Now we process the file to take the 4th column (the actual voltage),
 multiply by 100 to get an integer with the right range, and write to a
 new file ``hv\_readings.txt'':
 
@@ -708,7 +816,9 @@ $ cat hv_readings.txt
 -175350
 \end{verbatim}
 
-And now I start and end a run:
+Each number on a line will be added to packet 911 in binary. 
+
+Now we start and end a run:
 
 \begin{verbatim}
 $ rcdaq_client daq_begin
@@ -864,14 +974,13 @@ However, there is one small problem. You will likely invoke the script as
 \begin{verbatim} 
 ./setup.sh
 \end{verbatim}
-so the ``\$0'' parameter will be ``setup.sh''. If the rcdaq server
+so the ``\$0'' parameter will be ``./setup.sh''. If the rcdaq server
 process is not run from the exact same directory where that script
 resides, it will not be able to find the script.
 
 You could either be disciplined enough to \emph{always} invoke the
 script by its full pathname (not very likely to succeed), or you could
 rewrite it as follows:
-
 
 \begin{verbatim} 
 #! /bin/sh
@@ -885,14 +994,370 @@ rcdaq_client create_device device_file 9 910 hv_readback.txt
 rcdaq_client create_device device_filenumbers 9 911 hv_readings.txt
 \end{verbatim}
 
+In the standard setup is a full-blown example script (\verb|setup.sh|)which you can use
+as a template.
 
-In the standard setup is a full-blown example which we will explain
-next.
+
+\section{Command overview}
+
+The command \verb|rcdaq_client help| lists all available rcdaq commands:
+
+\begin{verbatim}
+   help                                 show this help text
+   daq_status [-s] [-l]                 display status [short] [long]
+   daq_open                             enable logging
+   daq_begin [run-number]               start taking data for run-number, or auto-increment
+   daq_end                              end the run
+   daq_close                            disable logging
+   daq_setfilerule file-rule            set the file rule default rcdaq-%08d-%04d.evt
+
+   daq_list_readlist                    display the current readout list
+   daq_clear_readlist                   clear the current readout list
+
+   daq_define_runtype type file-rule    define a run type, such as "calibration"
+   daq_set_runtype type                 activate a predefined run type
+   daq_get_runtype [-l]                 list the active runtype (if any)
+   daq_list_runtypes [-s]               list defined run types
+
+   daq_set_maxevents nevt               set automatic end at so many events
+   daq_set_maxvolume n_MB               set automatic end at n_MB MegaByte
+
+   load  shared_library_name            load a "plugin" shared library
+   create_device [device-specific parameters]
+
+   daq_setrunnumberfile file            define a file to maintain the current run number
+   daq_set_maxbuffersize n_KB           adjust the size of buffers written to n KB
+   daq_set_adaptivebuffering seconds    enable adaptive buffering at n seconds (0 = off)
+   elog elog-server port                specify coordinates for an Elog server
+
+   daq_shutdown                         terminate the rcdaq backend
+\end{verbatim} 
+
+The ``short'' versions of the commands (with the \verb|-s| flag, which
+at some point actually stood for ``script'') are generally there for
+the benefit of scripts (typically the GUIs, which are all written in
+Perl/Tk). The output is  usually easy to parse by a script, but less easy
+to digest by humans, such as
+\begin{verbatim}
+$ daq_status -s
+-1 0 0 0 0 0 
+\end{verbatim}
+
+Let's go through the commands:
+
+\begin{description}
+
+%\item[\verb|daq_status [-s] [-l]|] This displays the status of RCDAQ.
+
+\item[daq\_status] This displays the status of RCDAQ.
+  The \verb|-l| flags accumulate and increase the detail of the status
+  report.
+
+\item[daq\_open] This enables the writing out of data to
+  disk. You may wonder why one would choose to not log the data, but there
+  are many situations where you are timing in your trigger, test the
+  readout speed, or exercise the DAQ without cluttering your storage with 
+  files taken with ever-changing settings. 
+ 
+\item[daq\_begin] Start taking data. If you supply a run number,
+  this run number will be used.  Without a run number, the last run
+  number will be incremented. Also see the \verb|daq_setrunnumberfile|
+  command which allows you to make run numbers persistent between
+  restarts of the rcdaq\_server.
+
+\item[daq\_end] Ends the run.
+
+\item[daq\_close] Disables logging.
+
+\item[daq\_setfilerule file-rule] Set the file rule. You should always
+  set a specific rule because with the default rule,
+  \verb|rcdaq-%08d-%04d.evt|, the data files will end up in the same
+  area where rcdaq was started from.  Be sure to have a look at the 4 comamnds
+  managing run types, such as \verb|daq_define_runtype|, which allows
+  you to pre-set a few file rules, and switch between them quickly.
+
+\item[daq\_list\_readlist] Displays the current readout list.
+
+\item[daq\_clear\_readlist] Clears the current readout list.
+
+\item[daq\_define\_runtype] This command, which takes a
+  ``mnemonic'' and a file rule as parameters, allows you to pre-set an
+  arbitrary number of different file rules. You will be able to switch
+  between them quickly. In chapter~\ref{GUI} we show a convenient GUI
+  to quickly switch between what I call \emph{run types}, which uses
+  the following example. Here I define
+\begin{verbatim}
+rcdaq_client daq_define_runtype pedestal     /data/rcdaq/pedestal/pedestal_%010d-%04d.evt
+rcdaq_client daq_define_runtype beam         /data/rcdaq/beam/beam_%010d-%04d.evt
+rcdaq_client daq_define_runtype calibration  /data/rcdaq/calibration/calibration_%010d-%04d.evt
+rcdaq_client daq_define_runtype junk         /data/rcdaq/junk/junk_%010d-%04d.evt
+\end{verbatim}
+and then quickly switch between them, making the data appear in the
+specified location. This allows you to keep, say, pedestal or
+calibration runs apart from actual beam runs, and have more meaningful
+filenames.  There is no practical limit to the number of such
+types. However, it is no more than a convenient shortcut to set file
+rules. You can still manually set a file rule which is different from
+any of the defines ones.
+
+\item[daq\_set\_runtype type] This sets the file rule to the
+  predefined file rule, such as (from the example above)
+\begin{verbatim}
+rcdaq_client daq_set_runtype beam
+\end{verbatim}
+ 
+\item[daq\_get\_runtype] This lists the active run type (if any
+  -- if the file rule is not set to any of the predefined ones, it
+  will return nothing). It takes the ``long'' \verb|-l|
+  switch. Without it, it will just list the type, with the long flag
+  it will also list the rule.
+
+\item[daq\_list\_runtypes]  Lists the defined run types,
+  the short version just the names, else also the rules.
+
+\item[daq\_set\_maxevents nevt] Set an automatic end of a run at
+  so many events. Setting it to 0 resets the event limit.
+
+\item[daq\_set\_maxvolume nMB] Set an automatic end of a run
+  after so many megabytes of data have been accumulated. Setting it to
+  0 resets the size limit.
+
+\item[load shared\_library\_name] This loads a "plugin" shared
+  library. Since rcdaq doesn't really know about any meaningful
+  devices to read, you will have to load at least one plugin for
+  serious work.
+
+\item[create\_device]
+  This sets up a device to be read out. The parameters past the packet
+  id are very device-specific. 
+
+\item[daq\_setrunnumberfile filename] This defines a file where
+  rcdaq maintains the current run number. Normally, the rcdaq server
+  remembers the most recent run number, and it gets incremented for each run.
+  When the server is started, however, the run number defaults to 0, and for the
+  first run, you have to set it manually. This mechanism lets you make that 
+  process persistent across restarts of the server. Example:
+\begin{verbatim}
+rcdaq_client daq_setrunnumberfile $HOME/.last_rcdaq_runnumber.txt
+\end{verbatim}
+
+\item[daq\_set\_maxbuffersize n\_KB] Adjust the size of buffers to n
+  KB. With the advent of ``adaptive buffering'' (next command), this
+  can largely be ignored. RCDAQ knows up front how large an event an
+  become, worst case (if zero-suppression yields no savings etc). The
+  DAQ is filling a memory buffer which holds many events; this is
+  largely a storage-technology concept and generally invisible to
+  you. Since the event gets assembled directly in the memory buffer,
+  and the actual length is known only once the assembly is complete,
+  RCDAQ needs to check that a maximum-sized event will still fit into
+  the buffer. If not, it will start a new buffer, scheduling the other
+  one to be written out. This command was available mostly for the
+  benfit of the online monitoring, since the monitoring receives one
+  buffer at a time. If you have a low data rate and small events, it
+  can take several minutes (or even hours) for one buffer to be filled
+  and the monitoring to receive data. This was the reason why one
+  could reduce the size, to feed the online monitoring a more steady
+  data stream. This was very sub-optimal, because the data taking
+  efficiency is lower with smaller buffers, so one (small) size does
+  not fit all. This brings us to the next command:
+
+\item[daq\_set\_adaptivebuffering seconds] This is a much better
+  solution for the above problem. By default, adaptive buffering is
+  enabled and preset to 15 seconds.  A buffer is now flushed when it
+  is either full or the time period has elapsed, and there are no more
+  rate-dependend adjustments. Unless there there is a specific reason,
+  you should leave the adaptive buffering switched on. Setting the
+  time to 0 disables adaptive buffering.
+
+\item[elog elog-server port logbook] Specify the whereabouts for an
+  Elog server where rcdaq can make automated entries. 
+
+\item[daq\_shutdown] Ask the rcdaq\_server to gracefully shut
+  down.  It will not shut down if a run is in progress.
+
+\end{description}
+
+\section{Standard GUIs}
+\label{GUI}
+There are 4 standard GUIs which come with rcdaq. There is a control
+GUI, a status display (essentially the control GUI without the action
+buttons), a ``Run Type Chooser'' GUI, and a configuration GUI which
+will take a bit more explanation. 
+
+The most important design concept is that all standard GUIs are
+\emph{stateless}. You can start a run from the control GUI, end it via
+the command, or have multiple copies of the same GUI and click
+``Start'' in one and ``Stop'' in the other. All GUIs and buttons will
+(with a minimal time lag of about one second) always adapt to the
+state of the DAQ. A particular GUI does not remember that it was it
+which started the run, etc. 
+
+The GUIs are resilient and deal with a shutdown of the rcdaq\_server
+gracefully, so you can let them sit on the screen and they will always
+reflect the status of the DAQ.
+
+\subsection{The Control Gui}
+
+This is the workhorse GUI which allows to control the ``operational''
+aspects of RCADQ - \verb|daq_open|, \verb|daq_begin|, \verb|daq_end|,
+and \verb|daq_close|.  It will also display some useful information, such
+as the run number, duration of the run, the currently open file, if
+any, and so on.
+
+You start the GUI with 
+\begin{verbatim}
+rcdaq_control.pl &
+\end{verbatim}
+
+The GUI is shown here in different states; first with logging disabled,
+stopped and running; and logging enabled, stopped and running. You can see the 
+different information displayed. 
 
 
-\subsection{GUIs}
+\includegraphics[height=2in]{rcdaqcontrol_idle.png}
+\includegraphics[height=2in]{rcdaqcontrol_no_logging.png}
 
-\subsection{pmonitor, the Monitoring and Analysis Framework}
+\includegraphics[height=2in]{rcdaqcontrol_loggingenabled.png}
+\includegraphics[height=2in]{rcdaqcontrol_logging.png}
+
+\subsection{The Status GUI}
+
+This GUI is essentially a stripped-down version of the control GUI. It
+does not have the action buttons.  If you just want to keep an eye on
+the status, there is no danger that you inadvertently click a button and 
+interfere with the data taking. 
+
+You start it with 
+\begin{verbatim}
+rcdaq_status.pl &
+\end{verbatim}
+
+and get 
+
+\includegraphics[height=2in]{rcdaqstatus.png}
+
+Since this is a completely passive GUI, you can also use it to display
+the status on an overhead monitor which is found in many control
+rooms.  For that reason, it supports three options, \verb|--large|,
+\verb|--display=<display>|, and \verb|--geometry=<geometry>|.  The
+\verb|--large| option enlarges the GUI so that you can see it from a
+distance, and the other options allow you to send it to a remote
+display and position it properly, for example
+ 
+\begin{verbatim}
+rcdaq_status.pl --display=phnxtv1.phenix.bnl.gov:0.0 --geometry=+100+100 --large &
+\end{verbatim}
+
+\subsection{The Run Type Chooser GUI}
+
+If you have run types defined, say, along the example from before
+
+\begin{verbatim}
+$ daq_list_runtypes
+             beam - /data/rcdaq/beam/beam_%010d-%04d.evt
+      calibration - /data/rcdaq/calibration/calibration_%010d-%04d.evt
+             junk - /data/rcdaq/junk/junk_%010d-%04d.evt
+         pedestal - /data/rcdaq/pedestal/pedestal_%010d-%04d.evt
+\end{verbatim}
+
+then you can easily select the type with this GUI. Type
+
+\begin{verbatim}
+rcdaq_runtypechooser.pl &
+\end{verbatim}
+
+and you will get 
+
+\includegraphics[height=2in]{rcdaqruntypechooser.png}
+
+Each defined type brings up a button which allows you to  select the run type
+easily.
+
+Despite appearances, this GUI is stateless, too. The buttons merely
+set the run type in the rcdaq\_server, but the display is updated not
+from the button click but from information from the server, so the GUI
+will reflect the changes if you change the run type from the command line.
+
+This GUI will gracefully deal with a shutdown of the server, however,
+it will get confused if you change the list of run types. I think this
+is a small inconvenience, because the run types are usually pretty
+static. If they do change, this GUI needs to be restarted. 
+
+\subsection{The Configuration GUI}
+
+This brings us to our last GUI, which is a bit more complex. We are
+supporting setups where the researchers are used to selecting the
+setup from a long scroll-down list of pre-made standard
+configurations, depending on what the experiment of the day is. This
+in itself is not so difficult, but soon you run into a complication
+in defining what such a ``setup'' actually is.
+
+You will likely find the area teeming with a number of shell or perl
+scripts for different purposes, along with the top-level scripts which
+define the various setups.  It is good practice to have those
+individual setup scripts call more generic other scripts with the
+proper parameters, in order to avoid a proliferation of ``flat''
+all-in-one scripts. This immediately leads to the need to identify the
+actual top-level scripts which are meant to be listed in that
+GUI. Attempts to seclude those in a particular area only have, quite
+predictably, not worked.
+
+For this reason, we invented a scheme in which we identify those
+``GUI-grade'' scripts by certain tags, which are comments in the
+script.
+
+If you look at the \verb|setup.sh| example script in the main rcdaq
+source directory, you will see the following comments:
+
+\begin{verbatim}
+#! /bin/sh
+
+# the following line identifies this script as one to be
+# listed in the configuration GUI
+
+# --RCDAQGUI
+
+# lines starting with the "--SC" tag are short comments
+# (can be only one, later ones override earlier ones)
+
+# --SC Top Level setup script with a random device
+
+# lines starting with the "--SC" tag are long comments
+
+# --LC This setup script is part of the RCDAQ distribution.
+# --LC It uses the random device (i.e. no particular hardware)
+# --LC and can run on any machine to give RCDAQ a spin.
+# --LC It can serve as a template to develop your own setups. 
+\end{verbatim}
+
+The \verb|--RCDAQGUI| tag identifies this script as one to be listed
+in the GUI. Then there are ``short comments'', which act as tooltip
+help (when you hover the mouse), and ``long comments'', which are
+displayed once you select the GUI.
+
+If you run 
+\begin{verbatim}
+rcdaq_configmenu.pl &
+\end{verbatim}
+
+in the directory where this \verb|setup.sh| script resides, you will see
+
+\includegraphics[height=2in]{rcdaqconfigmenu1.png}
+
+(in this case there is only one such script, but all ``GUI-enabled'' scripts will be
+shown but not any others. If you hover the mouse, you will see the tooltip with the 
+``short comment'' (which can only be one line):
+
+\includegraphics[height=2in]{rcdaqconfigmenu2.png}
+
+Selecting this then displays the longer help text, and you can see if
+this script is what you wanted:
+
+\includegraphics[height=2in]{rcdaqconfigmenu3.png}
+
+Once selected, you can then choose to execute the script, or cancel. 
+
+\section{pmonitor, the Monitoring and Analysis Framework}
 
 Virtually all analysis of raw data in PHENIX takes place in a
 framework called \emph{pmonitor}. Designed as an online monitoring
@@ -930,9 +1395,185 @@ code compiles and can be run, but doesn't do anything useful,
 obviously. The distribution ships with several examples which you can
 build and run with data taken with RCDAQ.
 
+\appendix
+
+\section{Examples}
+
+I show a few examples of real-life setups that were used in the past.
+
+I will expand on this chapter as time progesses.
+
+\subsection{Running Speed Tests}
+
+Let's say that you want to see how fast your system can take data when
+you pull out all the stops. Actually reading out devices later will
+invariably slow you down, but it is good to know where the limits of
+your disk, CPU, and network are.
+
+I mentioned the \verb|daq_device_deadtime| pseudo-device. It may sound
+odd that you can use a device that adds artificial deadtime for a
+speed test, but here is how it works.
+
+Let me first show how to actually generate artificial deadtime. At the
+time I write this at the FermiLab Test Beam Facility, it is unclear if
+we will need this for the benefit of a MWPC, which may be able run at
+ony 100Hz (remains to be seen). Then we would add, say, 150 microseconds
+deadtime:
+
+\begin{verbatim}
+rcdaq_client create_device device_deadtime 1 0 150
+\end{verbatim}
+
+The 3rd parameter is the deadtime added in units of the Unix \verb|usleep|
+system call, which is meant to be microsconds, but you may have to calibrate and 
+adjust the unit on your system a little bit.  
+
+With the above parameters, it will not add anything to the data stream
+(that's why the packet id is set to 0). It can, however, add an
+adjustable amount of data to the event (and generate a packet,
+obviously). And it can also provide the system trigger. That allows
+you to dial in any desired data rate. Here is how you run the speed
+test: You set the deadtime to 0 (no deadtime), set a packet id (I chose 1005 here), 
+have the device add 64 (32-bit) words to the event,  and provide the system
+trigger (the last ``1''). Since this is now the only device defined in a data event,
+it will run as fast as it can:
+
+\begin{verbatim}
+rcdaq_client create_device device_deadtime 1 1005 0 64 1
+\end{verbatim}
+
+You can reduce the number of words to test the inner mechanics of
+RCDAQ on your PC (how fast it can go through the paces to kick off the
+event reading), or increase the number to test the limits of your
+storage system. 
+
+Be warned, though, that the artificial data do not have meaningful
+values. Different from the \verb|device_random|, this devices wastes
+no time filling in any actual values; it just says that it has added
+so many words, no matter what the contents of the packet payload are.
+
+\subsection{Adding a webcam picture to a packet}
+
+In this setup we use with a detector that gets positioned with a step
+motor. While we save the motor positions in the begin-run event, it is
+nice to have a visual confirmation that the detector is in the right
+place. To get this, we add a webcam picture to the begin-run
+event. The webcam looks at the detector with a ruler in the
+background, so you get a rough verification that the detector at least
+moves in the right direction.
+
+We use the \verb|streamer| utility to capture a webcam frame, and then copy
+the resulting jpeg file to the packet 915:
+
+\begin{verbatim} 
+#! /bin/sh
+
+D=`dirname "$0"`
+B=`basename "$0"`
+MYSELF="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
+rcdaq_client create_device device_file 9 900 "$MYSELF"
+
+rcdaq_client create_device device_command 9 0 "streamer -o pic.jpeg"
+rcdaq_client create_device device_file 9 915 pic.jpeg 50000
+# .. lines deleted...
+\end{verbatim}
+
+At each begin of a run, the command \verb|streamer -o pic.jpeg| is executed,
+making a new file with a picture of the current detector position. 
+
 \section{Installation}
 
+\subsection{Installing the software}
 
+The installation is rather straightforward. You put the rcdaq
+distribution in a good place in your file system, make a ``build'' and
+an ``insall'' directory, and buld in the standard way. In this
+example, I have the distribution in the
+\verb|/home/purschke/softwarerepo| area. In there is the rcdaq
+directory, as well as any rcdaq plugin distribution you may need (I
+have built the ``srs'' plugin here, as well as the
+online\_distribution, which we need for the analysis and monitoring
+packages).
+
+\begin{verbatim} 
+$ pwd
+/home/purschke/softwarerepo
+$  ls
+build  install  online_distribution rcdaq  srs
+\end{verbatim}
+
+In the build area, I make matching directories to build each package in:
+
+\begin{verbatim} 
+$ ls build/
+online_distribution  rcdac srs
+\end{verbatim}
+
+I then cd to the build/rcdaq area, and execute 
+
+\begin{verbatim} 
+$ cd build/rcdaq
+$ ../../rcdaq/autogen.sh  --prefix=/home/purschke/softwarerepo/install
+$ make install
+\end{verbatim}
+
+The installation of the srs plugin follows the same recipe:
+\begin{verbatim} 
+$ cd ../srs
+$ pwd
+/home/purschke/softwarerepo/build/srs
+$ ../../srs/autogen.sh  --prefix=/home/purschke/softwarerepo/install
+$ make install
+\end{verbatim}
+
+Although not technically part of this manual, let me also show how to install
+the online\_distribution. It goes analogous to the procedure shown for rcdaq and srs. 
+However, since it always has a fixed order of building the collection of sub-areas, there is a 
+ready-made script which executes the commands in the right order:
+
+\begin{verbatim} 
+$ cd ../online_distribution
+$ pwd
+/home/purschke/softwarerepo/build/online_distribution
+$ ../../online_distribution/simple_install.sh /home/purschke/softwarerepo/install
+\end{verbatim}
+ 
+\subsection{System Requirements}
+
+RCDAQ runs without special privileges. The only system service it
+needs is \verb|rpcbind|, which typically gets started at boot time of
+your system. The only modification to the usual way the rpcbind
+service is run is that it needs the ``-i'' flag. The end result must be that rpcbind is running 
+with that flag, as in
+
+\begin{verbatim} 
+$ ps ax | grep rpcbind
+ 2273 ?        Ss     0:00 /sbin/rpcbind -i
+ 5626 pts/0    S+     0:00 grep --colour=auto rpcbind
+$
+\end{verbatim}
+
+How this is accomplished varies a lot between Linux distributions. Here are a few of the 
+more mainstream ones:
+
+\begin{description}
+
+\item[Gentoo]  Create or edit the file \verb|/etc/conf.d/rpcbind|. Add a line
+\begin{verbatim} 
+RPCBIND_OPTS="-i"  
+\end{verbatim}
+
+\item[Scientific Linux]  Create or edit the file \verb|/etc/sysconfig/rpcbind|. Add a line
+\begin{verbatim} 
+RPCBIND_ARGS="-i"  
+\end{verbatim}
+
+\item[Ubuntu]  Create or edit the file \verb|/etc/default/rpcbind|. Add a line
+\begin{verbatim} 
+OPTIONS="-i"  
+\end{verbatim}
+
+\end{description}
 
 \end{document}
 
