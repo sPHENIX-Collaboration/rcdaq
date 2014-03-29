@@ -15,7 +15,7 @@ public:
 
   //** Constructors
 
-  daqBuffer(const int irun = 1, const int length = 4*1024*1024
+  daqBuffer(const int irun = 1, const int length = 8*1024*1024+2*8192
 	 , const int iseq = 1);
 
   virtual ~daqBuffer();
