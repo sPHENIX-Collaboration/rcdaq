@@ -38,12 +38,12 @@ of the PHENIX experiment at the Relativistic Heavy Ion Collider.  The
 experiment has its main data acquisition which fills a room about
 size of a squash court. For a variety of R\&D efforts, it was
 necessary to get a smaller, portable, and lightweight data acquisition
-system which would support test beams, electronic developments,
-cosmic ray test, and the like.
+system which would support test beams, electronics developments,
+cosmic ray tests, and the like.
 
 Meanwhile, the system is in use for a number of other projects, such
-as a number of PET scanners for medical Imaging applications, the
-readout of a GEM detector, and for tests and characterizations of
+as a number of PET scanners for medical imaging applications, the
+readout of a GEM detector, and for tests and the characterization of
 Silicon Photomultipliers.
 
 
@@ -85,10 +85,6 @@ The development of RCDAQ was governed by a number of design principles:
   proprietary or commercial libraries or drivers (which are needed for
   some PHENIX hardware) need to be distributed.
 
-\item {\bf support for automated interactions with electronic
-  logbooks}.  Also adding slow control data to the data stream for
-  documentation and record-keeping purposes.
-
 \item {\bf extensive support for automated, scripted acquisitions.}
 
 \item {\bf no configuration \emph{files}}. By definition,
@@ -98,7 +94,7 @@ The development of RCDAQ was governed by a number of design principles:
   systems have moved away from the much-hyped XML format. We already
   have the best parser for configuration input -- the Unix shell. It
   fulfills all of the above requirements (loops, conditions, parameters,
-  and error handling). Each interaction `with RCDAQ is a Unix shell
+  and error handling). Each interaction with RCDAQ is a Unix shell
   command. In this way, there are no configuration files, but
   configuration \emph{scripts} which you execute to configure your
   system.
@@ -125,7 +121,7 @@ was read out.
 \subsection{What? No configuration files?}
 In my opinion, the above-mentioned fact that there are no
 configuration files, only scripts, is one of the most versatile
-features of this DAQ. \emph{Each} instruction is a seperate command
+features of this DAQ system. \emph{Each} instruction is a seperate command
 executed on the shell. Besides the facts that you do not need to learn
 a new command interpreter, have loops, conditions, etc, at your
 fingertips, the most important feature is that you are not trapped
@@ -578,7 +574,7 @@ also largely not automated. In my experience, you will re-do the
 analysis of such data sets many times over, and automation of the
 procedure will help save a lot of time.
 
-One of the most powerful feature of RCDAQ, which is at the core of
+One of the most powerful features of RCDAQ, which is at the core of
 those acquisitions and later analysis of the data ``on autopilot'', are
 different \emph{Event Types}. You would typically think of a data
 acquisition as something that ``reads out your detector'' -- the ADCs
@@ -1072,7 +1068,7 @@ Let's go through the commands:
 \item[daq\_setfilerule file-rule] Set the file rule. You should always
   set a specific rule because with the default rule,
   \verb|rcdaq-%08d-%04d.evt|, the data files will end up in the same
-  area where rcdaq was started from.  Be sure to have a look at the 4 comamnds
+  area where rcdaq was started from.  Be sure to have a look at the 4 commands
   managing run types, such as \verb|daq_define_runtype|, which allows
   you to pre-set a few file rules, and switch between them quickly.
 
@@ -1481,13 +1477,166 @@ rcdaq_client create_device device_file 9 915 pic.jpeg 50000
 At each begin of a run, the command \verb|streamer -o pic.jpeg| is executed,
 making a new file with a picture of the current detector position. 
 
+
+\subsection{The GEM Detector Readout at the FermiLab Test Beam, February 2014}
+
+This setup is building on the previous example in the sense that 
+we are adding a lot of configuration information and two camera 
+snapshots to the begin-run event. We also have 4 different run types defined.
+
+First, we let the main RCDAQ configuration script figure out if there
+is a \verb|rcdaq_server| running by issuing a \verb|daq_status|
+command. If that fails, we need to start the server. At this point,
+we also define the Elog wherabouts. 
+
+\begin{verbatim} 
+#! /bin/sh
+
+if ! rcdaq_client daq_status > /dev/null 2>&1 ; then
+    echo "No rcdaq_server running, starting..."
+    rcdaq_server > $HOME/log/rcdaq.log 2>&1 &
+    sleep 2
+    ELOG=$(which elog 2>/dev/null)
+    [ -n "$ELOG" ]  && rcdaq_client elog localhost 666 RCDAQLog
+fi
+\end{verbatim} 
+
+This is the ``make an absolute path'' routine you already know:
+
+\begin{verbatim} 
+# we need the $0 as absolute path b/c we pass it on to a "file" device further down
+D=`dirname "$0"`
+B=`basename "$0"`
+MYSELF="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
+\end{verbatim} 
+
+We make the current run number persistent:
+
+\begin{verbatim} 
+rcdaq_client daq_setrunnumberfile $HOME/.last_rcdaq_runnumber.txt
+\end{verbatim} 
+
+And we find out if the SRS plugin is loaded already:
+
+\begin{verbatim} 
+if ! rcdaq_client daq_status -l | grep -q "SRS Plugin" ; then
+    echo "SRS plugin not loaded yet, loading..."
+    rcdaq_client load librcdaqplugin_srs.so
+fi
+\end{verbatim} 
+
+
+And now we assemble the pieces that we want to add to the begin-run event. 
+\begin{itemize}
+\item Packet 900 will hold the configuration script itself
+\item we execute the command \verb|srs_control readapv > $HOME/apv.txt|. It extracts 
+most of the relevant setup parameters from the SRS crate and writes it to the file.
+\item we execute  \verb|/home/eic/rcdaq_setup/prepare_run.sh|. This script 
+
+\begin{itemize} 
+\item reaches out to the motor rotation controller, queries the current
+  position, and writes the value into \verb|current_position.txt|;
+\item turns on a small light underneath the turntable for a moment and
+ takes a picture from a webcam which looks at the scale for visual confirmation; the picture goes into an image file called
+``\verb|snapshot.jpg|'';
+\item it makes a similar snapshot from a permanently mounted overhead camera as ``\verb|overhead_snapshot.jpg|''.
+\end{itemize}
+
+\item we then add the \verb|apv.txt|'' file as packet 910;
+\item we add ``\verb|current_position.txt|'' as packet 940; 
+\item we add ``\verb|snapshot.jpg|'' as packet 941;
+\item and we add ``\verb|overhead_snapshot.jpg|'' as packet 942.
+\end{itemize}
+
+\begin{verbatim} 
+# we add this very file to the begin-run event
+rcdaq_client create_device device_file 9 900 $MYSELF
+
+rcdaq_client create_device device_command 9 0 "srs_control readapv > $HOME/apv.txt"
+rcdaq_client create_device device_command 9 0 "/home/eic/rcdaq_setup/prepare_run.sh"
+
+rcdaq_client create_device device_file 9 910  $HOME/apv.txt
+rcdaq_client create_device device_file 9 940  $HOME/current_position.txt
+rcdaq_client create_device device_file 9 941  $HOME/snapshot.jpg 128000
+rcdaq_client create_device device_file 9 942  $HOME/overhead_snapshot.jpg 128000
+\end{verbatim} 
+
+The remainder of the set up script is straightforward; we set up the run types, 
+set ``junk'' as default, and finally define the readout of the SRS crate:
+
+\begin{verbatim} 
+rcdaq_client daq_define_runtype beam    /data/gem/beam/beam_%010d-%04d.evt
+rcdaq_client daq_define_runtype noSi    /data/gem/noSi/no_si_%010d-%04d.evt
+rcdaq_client daq_define_runtype junk    /data/gem/junk/junk_%010d-%04d.evt
+rcdaq_client daq_define_runtype calibration /data/gem/calibration/calibration_%010d-%04d.evt
+rcdaq_client daq_define_runtype pedestal /data/gem/pedestal/pedestal_%010d-%04d.evt
+rcdaq_client daq_setruntype junk
+
+rcdaq_client create_device device_srs 1 1010 10.0.0.2 1
+\end{verbatim} 
+ 
+And here is the composition of the begin-run event:
+
+\begin{verbatim} 
+$ dlist -O -i -t 9 beam_0000000451-0000.evt
+ -- Event     1 Run:   451 length: 17431 type:  9 (Begin Run Event)  1392306649
+Packet   900   614 -1 (ONCS Packet)  4 (IDCSTR)
+Packet   910   142 -1 (ONCS Packet)  4 (IDCSTR)
+Packet   940     7 -1 (ONCS Packet)  4 (IDCSTR)
+Packet   941  3643 -1 (ONCS Packet)  4 (IDCSTR)
+Packet   942 13017 -1 (ONCS Packet)  4 (IDCSTR)
+\end{verbatim} 
+
+If we now want to find out the position of the turntable, we can have  a
+look at packet 940:
+
+\begin{verbatim} 
+$ ddump  -O  -t 9 -p 940  /media/psf/Home/srs/GEM/beam/beam_0000000472-0000.evt
+-0000020
+$
+\end{verbatim} 
+
+( -20 is actually the ``zero'' position, 80 ticks mean one degree, the the zero marks are aligned at this value.)
+
+Here is another run:
+
+\begin{verbatim} 
+$ ddump  -O  -t 9 -p 940  /media/psf/Home/srs/GEM/beam/beam_0000000474-0000.evt
++0002380
+$ 
+\end{verbatim} 
+
+which is at 2380 (+20) ticks (30 degrees).
+
+In case there seems something wrong, one can extract the webcam snapshots:
+
+\begin{verbatim} 
+$ ddump  -O  -t 9 -p 941 beam_0000000472-0000.evt > 472.jpg
+$ ddump  -O  -t 9 -p 942 beam_0000000472-0000.evt > 472_overhead.jpg
+$ ddump  -O  -t 9 -p 941 beam_0000000474-0000.evt > 474.jpg
+$ ddump  -O  -t 9 -p 942 beam_0000000474-0000.evt > 474_overhead.jpg
+\end{verbatim} 
+
+Here you can see these snapshots:
+
+\includegraphics[height=2in]{472.jpg}
+\includegraphics[height=2in]{474.jpg}
+
+\includegraphics[height=2in]{472_overhead.jpg}
+\includegraphics[height=2in]{474_overhead.jpg}
+
+This is great for potential forensics and a visual conformation that the detector
+was at the right position. 
+
+
+
 \section{Installation}
 
 \subsection{Installing the software}
 
 The installation is rather straightforward. You put the rcdaq
 distribution in a good place in your file system, make a ``build'' and
-an ``insall'' directory, and buld in the standard way. In this
+an ``install'' directory, and buld in the standard way. In this
 example, I have the distribution in the
 \verb|/home/purschke/softwarerepo| area. In there is the rcdaq
 directory, as well as any rcdaq plugin distribution you may need (I
