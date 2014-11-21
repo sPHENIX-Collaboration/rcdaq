@@ -125,8 +125,18 @@ unsigned int daqBuffer::writeout ( int fd)
   return bytes;
 }
 
+#define ACKVALUE 101
+
 unsigned int daqBuffer::sendData ( int fd, struct sockaddr_in *si_remote)
 {
+
+  fd_set read_flag;
+  struct timeval tv;
+
+  FD_ZERO(&read_flag); 
+  FD_SET(fd, &read_flag);
+
+
 
   if (!has_end) addEoB();
 
@@ -139,7 +149,8 @@ unsigned int daqBuffer::sendData ( int fd, struct sockaddr_in *si_remote)
   //  cout << "sending  buffer len = " << getLength()  << endl;
 
   int total = getLength();
-  if ( (l = sendto(fd, &total, 4, 0, (sockaddr *) si_remote, slen))==-1)
+  int ntotal = htonl(total);
+  if ( (l = sendto(fd, &ntotal, 4, 0, (sockaddr *) si_remote, slen))==-1)
     {
       perror( "sendto " );
       return 0;
@@ -147,6 +158,7 @@ unsigned int daqBuffer::sendData ( int fd, struct sockaddr_in *si_remote)
 
   int quantum;
   int max_sock_length = 48*1024;
+  int ackvalue;
 
   while ( total >0 )
     {
@@ -159,15 +171,36 @@ unsigned int daqBuffer::sendData ( int fd, struct sockaddr_in *si_remote)
 	  quantum = total;
 	}
 
+
+      slen = sizeof(*si_remote);
       if ( (l = sendto(fd, p, quantum , 0, (sockaddr *) si_remote, slen))==-1)
 	{
 	  perror( "sendto " );
+	  cout << __FILE__<< " " << __LINE__ << " error sending "  << endl;
 	  return 0;
 	}
+
+      tv.tv_sec = 0;
+      tv.tv_usec= 200000;
+
+
+      int retval = select(fd+1, &read_flag, NULL, NULL, &tv);
+      if ( retval == 0) 
+	{
+	  cout << __FILE__<< " " << __LINE__ << " timeout waiting for ack "  << endl;
+	  return 0;
+	}
+
+      slen = sizeof(*si_remote);
+      if (recvfrom(fd, &ackvalue, sizeof(ackvalue), 0, (sockaddr *) si_remote, &slen)==-1)
+      	    {
+      	      cout << __FILE__<< " " << __LINE__ << " error receiving acknowledgement "  << endl;
+      	    }
+
       p+=l;
       total -= l;
-      //  cout << "rest: " << total  << " in this call : " << l << " of " << getLength() << endl;
-      usleep(1);
+      //   cout << "rest: " << total  << " in this call : " << l << " of " << getLength() << endl;
+      //    usleep(1 );
     }
 
   return sent;
