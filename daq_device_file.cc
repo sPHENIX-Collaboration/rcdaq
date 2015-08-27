@@ -15,7 +15,9 @@ using namespace std;
 
 daq_device_file::daq_device_file(const int eventtype
 				 , const int subeventid 
-				 , const char *fn, const int maxlength)
+				 , const char *fn
+				 , const int delete_flag
+				 , const int maxlength)
 
 {
 
@@ -23,8 +25,9 @@ daq_device_file::daq_device_file(const int eventtype
   m_subeventid = subeventid;
   filename = fn;
   _maxlength = maxlength;
-
-
+  _delete_flag = 0;
+  if ( delete_flag)  _delete_flag = 1;
+ 
 }
 
 daq_device_file::~daq_device_file()
@@ -91,6 +94,10 @@ int daq_device_file::put_data(const int etype, int * adr, const int length )
 
   int c = read( my_fd, d, nbytes);
 
+  close (my_fd);
+
+  if ( _delete_flag) unlink (filename.c_str()); 
+
   sevt->sub_padding = c%8;
   sevt->sub_length += (c + sevt->sub_padding) /4;
   return  sevt->sub_length;
@@ -101,8 +108,10 @@ void daq_device_file::identify(std::ostream& os) const
 {
   
   os  << "File Device  Event Type: " << m_eventType 
-      << " Subevent id: " << m_subeventid 
-      << " reading from  " << filename << endl;
+      << " Subevent id: " << m_subeventid;
+  if ( _delete_flag ) os <<  " reading from and deleting ";
+  else os <<  " reading from ";
+  os << filename << endl;
 
 }
 

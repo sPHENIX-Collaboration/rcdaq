@@ -291,6 +291,13 @@ int daq_set_eloghandler( const char *host, const int port, const char *logname)
 
   if ( ElogH) delete ElogH;
   ElogH = new ElogHandler (host, port, logname );
+
+  setenv ( "DAQ_ELOGHOST", host , 1);
+  char str [128];
+  sprintf(str, "%d", port);
+  setenv ( "DAQ_ELOGPORT", str , 1);
+  setenv ( "DAQ_ELOGLOGBOOK", logname , 1);
+
   return 0;
 }
 
@@ -691,7 +698,25 @@ int daq_begin(const int irun, std::ostream& os)
       os << " Buffer size increased to " << transportBuffer->getMaxSize()/1024 << " KB"<< endl;
       
     }
+
+  StartTime = time(0);
+
       
+  // here we sucessfully start a run. So now we set the env. variables
+  char str[128];
+  // RUNNUMBER
+  sprintf( str, "%d", TheRun);
+  setenv ( "DAQ_RUNNUMBER", str, 1);
+  setenv ( "DAQ_FILERULE", TheFileRule.c_str() , 1);
+
+  sprintf( str, "%ld", StartTime);
+  setenv ( "DAQ_STARTTIME", str , 1);
+	     
+  if ( daq_open_flag )
+    {
+      setenv ( "DAQ_FILENAME", CurrentFilename.c_str() , 1);
+    }
+
   fillBuffer->prepare_next(Buffer_number,TheRun);
 
   run_volume = 0;
@@ -704,7 +729,6 @@ int daq_begin(const int irun, std::ostream& os)
   //now enable the interrupts and reset the deadtime
   enable_trigger();
 
-  StartTime = time(0);
 
   os << "Run " << TheRun << " started" << endl;;
 	  
@@ -741,7 +765,12 @@ int daq_end(std::ostream& os)
       file_is_open = 0;
  
     }
-  os << "Run " << TheRun << " ended" << endl;;
+  os << "Run " << TheRun << " ended" << endl;
+
+  unsetenv ("DAQ_RUNNUMBER");
+  unsetenv ("DAQ_FILENAME");
+  unsetenv ("DAQ_STARTTIME");
+
   Event_number = 0;
   run_volume = 0;    // volume in longwords 
   BytesInThisRun = 0;    // bytes actually written
@@ -1338,6 +1367,14 @@ int daq_status (const int flag, std::ostream& os)
 	  os << " adaptive buffering: " << adaptivebuffering << " s"; 
 	}
       os << endl;
+      if ( ElogH)
+      	{
+      	  os << "Elog:  " << ElogH->getHost() << " " << ElogH->getLogbookName() << " Port " << ElogH->getPort() <<  endl;
+      	}
+      else
+      	{
+      	  os << "Elog: not defined" << endl;
+      	}
 
       daq_status_runtypes ( os);
       daq_status_plugin(flag, os);

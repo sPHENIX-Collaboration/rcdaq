@@ -13,7 +13,9 @@ public:
 
   daq_device_file (const int eventtype,
 		   const int subeventid, const char * fn,
+		   const int delete_flag = 0,
 		   const int maxlength = 256*1024);
+
 
 
   ~daq_device_file();
@@ -33,6 +35,7 @@ private:
   int m_subeventid;
   std::string filename;
   int _maxlength;
+  int _delete_flag;
 
 };
 

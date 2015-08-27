@@ -18,6 +18,7 @@ using namespace std;
 daq_device_filenumbers::daq_device_filenumbers(const int eventtype
 				 , const int subeventid 
 				 , const char *fn
+				 , const int delete_flag
 				 , const int maxlength)
 
 {
@@ -26,6 +27,8 @@ daq_device_filenumbers::daq_device_filenumbers(const int eventtype
   m_subeventid = subeventid;
   filename = fn;
   _maxlength = maxlength;
+  _delete_flag = 0;
+  if ( delete_flag)  _delete_flag = 1;
 
 }
 
@@ -89,6 +92,8 @@ int daq_device_filenumbers::put_data(const int etype, int * adr, const int lengt
 	}
     }
 
+  if ( _delete_flag) unlink (filename.c_str()); 
+
   sevt->sub_padding = i%2;
   sevt->sub_length += (i + sevt->sub_padding);
   return  sevt->sub_length;
@@ -99,8 +104,10 @@ void daq_device_filenumbers::identify(std::ostream& os) const
 {
   
   os  << "File Number Reader  Event Type: " << m_eventType 
-      << " Subevent id: " << m_subeventid 
-      << " reading from  " << filename << endl;
+      << " Subevent id: " << m_subeventid;
+  if ( _delete_flag ) os <<  " reading from and deleting ";
+  else os <<  " reading from ";
+  os << filename << endl;
 
 }
 
