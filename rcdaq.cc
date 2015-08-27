@@ -767,9 +767,9 @@ int daq_end(std::ostream& os)
     }
   os << "Run " << TheRun << " ended" << endl;
 
-  unsetenv ("RUNNUMBER");
-  unsetenv ("FILENAME");
-  unsetenv ("STARTTIME");
+  unsetenv ("DAQ_RUNNUMBER");
+  unsetenv ("DAQ_FILENAME");
+  unsetenv ("DAQ_STARTTIME");
 
   Event_number = 0;
   run_volume = 0;    // volume in longwords 
