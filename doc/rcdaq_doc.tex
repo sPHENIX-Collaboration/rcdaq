@@ -13,6 +13,7 @@
 \addtolength{\textheight}{1cm}
 \usepackage{graphicx}
 \usepackage{hyperref}
+\usepackage{wrapfig}
 
 \makeatletter
 \def\verbatim{\footnotesize\@verbatim \frenchspacing\@vobeyspaces \@xverbatim}
@@ -27,6 +28,22 @@
 \maketitle
 
 \tableofcontents
+
+\section{Changelog}
+
+\subsection{August 27, 2015}
+\begin{itemize}
+\item  added two new devices device\_file\_delete and device\_filenumbers\_delete, which
+  delete the file after it has been read. See page~\pageref{delete} for a description and application.
+\end{itemize}
+
+\subsection{August 15, 2015}
+\begin{itemize}
+\item the rcdaq\_server process now defines a number of environmental
+  variables, principally for the benefit of  device\_command. The
+  resulting process, usually a script, can use the variables to obtain important
+  information it might need. See page~\pageref{environment}.
+\end{itemize}
 
 \section{Introduction}
 
@@ -181,7 +198,7 @@ shielded from changes in the low-level data format of a given FEM or other
 readout device. 
 
 Over the course of the operation of the PHENIX detector, the low-level
-data format of the FEMs of a given subsystem have changed several
+data formats of the FEMs of a given subsystem have changed several
 times, usually to make the data more compact by improving the
 bit-packing of data, or by removing redundancy in the data which was
 initially needed to test and certify the data integrity. Packets with
@@ -329,6 +346,7 @@ Note that the rule above with the zero-padded fields will prevent
 spaces in file names, but the rule can really be set to anything. You
 must check that your rule generates valid and useful file names. You
 would normally choose a full path, such as
+
 \begin{verbatim}
 /data/rcdaq/beamdata-%08d-%04d.evt 
 \end{verbatim}
@@ -336,9 +354,11 @@ would normally choose a full path, such as
 
 Finally we create a new readout device that fills our pretend-ADC data
 with random numbers:
+
 \begin{verbatim}
 rcdaq_client create_device device_random 1 1001 32 0 2048 1
 \end{verbatim}
+
 The command ``create\_device'' takes the device type (device\_random),
 the event type in which it is read out (1), the packet id (1001), how
 many ``channels'' we want our device to have (32), the lower and upper
@@ -357,13 +377,14 @@ yet). It's just a convention.
 
 
 We can look at the defined readlist with  
+
 \begin{verbatim}
 $ rcdaq_client daq_list_readlist
 Random Device  Event Type: 1 Subevent id: 1001 n_words: 32 range: 0 - 2048 ** Trigger enabled
 $ 
 \end{verbatim}
-which gives a brief description of the device and the parameters.
 
+which gives a brief description of the device and the parameters.
 
 Now we start a run with number 1 (but keep in mind that we have not
 specified that we want to write any data to disk yet):
@@ -479,6 +500,7 @@ This is just to show that the next event has different (random) numbers.
 \section{Making the commands more convenient}
 
 We have so far used the ``long'' versions of each rdaq command, such as
+
 \begin{verbatim}
 $ rcdaq_client daq_begin 1
 \end{verbatim}
@@ -704,7 +726,22 @@ The most prominent pseudo devices are
   except this one.}) file as its readout. In this way, you can add the
   contents of any other file to your data stream. You can use this to
   add a description, or add automatically generated files, or even an
-  image to the data stream.
+  image to the data stream. If the file does not exist, no packet is generated.
+
+\item{device\_file\_delete} \label{delete}like device\_file, except
+  that this device also deletes the file after it has been read. {\bf
+    Use this device with caution.} This device was added to allow you
+  to \emph{occasionally} add some information to the data
+  stream. Let's say that you want some ``slow'' readout added, for
+  eample, a temperature reading.  Since no packet is generated if the
+  file does not exist, you can define a device\_file\_delete to the
+  readout of data events, and most events will not have the
+  packet. But every few minutes, an external process, such as a cron
+  job, could generate the file with the temperature information. It will
+  be added as a packet in the next event and subsquently deleted, so
+  it would be added to one event only. In this way you could track the
+  temperature over time.
+
 
 \item{device\_filenumbers} this device reads a text file and looks for
   (integer) numbers on a line all by themselves. While the
@@ -712,8 +749,32 @@ The most prominent pseudo devices are
   the text and adds those numbers in binary form.  This makes them
   much easier accessible in the later analysis.
 
+\item{device\_filenumbers\_delete} like device\_filenumbers, except
+  that this device also deletes the file after it has been read. See
+  the explanation of device\_file\_delete above. 
+
 \item{device\_command} this device does not add any data but executes
-  an arbitrary command.  This way, you can trigger actions at certain times.
+  an arbitrary command.  This way, you can trigger actions at certain
+  times.  {\bf You must not call rcdaq\_client commands from the
+    command, as this leads to a deadlock.} As a convenience, rcdaq
+  defines a number of environmental variables to the process execting
+  the command, which make it easier for a script to obtain dynamic
+  information. The variables defined are \label{environment}
+  \begin{description}
+  \item[DAQ\_RUNNUMBER] The current runnumber
+    
+  \item[DAQ\_FILERULE]  The current file rule that generates the file names 
+    
+  \item[DAQ\_STARTTIME] The starttime of the run as a Unix timestamp value
+    
+  \item[DAQ\_FILENAME] The current file name. If logging is nor
+    enabled, this variable will be empty. In this way you can find out
+    we are logging.
+    
+  \item[DAQ\_ELOGHOST, DAQ\_ELOGPORT, DAQ\_ELOGLOGBOOK] the coordinates
+    of the elog server. This allows you to add or edit elog entries
+    from a script. If no Elog is defined, the variables are empty. 
+  \end{description}
 
 \item{device\_random} we have already seen the random
   number-generating device in the example above.
@@ -742,6 +803,7 @@ stress that any such utility which can print some output to the screen
 will fit the bill.
 
 We add two devices to the begin-run event:
+
 \begin{verbatim}
 $ rcdaq_client create_device device_file 9 910 hv_readback.txt 
 $ rcdaq_client create_device device_filenumbers 9 911 hv_readings.txt
@@ -967,9 +1029,11 @@ captured in packet 900 in the begin-run, so you can later see how
 rcdaq was configured to begin with.
 
 However, there is one small problem. You will likely invoke the script as 
+
 \begin{verbatim} 
 ./setup.sh
 \end{verbatim}
+
 so the ``\$0'' parameter will be ``./setup.sh''. If the rcdaq server
 process is not run from the exact same directory where that script
 resides, it will not be able to find the script.
@@ -1034,6 +1098,7 @@ at some point actually stood for ``script'') are generally there for
 the benefit of scripts (typically the GUIs, which are all written in
 Perl/Tk). The output is  usually easy to parse by a script, but less easy
 to digest by humans, such as
+
 \begin{verbatim}
 $ daq_status -s
 -1 0 0 0 0 0 
@@ -1082,12 +1147,14 @@ Let's go through the commands:
   between them quickly. In chapter~\ref{GUI} we show a convenient GUI
   to quickly switch between what I call \emph{run types}, which uses
   the following example. Here I define
+
 \begin{verbatim}
 rcdaq_client daq_define_runtype pedestal     /data/rcdaq/pedestal/pedestal_%010d-%04d.evt
 rcdaq_client daq_define_runtype beam         /data/rcdaq/beam/beam_%010d-%04d.evt
 rcdaq_client daq_define_runtype calibration  /data/rcdaq/calibration/calibration_%010d-%04d.evt
 rcdaq_client daq_define_runtype junk         /data/rcdaq/junk/junk_%010d-%04d.evt
 \end{verbatim}
+
 and then quickly switch between them, making the data appear in the
 specified location. This allows you to keep, say, pedestal or
 calibration runs apart from actual beam runs, and have more meaningful
@@ -1098,6 +1165,7 @@ any of the defines ones.
 
 \item[daq\_set\_runtype type] This sets the file rule to the
   predefined file rule, such as (from the example above)
+
 \begin{verbatim}
 rcdaq_client daq_set_runtype beam
 \end{verbatim}
@@ -1133,6 +1201,7 @@ rcdaq_client daq_set_runtype beam
   When the server is started, however, the run number defaults to 0, and for the
   first run, you have to set it manually. This mechanism lets you make that 
   process persistent across restarts of the server. Example:
+
 \begin{verbatim}
 rcdaq_client daq_setrunnumberfile $HOME/.last_rcdaq_runnumber.txt
 \end{verbatim}
@@ -1201,6 +1270,7 @@ as the run number, duration of the run, the currently open file, if
 any, and so on.
 
 You start the GUI with 
+
 \begin{verbatim}
 rcdaq_control.pl &
 \end{verbatim}
@@ -1209,12 +1279,14 @@ The GUI is shown here in different states; first with logging disabled,
 stopped and running; and logging enabled, stopped and running. You can see the 
 different information displayed. 
 
-
-\includegraphics[height=2in]{rcdaqcontrol_idle.png}
-\includegraphics[height=2in]{rcdaqcontrol_no_logging.png}
-
-\includegraphics[height=2in]{rcdaqcontrol_loggingenabled.png}
-\includegraphics[height=2in]{rcdaqcontrol_logging.png}
+\begin{center}
+\begin{tabular}{cc}
+\includegraphics[height=2in]{rcdaqcontrol_idle.png} & 
+\includegraphics[height=2in]{rcdaqcontrol_no_logging.png}\\
+\includegraphics[height=2in]{rcdaqcontrol_loggingenabled.png} & 
+\includegraphics[height=2in]{rcdaqcontrol_logging.png}\\
+\end{tabular}
+\end{center}
 
 \subsection{The Status GUI}
 
@@ -1224,13 +1296,16 @@ the status, there is no danger that you inadvertently click a button and
 interfere with the data taking. 
 
 You start it with 
+
 \begin{verbatim}
 rcdaq_status.pl &
 \end{verbatim}
 
 and get 
 
+\begin{center}
 \includegraphics[height=2in]{rcdaqstatus.png}
+\end{center}
 
 Since this is a completely passive GUI, you can also use it to display
 the status on an overhead monitor which is found in many control
@@ -1264,7 +1339,9 @@ rcdaq_runtypechooser.pl &
 
 and you will get 
 
+\begin{center}
 \includegraphics[height=2in]{rcdaqruntypechooser.png}
+\end{center}
 
 Each defined type brings up a button which allows you to  select the run type
 easily.
@@ -1332,24 +1409,31 @@ help (when you hover the mouse), and ``long comments'', which are
 displayed once you select the GUI.
 
 If you run 
+
 \begin{verbatim}
 rcdaq_configmenu.pl &
 \end{verbatim}
 
 in the directory where this \verb|setup.sh| script resides, you will see
 
+\begin{center}
 \includegraphics[height=2in]{rcdaqconfigmenu1.png}
+\end{center}
 
 (in this case there is only one such script, but all ``GUI-enabled'' scripts will be
 shown but not any others. If you hover the mouse, you will see the tooltip with the 
 ``short comment'' (which can only be one line):
 
+\begin{center}
 \includegraphics[height=2in]{rcdaqconfigmenu2.png}
+\end{center}
 
 Selecting this then displays the longer help text, and you can see if
 this script is what you wanted:
 
+\begin{center}
 \includegraphics[height=2in]{rcdaqconfigmenu3.png}
+\end{center}
 
 Once selected, you can then choose to execute the script, or cancel. 
 
@@ -1667,6 +1751,7 @@ $ make install
 \end{verbatim}
 
 The installation of the srs plugin follows the same recipe:
+
 \begin{verbatim} 
 $ cd ../srs
 $ pwd
@@ -1708,34 +1793,93 @@ more mainstream ones:
 \begin{description}
 
 \item[Gentoo]  Create or edit the file \verb|/etc/conf.d/rpcbind|. Add a line
+
 \begin{verbatim} 
 RPCBIND_OPTS="-i"  
 \end{verbatim}
 
 \item[Scientific Linux]  Create or edit the file \verb|/etc/sysconfig/rpcbind|. Add a line
+
 \begin{verbatim} 
 RPCBIND_ARGS="-i"  
 \end{verbatim}
 
 \item[Ubuntu]  Create or edit the file \verb|/etc/default/rpcbind|. Add a line
+
 \begin{verbatim} 
 OPTIONS="-i"  
 \end{verbatim}
 
 \end{description}
 
+\section{Currently Implemented Readout Devices}
+
+\subsection{The CAEN DRS4 1742V System}
+
+
+The CAEN V1742 module, shown in Fig.~\ref{caen1742v}, is one of the more complex modules implemented
+in RCDAQ. At its core, it has 4 DRS4 chips inside, providing 32 primary input
+channels, plus one ``side'' channel per chip. Two of those can be used to digitize the 
+NIM input signal if so desired. 
+
+
+\begin{figure}
+  \centering
+  \includegraphics[angle=90,width=0.8\columnwidth]{1742v.jpg}
+  \caption{\label{caen1742v}The CAEN V1742 module.}
+\end{figure}
+
+
+The DRS4 chip is a switched capacitor array capable of sampling at a
+speed of up to 5\,Gigasamples/s. Sample rates of 1, 2.5, and 5\,GS/s
+are adjustable. This device has a large configuration space, with many
+registers that allow a customized setup for many different purposes. 
+
+The assorted RCDAQ plugin, \verb|librcdaqplugin_CAENdrs.so|, provides
+two different devices to readout the V1742. One, called
+\verb|device_CAENdrs|, uses the preconfigured V1742 as-is, without
+changing any ``non-essential'' registers. This device makes the full
+phase space available that the V1742 has to offer. It comes with a
+companion utility \verb|caen_client|, which can be used to adjust any
+available register as needed. I said ``non-essential'' registers,
+because RCDAQ still sets up the registers that govern the actual
+readout the way it needs it; there is not much choice in that
+matter. Still, in this way one can set up any conveivable trigger
+mode, readout length, sample, rate, and so on, essentially any
+configuration parameter. Here is a list of parameters that the \verb|caen_client|
+utility can set and read:
+
+\begin{verbatim}
+$ caen_client status
+MaxNumEventsBLT:       1
+ExtTriggerInputMode:   3 (ACQ_AND_EXTOUT)
+FastTriggerDigitizing: 0 (Disabled)
+FastTriggerMode:       0 (Disabled)
+OutputSignalMode:      0 (TRIGGER)
+Sampling Frequency:    2 (DRS4_1GHz)
+RecordLength:          1024 samples
+PostTriggerSize:       0
+IOLevel()              0 (NIM)
+AcquisitionMode        0 (software controlled)
+GroupEnableMask        0xf
+TriggerPolarity (F - falling edge / R - rising edge) :
+  R  R  R  R  R  R  R  R
+  R  R  R  R  R  R  R  R
+  R  R  R  R  R  R  R  R
+  R  R  R  R  R  R  R  R
+
+ChannelDCOffset:
+  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00
+  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00
+  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00
+  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00
+\end{verbatim}
+
+
+
+
+ 
+
 \end{document}
 
-%% Also, think of a ``device'' as something that in general
-%% reaches out to some hardware, usually to extract data from
-%% it. However, it comes down to calling a routine which can do anything,
-%% really, and there are ``devices'' which do something to a piece of
-%% hardware without actually taking any data (or actually adding a packet
-%% to the data stream). In the example with the scaler readout above (which is
-%% from a different data acquisition system entirely), the
-%% clearing of the scaler was accomplished by an entry in the readlist
-%% \begin{verbatim}
-%% LC4432CLR 8 0 <some more device-specific parameters>
-%% \end{verbatim
-%% The only purpose is to reach out to the LeCroy 4432 scaler in question and 
-%% reset the counters to 0. It will not generate any data. 
+
