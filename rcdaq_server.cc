@@ -246,10 +246,11 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 	{
 	  // we give the size in bytes but we want it in words 
 	  int s = (get_value(db->argv4)+3)/4;
-	  if ( s < 1280) s = 1280;    // this is the default size
+	  if ( s < 256*1024) s = 256*1024;    // this is the default size
 	  add_readoutdevice ( new daq_device_file( eventtype,
 						   subid,
 						   db->argv3,
+						   0, // no delete
 						   s ) );
 	  return &result;
 	}
@@ -263,6 +264,41 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 	}
 
     }
+  // --------------------------------------------------------------------------
+  // although this logic is very similar to device_file, since the consequences
+  // of a misplaced parameter are so severe, we make a new device
+  else if ( strcasecmp(db->argv0,"device_file_delete") == 0 )  
+    {
+
+      if ( db->npar < 4) return &error;
+
+      if ( db->npar >= 5) 
+	{
+	  // we give the size in bytes but we want it in words 
+	  int s = (get_value(db->argv4)+3)/4;
+	  if ( s < 256*1024) s = 256*1024;    // this is the default size
+	  add_readoutdevice ( new daq_device_file( eventtype,
+						   subid,
+						   db->argv3,
+						   1,  // we add the delete flag
+						   s ) );
+	  return &result;
+	}
+      else 
+	{
+
+	  add_readoutdevice ( new daq_device_file( eventtype,
+						   subid,
+						   db->argv3,
+						   1) );
+	  return &result;
+	}
+
+    }
+
+
+  // --------------------------------------------------------------------------
+
 
   else if ( strcasecmp(db->argv0,"device_filenumbers") == 0 )  
     {
@@ -275,6 +311,7 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 	  add_readoutdevice ( new daq_device_filenumbers( eventtype,
 							  subid,
 							  db->argv3,
+							  0,  // no delete
 							  get_value(db->argv4)));
 	  return &result;
 	}
@@ -288,6 +325,37 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 	}
 
     }
+
+  // --------------------------------------------------------------------------
+
+
+  else if ( strcasecmp(db->argv0,"device_filenumbers_delete") == 0 )  
+    {
+
+      if ( db->npar < 4) return &error;
+
+      if ( db->npar >= 5) 
+	{
+
+	  add_readoutdevice ( new daq_device_filenumbers( eventtype,
+							  subid,
+							  db->argv3,
+							  1,  // we add the delete flag
+							  get_value(db->argv4)));
+	  return &result;
+	}
+      else 
+	{
+
+	  add_readoutdevice ( new daq_device_filenumbers( eventtype,
+							  subid,
+							  db->argv3,
+							  1) );
+	  return &result;
+	}
+
+    }
+
 
   else if ( strcasecmp(db->argv0,"device_command") == 0 )  
     {
