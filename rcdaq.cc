@@ -236,10 +236,11 @@ int disable_trigger()
   
 
   sleep (1);
-  pthread_cancel(ThreadTrigger);
-  cout << __FILE__ << " " << __LINE__ << " waiting for trigger loop to exit " << endl;
-  pthread_join(ThreadTrigger, NULL);
-  cout << __FILE__ << " " << __LINE__ << " done " << endl;
+
+  // pthread_cancel(ThreadTrigger);
+  // cout << __FILE__ << " " << __LINE__ << " waiting for trigger loop to exit " << endl;
+  // pthread_join(ThreadTrigger, NULL);
+  // cout << __FILE__ << " " << __LINE__ << " done " << endl;
 
 
   return 0;
@@ -808,11 +809,16 @@ void * daq_triggerloop (void * arg)
 	      CurrentEventType = evttype;
 	      pthread_mutex_unlock ( &TriggerSem );
 
-	      //pthread_mutex_lock(&M_cout);
-	      //cout << __LINE__ << "  " << __FILE__ << " trigger" << endl;
-	      // pthread_mutex_unlock(&M_cout);
+	      // pthread_mutex_lock(&M_cout);
+	      // cout << __LINE__ << "  " << __FILE__ << " trigger, triggercontrol = " << TriggerControl  << endl;
+	      //  pthread_mutex_unlock(&M_cout);
 	      
 	      pthread_mutex_lock ( &TriggerDone );
+
+	      // pthread_mutex_lock(&M_cout);
+	      // cout << __LINE__ << "  " << __FILE__ << " after lock triggercontrol = " << TriggerControl  << endl;
+	      //  pthread_mutex_unlock(&M_cout);
+	      
 	    }
 
 	}
@@ -886,13 +892,14 @@ void * EventLoop( void *arg)
 		  // reset todo, and the DAQ_TRIGGER bit. 
 		  Trigger_Todo = 0;
 		  Origin ^= DAQ_TRIGGER;
-		  reset_deadtime();
 			  
 		  if (  rstatus)    // we got an endrun signal
 		    {
 		      daq_end ( std::cout);
+		      //go_on = 0;
 		    }
-		
+		  reset_deadtime();
+		  		  
 		}
 	    }
 	  else
