@@ -37,6 +37,8 @@ rcdaq_client create_device device_file 9 900 "$MYSELF"
 # make the first randown device trigger enabled
 rcdaq_client create_device device_random 1 1001 64 0 4096 1
 rcdaq_client create_device device_random 1 1002 32 0 2048
+# we add some articicial deadtime to slow down a bit
+rcdaq_client create_device device_deadtime 1 0 50000
 
 # see if we have an elog command (ok, this is a weak test but 
 # at least it tells us that elog is installed.)
