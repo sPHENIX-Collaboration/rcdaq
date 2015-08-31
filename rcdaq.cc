@@ -1122,7 +1122,7 @@ int daq_close (std::ostream& os)
 
   if ( Daq_Status & DAQ_RUNNING ) 
     {
-      cout << "Run is active" << endl;;
+      os << "Run is active" << endl;;
       return -1;
     }
 
@@ -1159,6 +1159,13 @@ int daq_list_readlist(std::ostream& os)
 
 int daq_clear_readlist(std::ostream& os)
 {
+
+  if ( Daq_Status & DAQ_RUNNING ) 
+    {
+      os << "Run is active" << endl;;
+      return -1;
+    }
+
   deviceiterator d_it;
 
   for ( d_it = DeviceList.begin(); d_it != DeviceList.end(); ++d_it)
@@ -1392,3 +1399,10 @@ int daq_status (const int flag, std::ostream& os)
 
   return 0;
 }
+
+int daq_running()
+{
+  if ( Daq_Status & DAQ_RUNNING ) return 1;
+  return 0;
+}
+

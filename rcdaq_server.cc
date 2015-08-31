@@ -118,6 +118,15 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 {
   static shortResult  result, error;
 
+  if ( daq_running() )
+    {
+      error.str     = "Run is active";
+      error.content = 1;
+      error.what    = 0;
+      error.status  = -1;
+      return &error;
+    }
+
   error.str     = "Device needs at least 2 parameters";
   error.content = 1;
   error.what    = 0;
