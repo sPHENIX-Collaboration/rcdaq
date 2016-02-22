@@ -12,7 +12,7 @@ typedef struct evt_data
    int date;
    int time;
    int reserved[2];
-   int data[99999];
+   int data[];
 } *evtdata_ptr;
 
 

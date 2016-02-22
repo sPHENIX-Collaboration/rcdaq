@@ -18,7 +18,6 @@ daq_device_file::daq_device_file(const int eventtype
 				 , const char *fn
 				 , const int delete_flag
 				 , const int maxlength)
-
 {
 
   m_eventType  = eventtype;
@@ -27,7 +26,7 @@ daq_device_file::daq_device_file(const int eventtype
   _maxlength = maxlength;
   _delete_flag = 0;
   if ( delete_flag)  _delete_flag = 1;
- 
+
 }
 
 daq_device_file::~daq_device_file()
@@ -40,7 +39,7 @@ daq_device_file::~daq_device_file()
 
 int daq_device_file::put_data(const int etype, int * adr, const int length )
 {
-  
+
   int my_fd;
   int nbytes;
 
@@ -68,39 +67,90 @@ int daq_device_file::put_data(const int etype, int * adr, const int length )
     }
   
 
-  if ( (nbytes+3)/4 +  SEVTHEADERLENGTH + 1 >= length)
-    {
-      cout << __FILE__ << "  " << __LINE__ 
-	   <<" too large payload in Packet " <<  m_subeventid 
-	   << "  size " <<  (nbytes+3)/4 +SEVTHEADERLENGTH +1  
-	   << "  max is " << length << " -- truncated" << endl;
-      nbytes = 4*(length - SEVTHEADERLENGTH -2);
-    }
  
-  sevt =  (subevtdata_ptr) adr;
-  // set the initial subevent length
-  sevt->sub_length =  SEVTHEADERLENGTH;
+
+  if ( daq_getEventFormat() ) // we are writing PRDF
+    {
+
+
+      if ( (nbytes+3)/4 +  6 + 1 >= length)
+	{
+	  cout << __FILE__ << "  " << __LINE__ 
+	       <<" too large payload in Packet " <<  m_subeventid 
+	       << "  size " <<  (nbytes+3)/4 + 6 +1  
+	       << "  max is " << length << " -- truncated" << endl;
+	  nbytes = 4*(length - 6 -2);
+	}
+
+
+      formatPacketHdr(adr);
+
+      packetdata_ptr sevt =  (packetdata_ptr) adr;
   
-  // update id's etc
-  sevt->sub_id =  m_subeventid;
-  sevt->sub_type=1;
-  sevt->sub_decoding = IDCSTR;
-  sevt->reserved[0] = 0;
-  sevt->reserved[1] = 0;
+      // update id's etc
+      sevt->sub_id =  m_subeventid;
+      sevt->sub_type=1;
+      sevt->sub_decoding = 30000 + IDCSTR;
   
-  unsigned int data;
+      char  *d = (char *) &sevt->data;
+
+      int c = read( my_fd, d, nbytes);
+
+      close (my_fd);
+
+      if ( _delete_flag) unlink (filename.c_str());      
+
+      int padding  = c%8;
+      if ( padding) padding = 8-padding;
+
+      sevt->structureinfo += padding;
+      sevt->sub_length += (c + padding) /4;
+
+      //      std::cout << __FILE__ << " " << __LINE__ << " c " << c << " pad " << padding << " length  " << sevt->sub_length << std::endl; 
+
+      return  sevt->sub_length;
+    }
+
+  else // the good format
+    {
+
+      if ( (nbytes+3)/4 +  SEVTHEADERLENGTH + 1 >= length)
+	{
+	  cout << __FILE__ << "  " << __LINE__ 
+	       <<" too large payload in Packet " <<  m_subeventid 
+	       << "  size " <<  (nbytes+3)/4 + SEVTHEADERLENGTH +1  
+	       << "  max is " << length << " -- truncated" << endl;
+	  nbytes = 4*(length - SEVTHEADERLENGTH -2);
+	}
+
+      subevtdata_ptr sevt =  (subevtdata_ptr) adr;
+      // set the initial subevent length
+      sevt->sub_length =  SEVTHEADERLENGTH;
   
-  char  *d = (char *) &sevt->data;
+      // update id's etc
+      sevt->sub_id =  m_subeventid;
+      sevt->sub_type=1;
+      sevt->sub_decoding = IDCSTR;
+      sevt->reserved[0] = 0;
+      sevt->reserved[1] = 0;
+  
+      unsigned int data;
+      
+      char  *d = (char *) &sevt->data;
 
-  int c = read( my_fd, d, nbytes);
+      int c = read( my_fd, d, nbytes);
 
-  close (my_fd);
+      close (my_fd);
 
-  if ( _delete_flag) unlink (filename.c_str()); 
+      if ( _delete_flag) unlink (filename.c_str());      
 
-  sevt->sub_padding = c%8;
-  sevt->sub_length += (c + sevt->sub_padding) /4;
-  return  sevt->sub_length;
+      sevt->sub_padding = c%8;
+      if ( sevt->sub_padding) sevt->sub_padding = 8 - sevt->sub_padding;
+
+      sevt->sub_length += (c + sevt->sub_padding) /4;
+      return  sevt->sub_length;
+    }
+
 }
 
 

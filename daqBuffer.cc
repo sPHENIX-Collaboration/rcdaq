@@ -1,5 +1,8 @@
 #include <daqBuffer.h>
 
+#include <daqONCSEvent.h>
+#include <daqPRDFEvent.h>
+
 #include <unistd.h>
 
 using namespace std;
@@ -19,6 +22,9 @@ daqBuffer::daqBuffer (const int irun, const int length
   bptr->Runnr = 0;
   current_event = 0;
   current_etype = -1;
+
+  format=DAQONCSFORMAT;
+
   prepare_next (iseq, irun);
 }
 
@@ -57,11 +63,23 @@ int daqBuffer::nextEvent(const int etype, const int evtseq, const int evtsize)
 
   if (evtsize > left-EOBLENGTH) return -1;
 
-  current_event = new daqEvent(&(bptr->data[current_index]), evtsize
+  if ( format)
+    {
+      current_event = new daqPRDFEvent(&(bptr->data[current_index]), evtsize
 			     ,bptr->Runnr, etype, evtseq);
-  left -= EVTHEADERLENGTH;
-  current_index += EVTHEADERLENGTH;
-  bptr->Length  += EVTHEADERLENGTH*4;
+      left -= EVTHEADERLENGTH -8 ;
+      current_index += EVTHEADERLENGTH+8;
+      bptr->Length  += (EVTHEADERLENGTH+8)*4;
+    }
+  else
+    {
+      current_event = new daqONCSEvent(&(bptr->data[current_index]), evtsize
+			     ,bptr->Runnr, etype, evtseq);
+      left -= EVTHEADERLENGTH;
+      current_index += EVTHEADERLENGTH;
+      bptr->Length  += EVTHEADERLENGTH*4;
+    }
+
 
   current_etype = etype;
 
@@ -233,6 +251,14 @@ int daqBuffer::getMaxSize() const
 {
   return max_size*4;
 }
+
+int daqBuffer::setEventFormat(const int f) 
+ { 
+   if (f) format = DAQPRDFFORMAT;
+   else format = DAQONCSFORMAT;
+
+   return 0;
+ }
 
 unsigned int daqBuffer::writen (int fd, char *ptr, const unsigned int nbytes)
 {

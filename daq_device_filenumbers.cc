@@ -56,47 +56,98 @@ int daq_device_filenumbers::put_data(const int etype, int * adr, const int lengt
   int value;
   string line;
 
-  sevt =  (subevtdata_ptr) adr;
-  // set the initial subevent length
-  sevt->sub_length =  SEVTHEADERLENGTH;
-  
-  // update id's etc
-  sevt->sub_id =  m_subeventid;
-  sevt->sub_type=1;
-  sevt->sub_decoding = ID4EVT;
-  sevt->reserved[0] = 0;
-  sevt->reserved[1] = 0;
-  
-  unsigned int data;
-  
-  int  *d = (int *) &sevt->data;
-  int i = 0;
-  int go_on = 1;
-
-  while ( sarg.good() && go_on )
+  if ( daq_getEventFormat() ) // we are writing PRDF
     {
-      getline ( sarg, line);
-      //      cout << "-- " << line << endl;
-      istringstream is ( line);
-      if ( is >> d[i]) 
+
+      formatPacketHdr(adr);
+
+      packetdata_ptr sevt =  (packetdata_ptr) adr;
+
+      // update id's etc
+      sevt->sub_id =  m_subeventid;
+      sevt->sub_type=4;
+      sevt->sub_decoding = ID4EVT;
+      
+      unsigned int data;
+      
+      int  *d = (int *) &sevt->data;
+      int i = 0;
+      int go_on = 1;
+      
+      while ( sarg.good() && go_on )
 	{
-	  i++;
-	  if ( i + SEVTHEADERLENGTH + 1 >= length)
+	  getline ( sarg, line);
+	  //      cout << "-- " << line << endl;
+	  istringstream is ( line);
+	  if ( is >> d[i]) 
 	    {
-	      cout << __FILE__ << "  " << __LINE__ 
-		   <<" too large payload in Packet " <<  m_subeventid 
-		   << " current size " << i +SEVTHEADERLENGTH +1  
-		   << "  max is " << length << endl;
-	      go_on = 0;
+	      i++;
+	      if ( i + 6 + 1 >= length)
+		{
+		  cout << __FILE__ << "  " << __LINE__ 
+		       <<" too large payload in Packet " <<  m_subeventid 
+		       << " current size " << i + 6 +1  
+		       << "  max is " << length << endl;
+		  go_on = 0;
+		}
 	    }
 	}
+      
+      sarg.close();
+      if ( _delete_flag) unlink (filename.c_str()); 
+      
+      int padding = i%1;
+      sevt->structureinfo += padding;
+      sevt->sub_length += (i + padding);
+      return  sevt->sub_length;
     }
 
-  if ( _delete_flag) unlink (filename.c_str()); 
+  else
+    {
+      sevt =  (subevtdata_ptr) adr;
+      // set the initial subevent length
+      sevt->sub_length =  SEVTHEADERLENGTH;
+      
+      // update id's etc
+      sevt->sub_id =  m_subeventid;
+      sevt->sub_type=4;
+      sevt->sub_decoding = 30000 + ID4EVT;
+      sevt->reserved[0] = 0;
+      sevt->reserved[1] = 0;
+      
+      unsigned int data;
+      
+      int  *d = (int *) &sevt->data;
+      int i = 0;
+      int go_on = 1;
+      
+      while ( sarg.good() && go_on )
+	{
+	  getline ( sarg, line);
+	  //      cout << "-- " << line << endl;
+	  istringstream is ( line);
+	  if ( is >> d[i]) 
+	    {
+	      i++;
+	      if ( i + SEVTHEADERLENGTH + 1 >= length)
+		{
+		  cout << __FILE__ << "  " << __LINE__ 
+		       <<" too large payload in Packet " <<  m_subeventid 
+		       << " current size " << i +SEVTHEADERLENGTH +1  
+		       << "  max is " << length << endl;
+		  go_on = 0;
+		}
+	    }
+	}
+      
+      sarg.close();
+      if ( _delete_flag) unlink (filename.c_str()); 
+      
+      sevt->sub_padding = i%2;
+      sevt->sub_length += (i + sevt->sub_padding);
+      return  sevt->sub_length;
+    }
 
-  sevt->sub_padding = i%2;
-  sevt->sub_length += (i + sevt->sub_padding);
-  return  sevt->sub_length;
 }
 
 

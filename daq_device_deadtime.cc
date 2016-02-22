@@ -54,22 +54,41 @@ int daq_device_deadtime::put_data(const int etype, int * adr, const int length )
   
   if ( number_of_words) 
     {
-      sevt =  (subevtdata_ptr) adr;
-      // set the initial subevent length
-      sevt->sub_length =  SEVTHEADERLENGTH;
 
-      // update id's etc
-      sevt->sub_id =  m_subeventid;
-      sevt->sub_type=4;
-      sevt->sub_decoding = ID4EVT;
-      sevt->reserved[0] = 0;
-      sevt->reserved[1] = 0;
+      if ( daq_getEventFormat() ) // we are writing PRDF
+	{
+	  formatPacketHdr(adr);
 
-      sevt->sub_padding = number_of_words%2;
-      sevt->sub_length += number_of_words + sevt->sub_padding;
-      return  sevt->sub_length;
+	  packetdata_ptr sevt =  (packetdata_ptr) adr;
+	  
+	  // update id's etc
+	  sevt->sub_id =  m_subeventid;
+	  sevt->sub_type=4;
+	  sevt->sub_decoding = 30000 + ID4EVT;
+	  
+	  int padding = number_of_words%2;
+	  sevt->structureinfo += padding;
+	  sevt->sub_length += number_of_words + padding;
+	  return  sevt->sub_length;
+	}
+      else
+	{
+	  sevt =  (subevtdata_ptr) adr;
+	  // set the initial subevent length
+	  sevt->sub_length =  SEVTHEADERLENGTH;
+	  
+	  // update id's etc
+	  sevt->sub_id =  m_subeventid;
+	  sevt->sub_type=4;
+	  sevt->sub_decoding = ID4EVT;
+	  sevt->reserved[0] = 0;
+	  sevt->reserved[1] = 0;
+	  
+	  sevt->sub_padding = number_of_words%2;
+	  sevt->sub_length += number_of_words + sevt->sub_padding;
+	  return  sevt->sub_length;
+	}
     }
-
   return  0;
 }
 

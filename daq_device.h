@@ -13,7 +13,7 @@
 
 int registerTriggerHandler(TriggerHandler *);
 int clearTriggerHandler();
-
+int daq_getEventFormat();
 
 class daq_device {
 
@@ -40,6 +40,8 @@ public:
     {
       return m_subeventid;
     }
+
+  static int formatPacketHdr(int * adr);
   
  protected:
   long m_subeventid;

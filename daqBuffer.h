@@ -8,6 +8,9 @@
 #include <BufferConstants.h>
 #include <arpa/inet.h>
 
+#define DAQONCSFORMAT 0
+#define DAQPRDFFORMAT 1
+
 
 class daqBuffer {
 
@@ -48,6 +51,9 @@ public:
   int getBufSeq () const { return bptr->Bufseq; } ;
   int getLength () const { return bptr->Length; } ;
 
+  int setEventFormat(const int f);
+  int getEventFormat() const {return format;};
+
 
 protected:
 
@@ -72,6 +78,7 @@ protected:
   daqEvent *current_event;
   int current_etype;
   int has_end;
+  int format;
 };
 
 #endif

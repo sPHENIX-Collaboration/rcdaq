@@ -2,6 +2,7 @@
 #define __DAQEVENT__
 
 
+
 #include <EvtStructures.h>
 #include <daq_device.h>
 
@@ -11,16 +12,18 @@ class daqEvent {
 
 public:
 
-  //** Constructors
-  daqEvent(int *, const int maxlength
-	 , const int irun, const int itype, const int eseq);
+  virtual ~daqEvent(){};
 
-  int prepare_next();
-  int prepare_next( const int, const int);
-  void set_event_type(const int);
+  //** Constructors
+  //  daqEvent(int *, const int maxlength
+  //	 , const int irun, const int itype, const int eseq);
+
+  virtual int prepare_next() = 0;
+  virtual int prepare_next( const int, const int) = 0;
+  virtual void set_event_type(const int);
 
   // subevent adding
-  int addSubevent(const int etype, daq_device *);
+  virtual int addSubevent(const int etype, daq_device *) =0;
 
 protected:
 

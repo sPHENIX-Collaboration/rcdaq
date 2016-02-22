@@ -30,7 +30,6 @@ public:
   int put_data(const int etype, int * adr, const int length);
 
 private:
-  subevtdata_ptr sevt;
   int m_eventType;
   int m_subeventid;
   std::string filename;

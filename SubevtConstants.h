@@ -11,6 +11,7 @@
 
 // the header length value
 #define SEVTHEADERLENGTH 4
+#define PRDFHEADERLENGTH 6
 
 
 

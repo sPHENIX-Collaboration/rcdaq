@@ -1,3 +1,6 @@
+
+#define WRITEPRDF
+
 #include <pthread.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -278,15 +281,28 @@ int daq_setmaxbuffersize (const int n_kb, std::ostream& os)
 
 int daq_setadaptivebuffering (const int usecs, std::ostream& os)
 {
-
   adaptivebuffering = usecs;
   return 0;
-
 }
 
+// this call is for later when we offer the
+// option at run-time 
+int daq_setEventFormat(const int f)
+{
+  int status =  Buffer1.setEventFormat(f);
+  status |= Buffer2.setEventFormat(f);
+  return status;
+}
 
+// this is a method for the devices to obtain
+// the info which format we are writing
+ 
+int daq_getEventFormat()
+{
+  return Buffer1.getEventFormat();
+}
 
-
+// elog server setup
 int daq_set_eloghandler( const char *host, const int port, const char *logname)
 {
 
@@ -1217,6 +1233,12 @@ int rcdaq_init( pthread_mutex_t &M)
 
   fillBuffer = &Buffer1;
   transportBuffer = &Buffer2;
+
+#ifdef WRITEPRDF
+  Buffer1.setEventFormat(DAQPRDFFORMAT);
+  Buffer2.setEventFormat(DAQPRDFFORMAT);
+#endif
+
 
   // set up the monitoring port
 
