@@ -499,7 +499,7 @@ This is just to show that the next event has different (random) numbers.
 
 \section{Making the commands more convenient}
 
-We have so far used the ``long'' versions of each rdaq command, such as
+We have so far used the ``long'' versions of each rcdaq command, such as
 
 \begin{verbatim}
 $ rcdaq_client daq_begin 1
@@ -757,7 +757,7 @@ The most prominent pseudo devices are
   an arbitrary command.  This way, you can trigger actions at certain
   times.  {\bf You must not call rcdaq\_client commands from the
     command, as this leads to a deadlock.} As a convenience, rcdaq
-  defines a number of environmental variables to the process execting
+  defines a number of environmental variables to the process executing
   the command, which make it easier for a script to obtain dynamic
   information. The variables defined are \label{environment}
   \begin{description}
@@ -1534,7 +1534,7 @@ so many words, no matter what the contents of the packet payload are.
 
 \subsection{Adding a webcam picture to a packet}
 
-In this setup we use with a detector that gets positioned with a step
+In this setup we use a detector that gets positioned with a step
 motor. While we save the motor positions in the begin-run event, it is
 nice to have a visual confirmation that the detector is in the right
 place. To get this, we add a webcam picture to the begin-run
@@ -1542,8 +1542,47 @@ event. The webcam looks at the detector with a ruler in the
 background, so you get a rough verification that the detector at least
 moves in the right direction.
 
-We use the \verb|streamer| utility to capture a webcam frame, and then copy
-the resulting jpeg file to the packet 915:
+While there are many ways to get a webcam picture, the most flexible
+solution is to run the ``\verb|motion|'' utility on the
+system. \verb|motion| is a surveillance tool designed to monitor a
+video stream and record video whenever \emph{motion} is detected in
+the feed, where motion can be defined in a highly flexible manner. In
+addition, the utility provides a web interface to a live video stream,
+and has the ability to take snapshots in predefined intervals
+independent of detected motion in the picture. All streams and
+pictures carry a time stamp.
+
+I usually adjust the threshold for motion recognition rather high so
+no actual video gets recorded, although that of course depends on the
+setup. The sequence of snapshot files later provides a rough
+timeline of events if needed. The web interface allows to remotely
+monitor the camera at any time. For getting a picture from the camera,
+I provide a simple perl script in the distribution which reads the web
+live stream and extracts and saves one frame.
+
+The script is called ``\verb|motion_cam_parse.pl|'' and takes the URL
+of the webcam feed as an argument. Assuming that motion runs on the
+local machine and the live feed appears on the standard port 8081, we can
+get one picture:
+
+\begin{verbatim}
+motion_cam_parse.pl http://localhost:8081 > cam_picture.jpg
+\end{verbatim}
+
+I usually wrap this into a shell script ``\verb|capture_picture.sh|'':
+
+\begin{verbatim}
+#! /bin/sh
+# this captures a picture to the provided filename,
+# or cam_picture.jpg
+
+FILE="$1"
+[ -z "$FILE" ] && FILE=cam_picture.jpg
+motion_cam_parse.pl > "$FILE"
+
+\end{verbatim}
+
+and then we configure rcdaq as follows:
 
 \begin{verbatim} 
 #! /bin/sh
@@ -1553,25 +1592,26 @@ B=`basename "$0"`
 MYSELF="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 rcdaq_client create_device device_file 9 900 "$MYSELF"
 
-rcdaq_client create_device device_command 9 0 "streamer -o pic.jpeg"
-rcdaq_client create_device device_file 9 915 pic.jpeg 50000
+# add the camera picture
+rcdaq_client create_device device_command 9 0 "/home/eic/capture_picture.sh /home/eic/cam_picture.jpg"
+rcdaq_client create_device device_file_delete 9 940 /home/eic/cam_picture.jpg
+
 # .. lines deleted...
 \end{verbatim}
 
-At each begin of a run, the command \verb|streamer -o pic.jpeg| is executed,
-making a new file with a picture of the current detector position. 
-
+We use \verb|device_file_delete| so it is impossible to add a stale
+picture if there is a problem getting the current one.
 
 \subsection{The GEM Detector Readout at the FermiLab Test Beam, February 2014}
 
 This setup is building on the previous example in the sense that 
 we are adding a lot of configuration information and two camera 
-snapshots to the begin-run event. We also have 4 different run types defined.
+snapshots to the begin-run event. We also have 5 different run types defined.
 
 First, we let the main RCDAQ configuration script figure out if there
 is a \verb|rcdaq_server| running by issuing a \verb|daq_status|
-command. If that fails, we need to start the server. At this point,
-we also define the Elog wherabouts. 
+command and testing its return status. If that fails, we need to start
+the server. At this point, we also define the Elog wherabouts.
 
 \begin{verbatim} 
 #! /bin/sh
@@ -1875,10 +1915,24 @@ ChannelDCOffset:
   0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00  0x8f00
 \end{verbatim}
 
+This pretty much covers the entire configuration space of the device.
 
+The other device you can define is \verb|device_CAENdrs_std|, which is
+a no-frills standard configuration. It can also be adjusted by using
+\verb|device_CAENdrs| and \verb|caen_client|, but for a novice user it
+provides a guaranted-to-work way to configure the device. This device
+will not obey the \verb|caen_client| changes but re-set everything to
+its defual tlits at each begin-run. It takes a NIM signal on the
+trigger line, and adjusts the offsets to a range of $\pm 500$\,mV.
 
+The syntax is 
 
- 
+\begin{verbatim}
+device_CAENdrs_std evttype  subid  trigger  speed  delay
+\end{verbatim}
+
+where "trigger" means whether or not the devices provides the system triggr. 
+
 
 \end{document}
 
