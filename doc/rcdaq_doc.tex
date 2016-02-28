@@ -14,7 +14,6 @@
 \usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{wrapfig}
-
 \makeatletter
 \def\verbatim{\footnotesize\@verbatim \frenchspacing\@vobeyspaces \@xverbatim}
 \makeatother
@@ -29,7 +28,16 @@
 
 \tableofcontents
 
+\newpage
+
 \section{Changelog}
+
+\subsection{February 28, 2016}
+\begin{itemize}
+\item expanded the chapter~\ref{installation} with many more details
+  and step-by-step instructions
+\item  added a chapter about the PSI DRS4 evaluation board 
+\end{itemize}
 
 \subsection{August 27, 2015}
 \begin{itemize}
@@ -44,6 +52,8 @@
   resulting process, usually a script, can use the variables to obtain important
   information it might need. See page~\pageref{environment}.
 \end{itemize}
+
+\newpage
 
 \section{Introduction}
 
@@ -272,6 +282,7 @@ the RPC protocol is able to traverse the routers and firewalls.
 
 
 \section{Running RCDAQ}
+\label{running}
 
 Let's take RCDAQ for a quick spin. RCDAQ knows a built-in ``pseudo
 device'' which pretends to be reading out some kind of ADC or TDC,
@@ -498,6 +509,7 @@ This is just to show that the next event has different (random) numbers.
 
 
 \section{Making the commands more convenient}
+\label{convenience}
 
 We have so far used the ``long'' versions of each rcdaq command, such as
 
@@ -1757,14 +1769,15 @@ was at the right position.
 \section{Installation}
 
 \subsection{Installing the software}
+\label{installation}
 
 The installation is rather straightforward. You put the rcdaq
 distribution in a good place in your file system, make a ``build'' and
-an ``install'' directory, and buld in the standard way. In this
+an ``install'' directory, and build in the standard way. In this
 example, I have the distribution in the
 \verb|/home/purschke/softwarerepo| area. In there is the rcdaq
 directory, as well as any rcdaq plugin distribution you may need (I
-have built the ``srs'' plugin here, as well as the
+also have built the ``srs'' plugin here, as well as the
 online\_distribution, which we need for the analysis and monitoring
 packages).
 
@@ -1772,14 +1785,14 @@ packages).
 $ pwd
 /home/purschke/softwarerepo
 $  ls
-build  install  online_distribution rcdaq  srs
+build  install  online_distribution rcdaq srs
 \end{verbatim}
 
 In the build area, I make matching directories to build each package in:
 
 \begin{verbatim} 
 $ ls build/
-online_distribution  rcdac srs
+online_distribution  rcdaq srs
 \end{verbatim}
 
 I then cd to the build/rcdaq area, and execute 
@@ -1787,16 +1800,6 @@ I then cd to the build/rcdaq area, and execute
 \begin{verbatim} 
 $ cd build/rcdaq
 $ ../../rcdaq/autogen.sh  --prefix=/home/purschke/softwarerepo/install
-$ make install
-\end{verbatim}
-
-The installation of the srs plugin follows the same recipe:
-
-\begin{verbatim} 
-$ cd ../srs
-$ pwd
-/home/purschke/softwarerepo/build/srs
-$ ../../srs/autogen.sh  --prefix=/home/purschke/softwarerepo/install
 $ make install
 \end{verbatim}
 
@@ -1812,6 +1815,53 @@ $ pwd
 $ ../../online_distribution/simple_install.sh /home/purschke/softwarerepo/install
 \end{verbatim}
  
+{\bf Important:} You need to define an environmental variable
+\verb|ONLINE_MAIN| to point to the installation area (in this example
+here, to \verb|/home/purschke/softwarerepo/install|):
+
+\begin{verbatim} 
+$ export ONLINE_DISTRIBUTION=/home/purschke/softwarerepo/install
+\end{verbatim}
+
+or, should you still be using a csh-derivative:
+
+\begin{verbatim} 
+$ setenv ONLINE_DISTRIBUTION /home/purschke/softwarerepo/install
+\end{verbatim}
+
+Then you should add (or define as) \verb|$ONLINE_MAIN/lib| to
+\verb|LD_LIBRARY_PATH|, and add \verb|$ONLINE_MAIN/bin| to your PATH.
+
+Here is my \verb|$HOME/.bash_login| file:
+
+\begin{verbatim} 
+export ONLINE_MAIN=/home/purschke/softwarerepo/install
+PATH=$PATH:$ONLINE_MAIN/bin
+export LD_LIBRARY_PATH=$ONLINE_MAIN/lib
+source $ONLINE_MAIN/bin/aliases.sh
+\end{verbatim}
+
+Check first if your system already defines a
+\verb|LD_LIBRARY_PATH|. You can find this out by issuing
+\verb|echo $LD_LIBRARY_PATH| \emph{before} you modify your login
+file. Sometimes this is done if other custom packages are
+installed. In that case, you want to append to it, and the
+second last line becomes
+
+\begin{verbatim} 
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ONLINE_MAIN/lib
+\end{verbatim}
+
+The very last line 
+\begin{verbatim} 
+source $ONLINE_MAIN/bin/aliases.sh
+\end{verbatim}
+
+sets up the aliases that make your commands more convenient. See
+chapter~\ref{convenience} for the details. 
+
+
+
 \subsection{System Requirements}
 
 RCDAQ runs without special privileges. The only system service it
@@ -1854,26 +1904,191 @@ OPTIONS="-i"
 
 \section{Currently Implemented Readout Devices}
 
-\subsection{The CAEN DRS4 1742V System}
+\subsection{The PSI DRS4 Evaluation Board}
+\label{instructions}
 
+The DRS4 chip is a switched capacitor array capable of sampling at a
+speed of up to 5\,Gigasamples/s. This device supports sampling rates
+of 0.7, 1, 2, and 5\,GS/s. 
 
-The CAEN V1742 module, shown in Fig.~\ref{caen1742v}, is one of the more complex modules implemented
-in RCDAQ. At its core, it has 4 DRS4 chips inside, providing 32 primary input
-channels, plus one ``side'' channel per chip. Two of those can be used to digitize the 
-NIM input signal if so desired. 
+The PSI DRS4 evaluation board is one of the workhorse systems in small
+setups. It offers 4 waveform digitizing channels with sample rates of
+up to 5GS/s. Since it is a USB-based device, it can be run on
+virtually any Linux system without the need for special
+interfaces. Fig.~\ref{drsevalboard} shows pictures of the board.
 
+This is the only device implemented in RCDAQ so far that is capable of
+being read out with a Raspberry Pi. RCDAQ will work on a Pi just fine,
+but most of the other readout devices will not be supported. The DRS4
+evaluation board is the exception. I have personally used the board
+with a Pi for a long-term cosmic calibration measurement, where I
+didn't want to commit a more powerful PC to acquire the data.
+
+To start, you need to make sure that your system has all the libraries
+needed to interface with the DRS4 evaluation board in the first
+place. Follow the instructions on the PSI website what to install and
+configure.  You should be able to run the \verb|drsosc|
+``oscilloscope'' application, shown in Fig.~\ref{drsosc}, on your
+system \emph{before} you start with RCDAQ.
 
 \begin{figure}
   \centering
-  \includegraphics[angle=90,width=0.8\columnwidth]{1742v.jpg}
-  \caption{\label{caen1742v}The CAEN V1742 module.}
+  \includegraphics[width=0.4\columnwidth]{drsfront.jpg}
+  \includegraphics[width=0.4\columnwidth]{drsback.jpg}
+  \caption{\label{drsevalboard}The PSI DRS4 Evaluation Board.}
 \end{figure}
 
+The installation of the plugin follows the recipe outlined in
+chapter~\ref{installation} exactly. Go back to the place where you
+already installed RCDAQ, in my example from above
+\verb|/home/purschke/softwarerepo|. Then get the software:
 
-The DRS4 chip is a switched capacitor array capable of sampling at a
-speed of up to 5\,Gigasamples/s. Sample rates of 1, 2.5, and 5\,GS/s
-are adjustable. This device has a large configuration space, with many
-registers that allow a customized setup for many different purposes. 
+\begin{verbatim}
+wget -O - http://www.phenix.bnl.gov/~purschke/rcdaq/drs4.tar.gz | tar xvz
+\end{verbatim}
+
+and you will have a new directory ``drs4''. Now go to your build area,
+\verb|/home/purschke/softwarerepo/build| in the example, make a new directory ``drs4'',
+and configure:
+
+\begin{verbatim} 
+$ pwd 
+  /home/purschke/softwarerepo/build 
+$ mkdir drs4 
+$ cd drs4 
+$ ../../drs4/autogen.sh --prefix=/home/purschke/softwarerepo/install 
+$ make install
+\end{verbatim}
+
+This will install \verb|librcdaqplugin_drs.so| in your
+\verb|$ONLINE_MAIN/lib| area, which is the plugin that teaches RCDAQ how
+to read the Evaluation Board.
+
+This is the way how you install every other plugin as well, just
+replace the name accordingly.
+
+You can now load the plugin, and see the effect with the
+\verb|daq_status -ll| command:
+
+{\footnotesize 
+\begin{verbatim}
+$ rcdaq_client load librcdaqplugin_drs.so
+$ daq_status -ll
+Stopped
+Logging enabled
+have a trigger object
+Filerule:     rcdaq-%08d-%04d.evt
+Buffer Sizes:     1032 KB adaptive buffering: 15 s
+Elog:  localhost RCDAQLog Port 666
+ -- defined Run Types:  (none)
+List of loaded Plugins:
+ - DRS Plugin, provides -
+ -     device_drs (evttype, subid, triggerchannel, triggerthreshold[mV], slope[n/p], delay[ns], speed) - DRS4 Eval Board
+\end{verbatim}
+}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.95\columnwidth]{drsosc.png}
+  \caption{\label{drsosc}A screenshot of the drsosc application. Make
+    sure that you can sucessfully run this application before you
+    start setting up RCDAQ.}
+\end{figure}
+
+The only slightly complicated setting is the \verb|triggerchannel|
+parameter, which is a bit-mapped value. You will usually see some
+value such as \verb|0x21| here. The 5 least significant bits denote
+the 4 inputs and the external trigger as triggers for the board.
+
+Keep in mind that there are two different triggers here -- one is
+triggering the board itself, and the other is whether or not this
+board also provides the system trigger for RCDAQ (see
+chapter~\ref{running} for the explanation). So bits 0-4 switch on or
+off the 5 possible sources of board triggers, and bit 5 says if this
+board generates the system trigger. So \verb|0x21| -- bits 0 and 5 are
+set -- saying that channel 1 triggers the board, and the board also
+makes the system trigger. \verb|0x30| means the system trigger, and
+the external trigger triggers the board. Keep in mind that if you
+choose to \emph{not} make the system trigger here, you need another
+device to do that; you will not get any events else.
+
+There is another speciality in the standard Linux parameter
+parsing that you need to think of and which is shown in this setup
+example:
+
+\begin{verbatim}
+rcdaq_client create_device device_drs -- 1 1001 0x21 -150 negative 438 2
+\end{verbatim}
+
+Since we need to prevent the parser from interpreting the \verb|-150|
+as options ( -1, -5, -0), you need to tell it to stop the option
+parsing with the the ``double-dash'' -- \verb|--|. This is standard
+Unix shell behavior, but you need to remember that.
+
+The above line sets the board up to trigger on channel 1, negative trigger
+with a -150\,mV threshold, an internal delay of 438 ticks (that's how
+far we ``look back'' in the waveform before the trigger), and 2GS/s
+speed. The final ``2'' parameter happens to mean 2GS/s, but this
+parameter is enumerated:
+
+\begin{center}
+\begin{tabular}{|c|c|}
+\hline
+parameter & speed \\
+\hline
+\hline
+    0 & 700\,MS/s  \\ \hline
+    1 & 1\,GS/s   \\ \hline
+    2 & 2\,GS/s   \\ \hline
+    3 & 5\,GS/s   \\ \hline
+\end{tabular}
+\end{center}
+
+By the way: The way I derive the delay and speed parameters is to run
+\verb|drsosc|, adjust everything the way I want it, and then
+transcribe the parameters from \verb|drsosc| to the setup command. If
+you look at Fig.~\ref{drsosc}, you will see that I used the same
+settings (2\,GS/s and a delay of 438 ticks) in the setup example
+above.
+
+There are two more ``hidden'' parameters which assume default values
+when omitted.  The above setup command is equivalent to
+
+\begin{verbatim}
+rcdaq_client create_device device_drs -- 1 1001 0x21 -150 negative 438 2 0 1024
+\end{verbatim}
+
+where the last two parameters mean ``start channel'' and ``number of
+samples''. Setting the former to a non-zero value will cut out the
+early part of the waveform. I \emph{strongly} advise against using
+this parameter, since this will actually slow down your system as it
+involves copying the desired part of the waveform to the right place.
+You can virtually always accomplish the same by adjusting the delay
+value (or delaying the hardware trigger). It is here more
+out of a sense of completeness.
+
+With the ``number of samples'' parameter you can cut out the later
+part of the waveform. For example, if your signal is confined to the
+first 250 samples in you waveform, you can store just those first 250
+samples. This will \emph{only} save storage space and not gain any
+readout speed, since we still need to read the full waveform and only
+discard the unwanted tail end. Different from discarding the front
+part, the tail end can be discarded without an expensive copy
+operation.
+
+
+\subsection{The CAEN DRS4 1742V System}
+
+
+The CAEN V1742 module, shown in Fig.~\ref{caen1742v}, is one of the
+more complex modules implemented in RCDAQ. At its core, it has 4 DRS4
+chips inside, providing 32 primary input channels, plus one ``side''
+channel per chip. Two of those can be used to digitize the NIM input
+signal if so desired.
+
+Different from the evaluation board, it supports sampling speeds of 1,
+2.5, and 5\,GS/s.
+
 
 The assorted RCDAQ plugin, \verb|librcdaqplugin_CAENdrs.so|, provides
 two different devices to readout the V1742. One, called
@@ -1888,6 +2103,13 @@ matter. Still, in this way one can set up any conveivable trigger
 mode, readout length, sample, rate, and so on, essentially any
 configuration parameter. Here is a list of parameters that the \verb|caen_client|
 utility can set and read:
+
+\begin{figure}
+  \centering
+  \includegraphics[angle=90,width=0.8\columnwidth]{1742v.jpg}
+  \caption{\label{caen1742v}The CAEN V1742 module.}
+\end{figure}
+
 
 \begin{verbatim}
 $ caen_client status
@@ -1931,7 +2153,8 @@ The syntax is
 device_CAENdrs_std evttype  subid  trigger  speed  delay
 \end{verbatim}
 
-where "trigger" means whether or not the devices provides the system triggr. 
+where "trigger" means whether or not the device provides the system trigger. 
+
 
 
 \end{document}
