@@ -779,9 +779,9 @@ The most prominent pseudo devices are
     
   \item[DAQ\_STARTTIME] The starttime of the run as a Unix timestamp value
     
-  \item[DAQ\_FILENAME] The current file name. If logging is nor
+  \item[DAQ\_FILENAME] The current file name. If logging is not
     enabled, this variable will be empty. In this way you can find out
-    we are logging.
+    if we are logging.
     
   \item[DAQ\_ELOGHOST, DAQ\_ELOGPORT, DAQ\_ELOGLOGBOOK] the coordinates
     of the elog server. This allows you to add or edit elog entries
@@ -1220,7 +1220,7 @@ rcdaq_client daq_setrunnumberfile $HOME/.last_rcdaq_runnumber.txt
 
 \item[daq\_set\_maxbuffersize n\_KB] Adjust the size of buffers to n
   KB. With the advent of ``adaptive buffering'' (next command), this
-  can largely be ignored. RCDAQ knows up front how large an event an
+  can largely be ignored. RCDAQ knows up front how large an event can
   become, worst case (if zero-suppression yields no savings etc). The
   DAQ is filling a memory buffer which holds many events; this is
   largely a storage-technology concept and generally invisible to
@@ -1509,7 +1509,7 @@ speed test, but here is how it works.
 Let me first show how to actually generate artificial deadtime. At the
 time I write this at the FermiLab Test Beam Facility, it is unclear if
 we will need this for the benefit of a MWPC, which may be able run at
-ony 100Hz (remains to be seen). Then we would add, say, 150 microseconds
+only 100Hz (remains to be seen). Then we would add, say, 150 microseconds
 deadtime:
 
 \begin{verbatim}
@@ -1565,7 +1565,7 @@ independent of detected motion in the picture. All streams and
 pictures carry a time stamp.
 
 I usually adjust the threshold for motion recognition rather high so
-no actual video gets recorded, although that of course depends on the
+no actual video gets recorded, although that of course depends on your
 setup. The sequence of snapshot files later provides a rough
 timeline of events if needed. The web interface allows to remotely
 monitor the camera at any time. For getting a picture from the camera,
@@ -1678,7 +1678,7 @@ most of the relevant setup parameters from the SRS crate and writes it to the fi
 \item it makes a similar snapshot from a permanently mounted overhead camera as ``\verb|overhead_snapshot.jpg|''.
 \end{itemize}
 
-\item we then add the \verb|apv.txt|'' file as packet 910;
+\item we then add the ``\verb|apv.txt|'' file as packet 910;
 \item we add ``\verb|current_position.txt|'' as packet 940; 
 \item we add ``\verb|snapshot.jpg|'' as packet 941;
 \item and we add ``\verb|overhead_snapshot.jpg|'' as packet 942.
@@ -1918,11 +1918,12 @@ virtually any Linux system without the need for special
 interfaces. Fig.~\ref{drsevalboard} shows pictures of the board.
 
 This is the only device implemented in RCDAQ so far that is capable of
-being read out with a Raspberry Pi. RCDAQ will work on a Pi just fine,
-but most of the other readout devices will not be supported. The DRS4
-evaluation board is the exception. I have personally used the board
-with a Pi for a long-term cosmic calibration measurement, where I
-didn't want to commit a more powerful PC to acquire the data.
+being read out with a Raspberry Pi. The RCDAQ core will work on a Pi
+just fine, but most of the other readout devices will not be
+supported. The DRS4 evaluation board is the exception. I have
+personally used the board with a Pi for a long-term cosmic calibration
+measurement, where I didn't want to commit a more powerful PC to
+acquire the data.
 
 To start, you need to make sure that your system has all the libraries
 needed to interface with the DRS4 evaluation board in the first
@@ -2006,7 +2007,7 @@ board also provides the system trigger for RCDAQ (see
 chapter~\ref{running} for the explanation). So bits 0-4 switch on or
 off the 5 possible sources of board triggers, and bit 5 says if this
 board generates the system trigger. So \verb|0x21| -- bits 0 and 5 are
-set -- saying that channel 1 triggers the board, and the board also
+set -- is saying that channel 1 triggers the board, and the board also
 makes the system trigger. \verb|0x30| means the system trigger, and
 the external trigger triggers the board. Keep in mind that if you
 choose to \emph{not} make the system trigger here, you need another
@@ -2069,12 +2070,12 @@ out of a sense of completeness.
 
 With the ``number of samples'' parameter you can cut out the later
 part of the waveform. For example, if your signal is confined to the
-first 250 samples in you waveform, you can store just those first 250
+first 250 samples in your waveform, you can store just those first 250
 samples. This will \emph{only} save storage space and not gain any
-readout speed, since we still need to read the full waveform and only
-discard the unwanted tail end. Different from discarding the front
-part, the tail end can be discarded without an expensive copy
-operation.
+significant readout speed, since we still need to read the full
+waveform and only discard the unwanted tail end. Different from
+discarding the front part, the tail end can be discarded without an
+expensive copy operation.
 
 
 \subsection{The CAEN DRS4 1742V System}
@@ -2094,12 +2095,12 @@ The assorted RCDAQ plugin, \verb|librcdaqplugin_CAENdrs.so|, provides
 two different devices to readout the V1742. One, called
 \verb|device_CAENdrs|, uses the preconfigured V1742 as-is, without
 changing any ``non-essential'' registers. This device makes the full
-phase space available that the V1742 has to offer. It comes with a
+configuration space available that the V1742 has to offer. It comes with a
 companion utility \verb|caen_client|, which can be used to adjust any
 available register as needed. I said ``non-essential'' registers,
 because RCDAQ still sets up the registers that govern the actual
 readout the way it needs it; there is not much choice in that
-matter. Still, in this way one can set up any conveivable trigger
+matter. Still, in this way one can set up any conceivable trigger
 mode, readout length, sample, rate, and so on, essentially any
 configuration parameter. Here is a list of parameters that the \verb|caen_client|
 utility can set and read:
@@ -2144,7 +2145,7 @@ a no-frills standard configuration. It can also be adjusted by using
 \verb|device_CAENdrs| and \verb|caen_client|, but for a novice user it
 provides a guaranted-to-work way to configure the device. This device
 will not obey the \verb|caen_client| changes but re-set everything to
-its defual tlits at each begin-run. It takes a NIM signal on the
+its defaults at each begin-run. It takes a NIM signal on the
 trigger line, and adjusts the offsets to a range of $\pm 500$\,mV.
 
 The syntax is 
