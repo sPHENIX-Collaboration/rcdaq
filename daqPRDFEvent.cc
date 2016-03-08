@@ -56,8 +56,8 @@ int daqPRDFEvent::prepare_next( const int evtseq, const int irun)
       evthdr->run_number=irun;
     }
   // if > 0, adjust the run number, else just keep it.
-  evthdr->date = 0;
-  evthdr->time = time(0);
+  evthdr->date = time(0);
+  evthdr->time = -1;
   evthdr->reserved[0] = 0;
   evthdr->reserved[1] = 0;
 

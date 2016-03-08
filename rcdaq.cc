@@ -27,9 +27,14 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <netpacket/packet.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 #include <vector>
 #include <map>
+#include <queue>
+
+
 
 #include "getopt.h"
 
@@ -44,8 +49,12 @@
 pthread_mutex_t WriteSem;
 pthread_mutex_t WriteProtectSem;
 
+pthread_mutex_t MonitoringRequestSem;
 pthread_mutex_t SendSem;
 pthread_mutex_t SendProtectSem;
+
+pthread_mutex_t FdManagementSem;
+
 
 pthread_mutex_t TriggerSem;
 pthread_mutex_t TriggerDone;
@@ -135,7 +144,6 @@ pthread_mutex_t M_cout;
 
 
 struct sockaddr_in si_mine;
-int MonitoringSocket;
 
 #define MONITORINGPORT 9930
 
@@ -320,6 +328,68 @@ int daq_set_eloghandler( const char *host, const int port, const char *logname)
 
 
 
+int readn (int fd, char *ptr, const int nbytes)
+{
+  // in the interest of having just one "writen" call,
+  // we determine if the file descriptor we got is a socket
+  // (then we use send() ) or a file ( then we use write() ).  
+  struct stat statbuf;
+  fstat(fd, &statbuf);
+  int fd_is_socket = 0;
+  if ( S_ISSOCK(statbuf.st_mode) ) fd_is_socket = 1;
+
+  int nread, nleft;
+  nleft = nbytes;
+  while ( nleft>0 )
+    {
+      if ( fd_is_socket) nread = recv (fd, ptr, nleft, MSG_NOSIGNAL);
+      else nread = read (fd, ptr, nleft);
+
+      if ( nread <= 0 ) 
+	{
+	  return nread;
+	}
+
+      nleft -= nread;
+      ptr += nread;
+    }
+
+  return (nbytes-nleft);
+}
+
+
+int writen (int fd, char *ptr, const int nbytes)
+{
+
+  // in the interest of having just one "writen" call,
+  // we determine if the file descriptor we got is a socket
+  // (then we use send() ) or a file ( then we use write() ).  
+  struct stat statbuf;
+  fstat(fd, &statbuf);
+  int fd_is_socket = 0;
+  if ( S_ISSOCK(statbuf.st_mode) ) fd_is_socket = 1;
+
+  int nleft, nwritten;
+  nleft = nbytes;
+  while ( nleft>0 )
+    {
+      nwritten = 0;
+
+      if ( fd_is_socket)  nwritten = send (fd, ptr, nleft, MSG_NOSIGNAL);
+      else  nwritten = write (fd, ptr, nleft);
+	  
+      if ( nwritten <0 )
+	{
+	  perror ("writen");
+	  return 0;
+	}
+      
+      nleft -= nwritten;
+      ptr += nwritten;
+    }
+  return (nbytes-nleft);
+}
+
 
 
 //-------------------------------------------------------------
@@ -368,81 +438,186 @@ void *shutdown_thread (void *arg)
 }
 
 
+// this thread is watching for incoming requests for
+// monitoring data
+
+std::queue<int> fd_queue;  // this queue holds the monitoring requests 
+
+
+void *monitorRequestwatcher_thread (void *arg)
+{
+
+  struct sockaddr_in server_addr;
+  int sockfd;
+  
+  if ( (sockfd = socket(PF_INET, SOCK_STREAM, 0)) < 0 ) 
+    {
+      pthread_mutex_lock(&M_cout);
+      cout  << "cannot create socket" << endl;
+      pthread_mutex_unlock(&M_cout);
+    }
+
+  bzero( (char*)&server_addr, sizeof(server_addr));
+  server_addr.sin_family = PF_INET;
+  server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  server_addr.sin_port = htons(MONITORINGPORT);
+
+
+  int status = bind(sockfd, (struct sockaddr*) &server_addr, sizeof(server_addr));
+  if (status < 0)
+    {
+      perror("bind");
+    }
+	
+  pthread_mutex_lock(&M_cout);
+  cout  << "Listening for monitoring requests on port " << MONITORINGPORT << endl;
+  pthread_mutex_unlock(&M_cout);
+
+  listen(sockfd, 16);
+
+  int connection = 0;
+
+  int dd_fd;
+  struct sockaddr_in out;
+
+  while (sockfd > 0)
+    {
+
+      socklen_t  len = sizeof(out); 
+      dd_fd = accept(sockfd,  (struct sockaddr *) &out, &len);
+      if ( dd_fd < 0 ) 
+	{
+	  pthread_mutex_lock(&M_cout);			
+	  cout  << "error in accept socket" << endl;
+	  pthread_mutex_unlock(&M_cout);
+	}
+      else
+	{
+	  char *host = new char[64]; 
+	  
+	  getnameinfo((struct sockaddr *) &out, sizeof(struct sockaddr_in), host, 64,
+		      NULL, 0, NI_NOFQDN); 
+	  
+	  // time_t x =  time(0);
+	  // pthread_mutex_lock(&M_cout);
+	  // cout << ctime(&x) << "new request for monitoring connection accepted from " << host << endl;
+	  // pthread_mutex_unlock(&M_cout);
+
+	  pthread_mutex_lock(&FdManagementSem);
+	  fd_queue.push(dd_fd);
+	  pthread_mutex_unlock(&FdManagementSem);
+	  
+	  //kick off "the sender of monitoring data" thread
+	  pthread_mutex_unlock(&MonitoringRequestSem);
+	}
+    }
+}
+
+void handler ( int sig)
+{
+  //pthread_mutex_lock(&M_cout);
+  // cout  << " in handler..." << endl;
+  //pthread_mutex_unlock(&M_cout);
+  pthread_mutex_unlock(&SendProtectSem);
+}  
+
 void *sendMonitorData( void *arg)
 {
 
-  fd_set read_flag;
-  struct timeval tv;
-
-  static int requestid  = 0;
-
+  int fd;
+  int status;
+  
   while (1)
     {
+      // we wait here until a monitoring request comes
+      //pthread_mutex_lock(&MonitoringRequestSem);
 
-      pthread_mutex_lock( &SendSem); // we wait for an unlock
+      // when we get here, there are requestst. Now wait for a buffer
+      // to be available:
 
       // pthread_mutex_lock(&M_cout);
-      // cout << "buffer ready  signal " << endl;
+      // cout <<  "  locking SendSem " << endl;
       // pthread_mutex_unlock(&M_cout);
 
+      pthread_mutex_lock( &SendSem);
 
-      FD_ZERO(&read_flag); 
-      FD_SET(MonitoringSocket, &read_flag);
+      // struct sigaction act;
+      // act.sa_handler = handler;
+      // sigemptyset(&act.sa_mask);
+      // act.sa_flags = 0;
+      // sigaction(SIGPIPE, &act, 0);
 
-      tv.tv_sec = 0;
-      tv.tv_usec= 0;
-
-      int flag;
-  
-      struct sockaddr_in si_remote;
-      socklen_t slen = sizeof(si_remote);
-
-      int retval = select(MonitoringSocket+1, &read_flag, NULL, NULL, &tv);
-      if ( retval >0) 
+      // Now we go through all requests in the queue
+      while ( !fd_queue.empty() )
 	{
-	  requestid++;
-	  if (recvfrom(MonitoringSocket, &flag, sizeof(flag)
-		       , 0, (sockaddr *) &si_remote, &slen)==-1)
+	  // now we are manipulating the queue. To do that, we need to
+	  // lock-protect this:
+	  
+	  // pthread_mutex_lock(&M_cout);
+	  // cout <<  "  locking FdManagementSem " << endl;
+	  // pthread_mutex_unlock(&M_cout);
+
+	  pthread_mutex_lock(&FdManagementSem);
+	  fd = fd_queue.front();
+	  fd_queue.pop();
+
+	  // pthread_mutex_lock(&M_cout);
+	  // cout <<  "  unlocking FdManagementSem " << endl;
+	  // pthread_mutex_unlock(&M_cout);
+
+	  pthread_mutex_unlock(&FdManagementSem);
+
+	  int max_length =0;
+	  	  
+	  // we always wait for a controlword which tells us what to do next.
+	  if ( (status = readn (fd, (char *) &max_length, 4) ) <= 0)
 	    {
-	      pthread_mutex_lock(&M_cout);
-	      cout << "error receiving the monitor request, req id = " << requestid << endl;
-	      pthread_mutex_unlock(&M_cout);
-	      
+	      // pthread_mutex_lock(&M_cout);
+	      // time_t x =  time(0);
+	      // cout << ctime(&x) << "  connection was broken for fd  " << fd << endl;
+	      // pthread_mutex_unlock(&M_cout);
+	      max_length = 0;
 	    }
 	  else
 	    {
+	      max_length = ntohl(max_length);
 	      // pthread_mutex_lock(&M_cout);
-	      // cout << "monitor data request from "
-	      // 	   << inet_ntoa ( si_remote.sin_addr ) 
-	      // 	   << "  reqvalue= " << flag << " req id " << requestid << endl;
+	      // cout  << " max requested length = " << max_length << endl;
 	      // pthread_mutex_unlock(&M_cout);
 
-	      transportBuffer->sendData(MonitoringSocket, &si_remote);
+	      status = transportBuffer->sendData(fd, max_length);
 
 	      // pthread_mutex_lock(&M_cout);
-	      // cout << "monitor data sent " << endl;
+	      // cout  << " senddata reurn = " << status << endl;
 	      // pthread_mutex_unlock(&M_cout);
-
 	      
+	      int reply;
+	      if ( ! status && ( status = readn (fd, (char *) &reply, 4) ) <= 0)
+		{
+		  // pthread_mutex_lock(&M_cout);
+		  // time_t x =  time(0);
+		  // cout << ctime(&x) << "  connection was broken for fd  " << fd << endl;
+		  // pthread_mutex_unlock(&M_cout);
+		}
+	      else
+		{
+		  // reply = ntohl(reply);
+		  // pthread_mutex_lock(&M_cout);
+		  // cout  << " reply = " << reply << endl;
+		  // pthread_mutex_unlock(&M_cout);
+		}
 	    }
+	  close(fd);
 	}
-      // else
-      // 	{
-      // 	  pthread_mutex_lock(&M_cout);
-      // 	  cout << "no current monitor data request" << endl;
-      // 	  pthread_mutex_unlock(&M_cout);
-      // 	}
-      
       // pthread_mutex_lock(&M_cout);
-      // cout << "releasing semaphore " << endl;
+      // cout <<  "  unlocking SendProtectSem " << endl;
       // pthread_mutex_unlock(&M_cout);
 
       pthread_mutex_unlock(&SendProtectSem);
       if ( end_thread) pthread_exit(0);
+
     }
-
 }
-
 
 void *writebuffers ( void * arg)
 {
@@ -463,15 +638,6 @@ void *writebuffers ( void * arg)
 	  BytesInThisRun += bytecount;
 	}
 
-      if (verbose >1)
-	{
-	  pthread_mutex_lock(&M_cout);
-	  //	  cout << __LINE__ << "  " << __FILE__ << " write thread has written  " <<  BytesInThisRun << endl;
-	  pthread_mutex_unlock(&M_cout);
-	}
-      
-      //      sendMonitorData();
-      
       if ( end_thread) pthread_exit(0);
       
       pthread_mutex_unlock(&WriteProtectSem);
@@ -514,7 +680,7 @@ int daq_set_runnumberfile(const char *file)
   if (fp > 0)
     {
       fscanf(fp, "%d", &r);
-      cout << "runnumber read " << r << endl;      
+      //cout << "runnumber read " << r << endl;      
       if ( ! TheRun )
 	{
 	  TheRun = r;
@@ -712,7 +878,7 @@ int daq_begin(const int irun, std::ostream& os)
 	     << transportBuffer->getMaxSize()/1024 << endl;
 	  return -1;
 	}
-      os << " Buffer size increased to " << transportBuffer->getMaxSize()/1024 << " KB"<< endl;
+      //      os << " Buffer size increased to " << transportBuffer->getMaxSize()/1024 << " KB"<< endl;
       
     }
 
@@ -898,10 +1064,10 @@ void * EventLoop( void *arg)
 		{
 		case DAQ_READ:
 		  Daq_Status |= DAQ_READING;
-		  //		      cout << __LINE__ << "  " << __FILE__ << " reading out..." << endl;
+
 		  int rstatus = readout(CurrentEventType);
 		  Daq_Status ^= DAQ_READING;
-		  // cout << __LINE__ << "  " << __FILE__ << " done" << endl;
+
 
 		  rearm(DATAEVENT);
 		      
@@ -1208,14 +1374,18 @@ int rcdaq_init( pthread_mutex_t &M)
   pthread_mutex_init( &WriteSem, 0);
   pthread_mutex_init( &WriteProtectSem, 0);
 
+  
+  pthread_mutex_init( &MonitoringRequestSem, 0);
   pthread_mutex_init( &SendSem, 0);
   pthread_mutex_init( &SendProtectSem, 0);
+  pthread_mutex_init( &FdManagementSem,0);
 
   pthread_mutex_init( &TriggerSem, 0);
   pthread_mutex_init( &TriggerDone, 0);
   pthread_mutex_init( &TriggerLoop, 0);
 
   // pre-lock them except the "protect" ones
+  pthread_mutex_lock( &MonitoringRequestSem);
   pthread_mutex_lock( &WriteSem);
   pthread_mutex_lock( &SendSem);
 
@@ -1240,33 +1410,6 @@ int rcdaq_init( pthread_mutex_t &M)
 #endif
 
 
-  // set up the monitoring port
-
-  if ((MonitoringSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
-    {
-      cout << "Error opening the monitoring socket" << endl;
-    }
-  else
-    {
-
-      memset((char *) &si_mine, 0, sizeof(si_mine));
-      si_mine.sin_family = AF_INET;
-      si_mine.sin_port = htons(MONITORINGPORT);
-      si_mine.sin_addr.s_addr = htonl(INADDR_ANY);
-      
-      if ( bind(MonitoringSocket, (sockaddr *)&si_mine, sizeof(si_mine))==-1)
-	{
-	  cout << "Error binding the monitoring socket" << endl;
-	  close ( MonitoringSocket);
-	  MonitoringSocket = -1;
-	  return -1;
-	}
-      cout << "Monitoring socket " << MonitoringSocket << " opened" << endl;
-
-    }
-
-
-
   status = pthread_create(&ThreadId, NULL, 
 			  writebuffers, 
 			  (void *) 0);
@@ -1286,8 +1429,7 @@ int rcdaq_init( pthread_mutex_t &M)
   status = pthread_create(&ThreadMon, NULL, 
 			  sendMonitorData, 
 			  (void *) 0);
-   
-  if (status ) 
+     if (status ) 
     {
       cout << "error in send monitor data thread create " << status << endl;
       exit(0);
@@ -1296,6 +1438,21 @@ int rcdaq_init( pthread_mutex_t &M)
     {
       pthread_mutex_lock(&M_cout); 
       cout << "monitor thread created" << endl;
+      pthread_mutex_unlock(&M_cout);
+    }
+   
+  status = pthread_create(&ThreadMon, NULL, 
+			  monitorRequestwatcher_thread, 
+			  (void *) 0);
+     if (status ) 
+    {
+      cout << "error in send monitor data thread create " << status << endl;
+      exit(0);
+    }
+  else
+    {
+      pthread_mutex_lock(&M_cout); 
+      cout << "monitor request thread created" << endl;
       pthread_mutex_unlock(&M_cout);
     }
    

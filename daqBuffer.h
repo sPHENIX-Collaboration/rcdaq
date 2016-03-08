@@ -11,6 +11,8 @@
 #define DAQONCSFORMAT 0
 #define DAQPRDFFORMAT 1
 
+#define PRDFBUFFERHEADER 0xffffffc0;
+#define ONCSBUFFERHEADER 0xffffc0c0;
 
 class daqBuffer {
 
@@ -38,8 +40,7 @@ public:
   unsigned int writeout ( int fd);
 
   // now the "send monitor data" routine
-  unsigned int sendData ( int fd, struct sockaddr_in *si_remote);
-
+  unsigned int sendData ( int fd, const int max_length);
 
   // now the re-sizing of buffer
   int setMaxSize( const int size);
@@ -56,9 +57,6 @@ public:
 
 
 protected:
-
-  static unsigned int writen (int fd, char *ptr, const unsigned int nbytes);
-
 
   typedef struct 
   { 
@@ -79,6 +77,9 @@ protected:
   int current_etype;
   int has_end;
   int format;
+
+  int currentBufferID;
+  
 };
 
 #endif
