@@ -24,6 +24,19 @@ D=`dirname "$0"`
 B=`basename "$0"`
 MYSELF="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 
+# we figure out if a server is already running
+if ! rcdaq_client daq_status > /dev/null 2>&1 ; then
+
+    echo "No rcdaq_server running, starting... log goes to $HOME/rcdaq.log"
+    rcdaq_server > $HOME/rcdaq.log 2>&1 &
+    sleep 2
+
+    # see if we have an elog command (ok, this is a weak test but 
+    # at least it tells us that elog is installed.)
+    ELOG=$(which elog 2>/dev/null)
+    [ -n "$ELOG" ]  && rcdaq_client elog localhost 666 RCDAQLog
+
+fi
 
 # remember this is an executable script. We
 # have the full power of a shell script at our
@@ -37,21 +50,14 @@ rcdaq_client create_device device_file 9 900 "$MYSELF"
 # make the first randown device trigger enabled
 rcdaq_client create_device device_random 1 1001 64 0 4096 1
 rcdaq_client create_device device_random 1 1002 32 0 2048
-# we add some articicial deadtime to slow down a bit
-rcdaq_client create_device device_deadtime 1 0 50000
 
-# see if we have an elog command (ok, this is a weak test but 
-# at least it tells us that elog is installed.)
-# we still need to supply the elog server whereabouts
+# we add some artificial deadtime to slow down a bit
+rcdaq_client create_device device_deadtime 1 0 20000
 
 rcdaq_client daq_list_readlist
-
-rcdaq_client daq_set_maxbuffersize 16
 rcdaq_client daq_status -l
 
 
-ELOG=$(which elog 2>/dev/null)
-[ -n "$ELOG" ]  && rcdaq_client elog localhost 666 RCDAQLog
 
 
 
