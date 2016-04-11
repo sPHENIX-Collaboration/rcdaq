@@ -66,7 +66,7 @@ int daq_device_filenumbers::put_data(const int etype, int * adr, const int lengt
       // update id's etc
       sevt->sub_id =  m_subeventid;
       sevt->sub_type=4;
-      sevt->sub_decoding = ID4EVT;
+      sevt->sub_decoding = 30000 + ID4EVT;
       
       unsigned int data;
       
@@ -102,7 +102,7 @@ int daq_device_filenumbers::put_data(const int etype, int * adr, const int lengt
       return  sevt->sub_length;
     }
 
-  else
+  else // the good format
     {
       sevt =  (subevtdata_ptr) adr;
       // set the initial subevent length
@@ -111,7 +111,7 @@ int daq_device_filenumbers::put_data(const int etype, int * adr, const int lengt
       // update id's etc
       sevt->sub_id =  m_subeventid;
       sevt->sub_type=4;
-      sevt->sub_decoding = 30000 + ID4EVT;
+      sevt->sub_decoding = ID4EVT;
       sevt->reserved[0] = 0;
       sevt->reserved[1] = 0;
       
