@@ -14,7 +14,7 @@ public:
   daq_device_file (const int eventtype,
 		   const int subeventid, const char * fn,
 		   const int delete_flag = 0,
-		   const int maxlength = 256*1024);
+		   const int maxlength = 4*1024);
 
 
 

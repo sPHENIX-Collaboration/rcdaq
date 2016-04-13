@@ -253,9 +253,9 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 
       if ( db->npar >= 5) 
 	{
-	  // we give the size in bytes but we want it in words 
-	  int s = (get_value(db->argv4)+3)/4;
-	  if ( s < 256*1024) s = 256*1024;    // this is the default size
+	  // we give the size in kbytes but we want it in words 
+	  int s = 1024*(get_value(db->argv4)+3)/4;
+	  if ( s < 4*1024) s = 4*1024;    // this is the default size
 	  add_readoutdevice ( new daq_device_file( eventtype,
 						   subid,
 						   db->argv3,
@@ -283,9 +283,9 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 
       if ( db->npar >= 5) 
 	{
-	  // we give the size in bytes but we want it in words 
-	  int s = (get_value(db->argv4)+3)/4;
-	  if ( s < 256*1024) s = 256*1024;    // this is the default size
+	  // we give the size in kbytes but we want it in words 
+	  int s = 1024*(get_value(db->argv4)+3)/4;
+	  if ( s < 4*1024) s = 4*1024;    // this is the default size
 	  add_readoutdevice ( new daq_device_file( eventtype,
 						   subid,
 						   db->argv3,
@@ -316,12 +316,14 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 
       if ( db->npar >= 5) 
 	{
+	  int s = 1024*(get_value(db->argv4)+3)/4;
+	  if ( s < 256) s = 256;    // this is the default size
 
 	  add_readoutdevice ( new daq_device_filenumbers( eventtype,
 							  subid,
 							  db->argv3,
 							  0,  // no delete
-							  get_value(db->argv4)));
+							  s));
 	  return &result;
 	}
       else 
@@ -345,12 +347,14 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 
       if ( db->npar >= 5) 
 	{
+	  int s = 1024*(get_value(db->argv4)+3)/4;
+	  if ( s < 256) s = 256;    // this is the default size
 
 	  add_readoutdevice ( new daq_device_filenumbers( eventtype,
 							  subid,
 							  db->argv3,
 							  1,  // we add the delete flag
-							  get_value(db->argv4)));
+							  s));
 	  return &result;
 	}
       else 
