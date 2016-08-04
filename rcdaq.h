@@ -69,4 +69,17 @@ int daq_set_eloghandler( const char *host, const int port, const char *logname);
 
 int daq_load_plugin( const char *sharedlib, std::ostream& os);
 
+
+// functions for the webserver
+
+int daq_webcontrol(const int port,std::ostream& os = std::cout );
+
+
+int get_runnumber();
+int get_eventnumber();
+double get_runvolume();
+int get_runduration();
+int get_openflag();
+
+
 #endif

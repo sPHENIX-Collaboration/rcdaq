@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<head>
+   <title>RCDAQ Controls</title>
+
+<style>
+    body {
+	font-family: sans-serif;
+    }
+
+   
+table {
+    width: 50%;
+    height: 30px;
+    border: 3px solid #CCCC99;
+    cellpadding: 8;
+}
+
+   td {
+       width: 100px;
+       height: 30px;
+       border: 1px solid #CCCC99;
+       text-align:center;
+       vertical-align:middle;
+   }
+
+input {
+    width: 99%;
+    height: 30px;
+    background-color: #33CCCC;
+    font-size: 100%;
+
+}
+
+</style>
+
+
+<script>
+
+var webSocket; 
+
+// global flags 
+var ServerWasDeadFlag = false;
+var OpenDisabledFlag = false;
+
+// color definitions
+
+var StandardColor        = "#cccc00";
+var StandardColor2       = "#00CC99";
+var BorderColor          = "#CCCC99";
+var ButtonBgColor        = "#33CCCC";
+
+
+var RunInactiveColor     = "#CCCCCC";
+var RunActiveColor       = "#F5D88B"; // orange-ish
+
+var LoggingDisabledColor     = "#CCCCCC";
+var LoggingEnabledColor      = RunActiveColor;
+
+var ServerDeadColor      = "#F93D5C";
+var ButtonInactiveColor  = "#666666";
+
+
+
+function init(flag)
+{
+    
+    initial_update();
+
+    webSocket = new WebSocket("ws://"+location.host);
+    webSocket.onerror = function(e) {
+	alert("Websocket error "+e.data);
+    }
+    webSocket.onmessage = wsReceive;
+    if (flag)
+    {
+	send_updates();
+    }
+}
+
+function wsReceive(e)
+{
+    full_parse(e.data);
+    
+//    var o = JSON.parse(e.data);
+//    var k = o.RunNr;
+    
+//    document.getElementById("RunNr").style.backgroundColor    = (k == 1) ? "red" : "green";
+//    document.getElementById("RunNr").textContent=k;
+    //document.getElementById("Events").textContent=k-1;
+    // alert("Value "+ k);
+    
+}
+
+function full_parse(j)
+{
+
+    //console.log(" j.length " + j.length);
+    if ( j.length == 0)
+    {
+	return;
+    }
+    
+//    console.log(j);
+    var o  = JSON.parse(j);
+//    document.getElementById("Events").textContent=o.Events;
+
+    list = Object.keys(o);
+    var i;
+    for ( i = 0; i < list.length; i++)
+    {
+	//	console.log(list[i] + "  " + o[list[i]]);
+	if ( list[i] == "OpenFlag")
+	{
+	    if ( o[list[i]] == 1 ) 
+	    {
+		document.getElementById("OpenButton").value = "Close";
+		document.getElementById("Logging").style.backgroundColor    = LoggingEnabledColor;
+	    }
+	    else
+	    {
+		document.getElementById("OpenButton").value = "Open";
+		document.getElementById("Logging").style.backgroundColor    = LoggingDisabledColor;
+	    }
+	}
+	else if ( list[i] == "RunFlag")
+	{
+	    if ( o[list[i]] == 1 ) 
+	    {
+		// we dim the open/close button since it's going inactive
+		document.getElementById("OpenButton").style.backgroundColor    = ButtonInactiveColor;
+		// we re-color the status field
+		document.getElementById("Status").style.backgroundColor    = RunActiveColor;
+		// console.log("setting RunActiveColor");
+		// and we change the text to "end"
+		document.getElementById("BeginButton").value = "End";
+		
+	    }
+	    else
+	    {
+		// we un-dim the open/close button since it's active again
+		document.getElementById("OpenButton").style.backgroundColor    = ButtonBgColor;
+		// we re-color the status field
+		document.getElementById("Status").style.backgroundColor    = RunInactiveColor;
+		//console.log("setting RunInactiveColor");
+		// and we change the text to "Begin"
+		document.getElementById("BeginButton").value = "Begin";
+	    }
+	}
+		
+	if ( document.getElementById(list[i]) )
+	{
+		document.getElementById(list[i]).textContent=o[list[i]];
+	}
+    }
+}
+
+function initial_update()
+{
+    var uri = "initial_update";
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function()
+    {
+    // 	alert(" readystate " + xhttp.readyState + " " + xhttp.status);
+     	if (xhttp.readyState == 4 && xhttp.status == 200)
+     	{
+	    //console.log(" response " + xhttp.responseText);
+     	    full_parse(xhttp.responseText);
+     	}
+      };
+
+//    xhttp.open("POST", uri, false);
+//    xhttp.send("htmlResponse received&delay=3");
+    xhttp.open("get", uri, true);
+    xhttp.send();
+}
+
+
+function send_updates()
+{
+    var uri = "send_updates";
+    var xhttp = new XMLHttpRequest();
+    xhttp.onerror = function()
+    {
+	//console.log("error");
+	ServerWasDeadFlag = true;
+
+	document.getElementById("Status").textContent="RCDAQ not running";
+	document.getElementById("Status").style.backgroundColor = ServerDeadColor;
+	
+	document.getElementById("RunNr").textContent="n/a";
+	document.getElementById("Events").textContent="n/a";
+	document.getElementById("Volume").textContent="n/a";
+	document.getElementById("Logging").textContent=" ";
+	setTimeout(send_updates, 2000);
+    };
+    
+    xhttp.onreadystatechange = function()
+    {
+     	if (xhttp.readyState == 4 && xhttp.status == 200)
+     	{
+	    if ( ServerWasDeadFlag )
+	    {
+		//console.log(" reconnecting to server");
+		ServerWasDeadFlag = false;
+		init(false);
+	    }
+	    //console.log(" response " + xhttp.responseText);
+     	    full_parse(xhttp.responseText);
+	    var t = setTimeout(send_updates, 2000);
+     	}
+    };
+
+    xhttp.open("get", uri, true);
+    xhttp.send();
+}
+
+function OpenHandler()
+{
+    //console.log("in OpenHandler");
+    if ( OpenDisabledFlag)
+    {
+	return;
+    }
+    var uri = "daq_open";
+    var xhttp = new XMLHttpRequest();
+
+    xhttp.onreadystatechange = function()
+    {
+     	if (xhttp.readyState == 4 && xhttp.status == 200)
+     	{
+	  //  console.log(" response " + xhttp.responseText);
+     	    full_parse(xhttp.responseText);
+     	}
+      };
+    
+    xhttp.open("GET", uri, true);
+    xhttp.send();
+}
+
+function RunHandler()
+{
+    //console.log("in RunHandler");
+		     
+    var uri = "daq_begin";
+    var xhttp = new XMLHttpRequest();
+
+    xhttp.onreadystatechange = function()
+    {
+     	if (xhttp.readyState == 4 && xhttp.status == 200)
+     	{
+	    //console.log(" response " + xhttp.responseText);
+	    full_parse(xhttp.responseText);
+     	}
+      };
+
+
+    xhttp.open("GET", uri, true);
+    xhttp.send();
+}
+
+
+
+Event.observe(window, "load", init(true) );
+
+
+</script>
+</head>
+
+<body>
+
+
+<TABLE>
+
+<tr BGCOLOR="#cccc00">
+<td colspan="2" style="width:100%; height:45px;font-size:140%;">RCDAQ Control</td>
+</tr>
+
+<tr BGCOLOR="#cc9900">
+<td id="Status" colspan="2" style="width:100%" BGCOLOR="#cc9900"> Not Running</td>
+</tr>
+
+<tr BGCOLOR="#00cc99">
+<td colspan="1" style="width:50%">Run:
+<td id="RunNr"></td>
+</tr>
+
+<tr BGCOLOR="#00cc99">
+<td colspan="1" style="width:50%">Events:
+<td id="Events"></td>
+</tr>
+
+<tr BGCOLOR="#00cc99">
+<td colspan="1" style="width:50%">Volume:
+<td id="Volume">0 MB</td>
+</tr>
+
+<tr BGCOLOR="#00cc99">
+<td id="Logging" colspan="2" style="width:100%"></td>
+</tr>
+
+
+<tr>
+    <td colspan="2" style="width:100%" BGCOLOR="#33BBBB">  <input type="button" value="Open" onClick="OpenHandler()" BGCOLOR="#33CCCC" id="OpenButton"></td>
+</tr>
+
+<tr>
+    <td colspan="2" style="width:100%" BGCOLOR="#33BBBB">  <input type="button" value="Begin" onClick="RunHandler()" BGCOLOR="#33CCCC" id="BeginButton"></td>
+<tr/>
+
+
+</table>
+</body>

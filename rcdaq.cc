@@ -129,12 +129,15 @@ int Event_number;
 
 int TriggerControl = 0;
 
+int ThePort=8080;
+
 daqBuffer  *fillBuffer, *transportBuffer;
 
 pthread_t ThreadId;
 pthread_t ThreadMon;
 pthread_t ThreadEvt;
 pthread_t ThreadTrigger;
+pthread_t ThreadWeb = 0;
 
 int *thread_arg;
 
@@ -148,6 +151,8 @@ struct sockaddr_in si_mine;
 #define MONITORINGPORT 9930
 
 void * daq_triggerloop (void * arg);
+void * mg_server (void *arg);
+int mg_end();
 
 
 devicevector DeviceList;
@@ -1473,8 +1478,41 @@ int rcdaq_init( pthread_mutex_t &M)
     }
    
 
+
+
+
+
+
+  
   return 0;
 }
+
+int get_runnumber()
+{
+  if ( ! Daq_Status & DAQ_RUNNING ) return -1; 
+  return TheRun;
+}
+int get_eventnumber()
+{
+  if ( ! Daq_Status & DAQ_RUNNING ) return 0; 
+  return Event_number;
+}
+double get_runvolume()
+{
+  if ( ! Daq_Status & DAQ_RUNNING ) return 0; 
+  double v = run_volume;
+  return v / (1024*1024);
+}
+int get_runduration()
+{
+  if ( ! Daq_Status & DAQ_RUNNING ) return 0; 
+  return time(0) - StartTime;
+}
+int get_openflag()
+{
+  return daq_open_flag;
+}
+
 
 int daq_status (const int flag, std::ostream& os)
 {
@@ -1577,6 +1615,43 @@ int daq_status (const int flag, std::ostream& os)
     }
 
   return 0;
+}
+
+int daq_webcontrol(const int port, std::ostream& os)
+{
+
+  if (  port ==0)
+    {
+      ThePort=8080;
+    }
+  else
+    {
+      ThePort = port;
+    }
+
+  if ( ThreadWeb) // we had this thing running already 
+    {
+      mg_end();
+      pthread_join(ThreadWeb, NULL);
+      ThreadWeb = 0;
+    }
+  
+  int status = pthread_create(&ThreadWeb, NULL, 
+			  mg_server, 
+			  (void *) &ThePort);
+   
+  if (status ) 
+    {
+      os << "error in web service creation " << status << endl;
+      return -1;
+    }
+  else
+    {
+      os << "web service created" << endl;
+      return 0;
+    }
+  return 0;
+
 }
 
 int daq_running()

@@ -21,6 +21,8 @@ allsources = \
   daq_device_command.cc \
   rcdaq.cc \
   daqBuffer.cc \
+  rcdaq_mg_server.cc \
+  mongoose.cc \
   daq_device.cc 
 
 
@@ -41,6 +43,7 @@ noinst_HEADERS = \
   daq_device_file.h \
   daq_device_filenumbers.h \
   daq_device_command.h \
+  mongoose.h \
   all.h
 
 include_HEADERS =  \
@@ -52,7 +55,8 @@ include_HEADERS =  \
   rcdaq_plugin.h \
   parseargument.h
 
-
+htmldir = $(datadir)/html
+html_DATA = control.html
 
 RPCGEN = rpcgen
 
@@ -77,7 +81,12 @@ librcdaq_la_SOURCES = rcdaq.cc \
   daq_device_command.cc \
   daqBuffer.cc \
   daq_device.cc \
+  rcdaq_mg_server.cc \
+  mongoose.cc \
   parseargument.cc
+
+
+librcdaq_la_CPPFLAGS = -DHTMLFILE=\"$(html_DATA)\" -DHTMLDIR=\"$(htmldir)\"
 
 librcdaqutils_la_SOURCES =  parseargument.cc
 

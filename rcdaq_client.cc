@@ -67,6 +67,9 @@ void showHelp()
 
   std::cout << "   daq_set_maxbuffersize n_KB           adjust the size of buffers written to n KB" << std::endl;
   std::cout << "   daq_set_adaptivebuffering seconds    enable adaptive buffering at n seconds (0 = off)" << std::endl;
+  std::cout << std::endl; 
+  std::cout << "   daq_webcontrol <port number>         restart web controls on a new port (default 8080)" << std::endl;
+  std::cout << std::endl; 
   std::cout << "   elog elog-server port                specify coordinates for an Elog server" << std::endl;
   std::cout << std::endl; 
   std::cout << "   daq_shutdown                         terminate the rcdaq backend" << std::endl;
@@ -496,6 +499,26 @@ int command_execute( int argc, char **argv)
  
     }
 
+  else if ( strcasecmp(command,"daq_webcontrol") == 0)
+    {
+
+      ab.action = DAQ_WEBCONTROL;
+      if ( argc == optind + 2)
+	{
+	  ab.ipar[0] = get_value(argv[optind + 1]);
+	}
+      else
+	{
+	  ab.ipar[0] = 0;
+	}
+      r = r_action_1 (&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
 
   else if ( strcasecmp(command,"elog") == 0)
     {
