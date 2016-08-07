@@ -1492,6 +1492,12 @@ int get_runnumber()
   if ( ! Daq_Status & DAQ_RUNNING ) return -1; 
   return TheRun;
 }
+
+int get_oldrunnumber()  // like get_runnumber, but doesn't return -1 when stopped
+{
+  return TheRun;
+}
+
 int get_eventnumber()
 {
   if ( ! Daq_Status & DAQ_RUNNING ) return 0; 

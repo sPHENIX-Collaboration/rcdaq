@@ -76,6 +76,7 @@ int daq_webcontrol(const int port,std::ostream& os = std::cout );
 
 
 int get_runnumber();
+int get_oldrunnumber();
 int get_eventnumber();
 double get_runvolume();
 int get_runduration();

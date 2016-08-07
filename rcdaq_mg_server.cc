@@ -29,11 +29,11 @@ std::string get_statusstring()
   stringstream out;
   if ( daq_running())
     {
-      out << "Running for " << get_runduration() << "s";
+      out << "Running for " << get_runduration() << "s" << ends;
     }
   else
     {
-      out << "Not running";
+      out << "Stopped Run " << get_oldrunnumber() << ends;
     }
   return out.str();
 }
@@ -108,7 +108,7 @@ void send_status (struct mg_connection *nc, std::string out)
   x<< endl;
   
   out.replace(out.find(x.str()),x.str().length(),"");
-  cout << __FILE__ << " " << __LINE__ << " " << out << endl;
+  //cout << __FILE__ << " " << __LINE__ << " " << out << endl;
 
 
   
@@ -210,7 +210,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	 
 	 else if ( mg_vcmp ( &hm->uri, "/daq_open") == 0)
 	   {
-	     cout << __FILE__ << " " << __LINE__ << " daq_open request" << endl;
+	     //    cout << __FILE__ << " " << __LINE__ << " daq_open request" << endl;
 	     if ( get_openflag() )
 	       {
 		 daq_close();
