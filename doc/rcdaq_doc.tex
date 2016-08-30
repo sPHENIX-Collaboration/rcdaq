@@ -4,7 +4,7 @@
 %
 %-------------------------------------------------------------------
 \parindent 0pt
-\parskip 0.45ex
+\parskip 0.75ex
 \renewcommand{\baselinestretch}{1.03}
 \renewcommand{\topfraction}{0.9}
 \renewcommand{\textfraction}{0.01}
@@ -14,9 +14,13 @@
 \usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{wrapfig}
+\usepackage{color}
 \makeatletter
 \def\verbatim{\footnotesize\@verbatim \frenchspacing\@vobeyspaces \@xverbatim}
 \makeatother
+
+\definecolor{darkred}{rgb}{0.6,0.2,0}
+
 
 \begin{document}
 
@@ -31,6 +35,11 @@
 \newpage
 
 \section{Changelog}
+
+\subsection{August 30, 2016}
+\begin{itemize}
+\item Added documentation about the newly implemented web-based controls. 
+\end{itemize}
 
 \subsection{February 28, 2016}
 \begin{itemize}
@@ -148,12 +157,12 @@ was read out.
 \subsection{What? No configuration files?}
 In my opinion, the above-mentioned fact that there are no
 configuration files, only scripts, is one of the most versatile
-features of this DAQ system. \emph{Each} instruction is a seperate command
+features of this DAQ system. \emph{Each} instruction is a separate command
 executed on the shell. Besides the facts that you do not need to learn
 a new command interpreter, have loops, conditions, etc, at your
 fingertips, the most important feature is that you are not trapped
 within the always limited command set of an application. You can freely 
-interleave rcdaq commands with other shell commands, and so write 
+interleave RCDAQ commands with other shell commands, and so write 
 a scripted data acquisition protocol tailored to your needs.
 
 To the best of my knowledge, a group from the Physics Department at
@@ -168,7 +177,7 @@ The group came up with a script that would loop through the pads,
 \emph{reading} the pad coordinates and other commands to the operator
 by way of a text-to-speech program (festival), so the operator was
 free to keep the eyes (and the probe) on the plane at all times. This
-is possible because you never leave the shell to interact with rcdaq. 
+is possible because you never leave the shell to interact with RCDAQ. 
 
 
 \section{Data Format Basics}
@@ -213,7 +222,7 @@ times, usually to make the data more compact by improving the
 bit-packing of data, or by removing redundancy in the data which was
 initially needed to test and certify the data integrity. Packets with
 data in such a different format are simply tagged with a different
-hitfomat number, which in turn selects a different decoding
+hitformat number, which in turn selects a different decoding
 algorithm. Your analysis code is never exposed to those internals. In
 this way we are free to change the FEM data formats without ever
 breaking existing analysis code.
@@ -260,7 +269,7 @@ The rcdaq main process is formally a server running in the
 background. It writes a very modest amount of output to a log file,
 but does not accept any kind of input directly.
 
-All control is performed by clients connecting to the rcdaq process
+All control is performed by clients connecting to the RCDAQ process
 and instructing it to perform a particular task, such as loading a
 plugin, start or stop taking data, setting parameters, and the
 like. The underlying protocol is a \emph{Remote Procedure Call} (RPC),
@@ -290,9 +299,22 @@ except that it fills in some random numbers. I made this ``device'' in
 order to allow to test-drive RCDAQ without the need for any actual
 acquisition hardware.
 
+\vskip 3mm
+\begin{minipage}[c]{0.1\linewidth}
+{\Huge\color{darkred}{\fontencoding{U}\fontfamily{futs}\selectfont\char 116\relax}}
+\end{minipage}
+\begin{minipage}[c]{0.9\linewidth}
+I provide a guaranteed-to-work setup script ``\verb|setup.sh|'' with
+the RCDAQ source code. It exercises a number of features that will be
+presented in the next chapters. It uses the pseudo devices we will see
+in a minute. This script allows you to test the proper working of a
+RCDAQ installation.
+\end{minipage}
+\vskip 3mm
+
 
 For now, get yourself two terminal windows on the machine that has
-RCDAQ installed. We will run the rcdaq server and clients
+RCDAQ installed. We will run the RCDAQ server and clients
 interactively. Later, you will likely run the actual server in the
 background that writes to a logfile.
 
@@ -461,7 +483,7 @@ details, let's run ``dlist'', which lists the packets found in a data
 event:
 
 \begin{verbatim}
-$ dlist -O -i rcdaq-00000003-0000.evt 
+$ dlist -i rcdaq-00000003-0000.evt 
  -- Event     2 Run:     3 length:    44 type:  1 (Data Event)  1363583279
 Packet  1001    36 -1 (ONCS Packet)  6 (ID4EVT)
 $
@@ -472,7 +494,7 @@ interpreted fashion. ddump is a versatile utility which allows to
 inspect the data in a myriad of ways. Here is one:
 
 \begin{verbatim}
-$ ddump -O -i rcdaq-00000003-0000.evt
+$ ddump -i rcdaq-00000003-0000.evt
  -- Event     2 Run:     3 length:    44 type:  1 (Data Event)  1363583279
 Packet  1001    36 -1 (ONCS Packet)  6 (ID4EVT)
 
@@ -490,7 +512,7 @@ $
 This says it is event number 2. We can look at event 3 with the ``-e 3'' switch:
 
 \begin{verbatim}
-$ ddump -O -i -e 3 rcdaq-00000003-0000.evt
+$ ddump  -i -e 3 rcdaq-00000003-0000.evt
  -- Event     3 Run:     3 length:    44 type:  1 (Data Event)  1363583279
 Packet  1001    36 -1 (ONCS Packet)  6 (ID4EVT)
 
@@ -561,6 +583,7 @@ alias daq_setrunnumberfile='rcdaq_client  daq_setrunnumberfile'
 alias daq_setruntype='rcdaq_client  daq_setruntype'
 alias daq_shutdown='rcdaq_client  daq_shutdown'
 alias daq_status='rcdaq_client  daq_status'
+alias daq_webcontrol='rcdaq_client daq_webcontrol'
 \end{verbatim}
 
 If you routinely use a specific account for rcdaq work, you should add the 
@@ -653,9 +676,9 @@ the data file we just took. dlist and dpipe, by default, only look at
 data events, and we have to explicitly ask to see special events:
 
 \begin{verbatim}
-$ dlist -O -i -t S rcdaq-00000003-0000.evt
+$ dlist  -i -t S rcdaq-00000003-0000.evt
  -- Event     1 Run:     3 length:     8 type:  9 (Begin Run Event)  1363583279
-$ dlist -O -i -t 12 rcdaq-00000003-0000.evt
+$ dlist -i -t 12 rcdaq-00000003-0000.evt
  -- Event 23125 Run:     3 length:     8 type: 12 (End Run Event)  1363583519
 $ 
 \end{verbatim}
@@ -750,7 +773,7 @@ The most prominent pseudo devices are
   readout of data events, and most events will not have the
   packet. But every few minutes, an external process, such as a cron
   job, could generate the file with the temperature information. It will
-  be added as a packet in the next event and subsquently deleted, so
+  be added as a packet in the next event and subsequently deleted, so
   it would be added to one event only. In this way you could track the
   temperature over time.
 
@@ -910,7 +933,7 @@ $
 If we now look what the begin-run event has, we see
 
 \begin{verbatim}
-$ dlist -O -i -t 9 rcdaq-00000004-0000.evt
+$ dlist -i -t 9 rcdaq-00000004-0000.evt
  -- Event     1 Run:     4 length:   324 type:  9 (Begin Run Event)  1363614653
 Packet   910   296 -1 (ONCS Packet)  4 (IDCSTR)
 Packet   911    20 -1 (ONCS Packet)  6 (ID4EVT)
@@ -924,7 +947,7 @@ numbers. Let's look inside:
 
 
 \begin{verbatim}
-$ ddump -O -i -t 9 -p 910 rcdaq-00000004-0000.evt
+$ ddump -i -t 9 -p 910 rcdaq-00000004-0000.evt
  -- Event     1 Run:     4 length:   324 type:  9 (Begin Run Event)  1363614653
 HV_BB_S-1                  1461   -1724.2 -1725.7 -2443.8  1     1    13
 HV_BB_S-2                  1461   -2057.4   -2059 -2578.3  1     1    13
@@ -942,7 +965,7 @@ HV_BB_N-5                  1461   -1492.8 -1493.2 -2107.1  1     1    13
 HV_BB_N-6                  1461   -2220.2 -2221.1 -2754.8  1     1    13
 HV_BB_N-7                  1461   -1998.8 -1999.2 -3192.7  1     1    13
 HV_BB_N-8                  1461   -1752.2 -1753.5 -2485.3  1     1    13
-$ ddump -O -t 9 -p 911 -g -d rcdaq-00000004-0000.evt
+$ ddump -t 9 -p 911 -g -d rcdaq-00000004-0000.evt
 Packet   911    20 -1 (ONCS Packet)  6 (ID4EVT)
 
     0 |     -172570    -205900    -181150    -222760    -217120    -156370 
@@ -1100,6 +1123,9 @@ The command \verb|rcdaq_client help| lists all available rcdaq commands:
    daq_setrunnumberfile file            define a file to maintain the current run number
    daq_set_maxbuffersize n_KB           adjust the size of buffers written to n KB
    daq_set_adaptivebuffering seconds    enable adaptive buffering at n seconds (0 = off)
+
+   daq_webcontrol <port number>         restart web controls on a new port (default 8080)
+
    elog elog-server port                specify coordinates for an Elog server
 
    daq_shutdown                         terminate the rcdaq backend
@@ -1170,7 +1196,7 @@ rcdaq_client daq_define_runtype junk         /data/rcdaq/junk/junk_%010d-%04d.ev
 and then quickly switch between them, making the data appear in the
 specified location. This allows you to keep, say, pedestal or
 calibration runs apart from actual beam runs, and have more meaningful
-filenames.  There is no practical limit to the number of such
+file names.  There is no practical limit to the number of such
 types. However, it is no more than a convenient shortcut to set file
 rules. You can still manually set a file rule which is different from
 any of the defines ones.
@@ -1242,9 +1268,13 @@ rcdaq_client daq_setrunnumberfile $HOME/.last_rcdaq_runnumber.txt
   solution for the above problem. By default, adaptive buffering is
   enabled and preset to 15 seconds.  A buffer is now flushed when it
   is either full or the time period has elapsed, and there are no more
-  rate-dependend adjustments. Unless there there is a specific reason,
+  rate-dependent adjustments. Unless there there is a specific reason,
   you should leave the adaptive buffering switched on. Setting the
   time to 0 disables adaptive buffering.
+
+\item[daq\_webcontrol port\_number ] Start the web-based controls on
+  the given port number (defaults to port 8080 if omitted). See
+  chapter~\ref{webcontrols} for details.
 
 \item[elog elog-server port logbook] Specify the whereabouts for an
   Elog server where rcdaq can make automated entries. 
@@ -1316,7 +1346,7 @@ rcdaq_status.pl &
 and get 
 
 \begin{center}
-\includegraphics[height=2in]{rcdaqstatus.png}
+\label{rcdaqstatus}\includegraphics[height=2in]{rcdaqstatus.png}
 \end{center}
 
 Since this is a completely passive GUI, you can also use it to display
@@ -1449,6 +1479,115 @@ this script is what you wanted:
 
 Once selected, you can then choose to execute the script, or cancel. 
 
+\section{Web-based Controls}
+\label{webcontrols}
+
+The GUIs shown in the previous chapter are based on the ``Tk''
+graphics widget set and are implemented in Perl. While extremely
+versatile, Perl-Tk is not readily available on every platform, and
+requires additional libraries to be installed. On several Linux
+flavors in widespread use, such as RedHat and Scientific Linux, Tk can
+be installed but is not part of the software management system, and
+needs to be installed from source. In addition, the Tk system requires
+the availability of the X11 graphics system, which eliminates all
+platforms that do no support X11, such as iPads and iPhones. On other
+platforms like Windows and most smart phones and tablets, the ``Tk''
+component is extremely difficult to install or is not available at
+all.
+
+Recent advances in web technologies have converted the web browser
+into a viable platform for slow controls, with the advantage that the
+underlying technologies are available in most modern browsers on
+virtually any platform, including smart phones and tablets.
+
+By adding a GUI technology that uses web-based controls, it is
+possible to implement the RCDAQ GUIs in a truly platform-independent
+fashion. This makes them available on platforms which could not
+support the GUIs before, such as smart phones, tablets, and even
+iPads, which have the most restrictive execution environment of all
+platforms.
+
+
+\subsection{The Web-based RCDAQ Control GUI}
+
+\begin{figure}[htb]
+  \begin{center}
+    \includegraphics[width=0.47\columnwidth]{webcontrol_idle.png}
+    \includegraphics[width=0.47\columnwidth]{webcontrol_running.png}
+    \includegraphics[width=0.47\columnwidth]{webcontrol_logging.png}
+    \includegraphics[width=0.47\columnwidth]{webcontrol_shutdown.png}
+  \end{center}
+  \caption{\label{webcontrol-idle}The new web-based control GUI for the RCDAQ system
+    in various states of the RCDAQ operation. The upper left shows the GUI in the idle state, 
+    then in the running state, while logging, and when the RCDAQ server has been shut down.}
+\end{figure}
+
+The web-based control interface acts like a web server running on the
+chosen port. Since the RCDAQ system cannot make any assumptions about
+port numbers available on your system, the web-based control interface
+cannot be brought up automatically at startup. The default port is
+8080, but you can choose any port number that is available on your
+system.
+
+You need to start the web control interface with the command
+\begin{verbatim}
+ rcdaq_client  daq_webcontrol <port number> 
+\end{verbatim}
+
+For example,
+\begin{verbatim}
+ rcdaq_client  daq_webcontrol
+\end{verbatim}
+starts the interface on the default port number 8080. You can then access the
+web-based controls on your local machine where RCDAQ is running as
+\begin{verbatim}
+ http://localhost:8080
+\end{verbatim}
+or on another system as
+\begin{verbatim}
+ http://your.daq.machine:8080
+\end{verbatim}
+
+It is highly recommended that you add the web control startup command 
+to your startup script.  
+
+\vskip 3mm
+\begin{minipage}[c]{0.1\linewidth}
+{\Huge\color{darkred}{\fontencoding{U}\fontfamily{futs}\selectfont\char 66\relax}}
+\end{minipage}
+\begin{minipage}[c]{0.9\linewidth}
+Keep in mind that RCDAQ is running without special privileges and
+cannot use any privileged ports such as the ``http'' port 80. If you
+use a port number different from the default, you \emph{must} use a
+non-privileged port higher than 1024, and it is recommended that you
+use a port number above 8000.
+\end{minipage}
+\vskip 3mm
+
+At this point in time, only the equivalent of the standard control GUI
+has been implemented as a web-based control. The web-based equivalent
+of the ``Status'' GUI, shown on page~\pageref{rcdaqstatus}, will be
+implemented in an upcoming version.
+
+Over time, the web controls will make it easy to add other amenities
+such as ready-made strip charts of the system performance, such as
+``events taken per minute'' or ``data volume as a function of time''.
+
+\begin{figure}[htb]
+  \begin{center}
+    \includegraphics[width=0.85\columnwidth]{android.png} 
+  \end{center}
+  \caption{\label{android}The new web-based controls for the RCDAQ system
+    running in the web browser on an Android phone.}
+\end{figure}
+
+To show the enhanced possibilities of the web-based controls,
+Fig.~\ref{android} shows a screen shot of the controls running in the
+browser on my Android phone. In the same way, it is now possible to
+run the controls on iPads and basically any platform with a modern web
+browser.
+
+
 \section{pmonitor, the Monitoring and Analysis Framework}
 
 Virtually all analysis of raw data in PHENIX takes place in a
@@ -1487,13 +1626,15 @@ code compiles and can be run, but doesn't do anything useful,
 obviously. The distribution ships with several examples which you can
 build and run with data taken with RCDAQ.
 
+
+
 \appendix
 
 \section{Examples}
 
 I show a few examples of real-life setups that were used in the past.
 
-I will expand on this chapter as time progesses.
+I will expand on this chapter as time progresses.
 
 \subsection{Running Speed Tests}
 
@@ -1714,7 +1855,7 @@ rcdaq_client create_device device_srs 1 1010 10.0.0.2 1
 And here is the composition of the begin-run event:
 
 \begin{verbatim} 
-$ dlist -O -i -t 9 beam_0000000451-0000.evt
+$ dlist -i -t 9 beam_0000000451-0000.evt
  -- Event     1 Run:   451 length: 17431 type:  9 (Begin Run Event)  1392306649
 Packet   900   614 -1 (ONCS Packet)  4 (IDCSTR)
 Packet   910   142 -1 (ONCS Packet)  4 (IDCSTR)
@@ -1727,7 +1868,7 @@ If we now want to find out the position of the turntable, we can have  a
 look at packet 940:
 
 \begin{verbatim} 
-$ ddump  -O  -t 9 -p 940  /media/psf/Home/srs/GEM/beam/beam_0000000472-0000.evt
+$ ddump -t 9 -p 940  /media/psf/Home/srs/GEM/beam/beam_0000000472-0000.evt
 -0000020
 $
 \end{verbatim} 
@@ -1737,7 +1878,7 @@ $
 Here is another run:
 
 \begin{verbatim} 
-$ ddump  -O  -t 9 -p 940  /media/psf/Home/srs/GEM/beam/beam_0000000474-0000.evt
+$ ddump  -t 9 -p 940  /media/psf/Home/srs/GEM/beam/beam_0000000474-0000.evt
 +0002380
 $ 
 \end{verbatim} 
@@ -1747,10 +1888,10 @@ which is at 2380 (+20) ticks (30 degrees).
 In case there seems something wrong, one can extract the webcam snapshots:
 
 \begin{verbatim} 
-$ ddump  -O  -t 9 -p 941 beam_0000000472-0000.evt > 472.jpg
-$ ddump  -O  -t 9 -p 942 beam_0000000472-0000.evt > 472_overhead.jpg
-$ ddump  -O  -t 9 -p 941 beam_0000000474-0000.evt > 474.jpg
-$ ddump  -O  -t 9 -p 942 beam_0000000474-0000.evt > 474_overhead.jpg
+$ ddump  -t 9 -p 941 beam_0000000472-0000.evt > 472.jpg
+$ ddump  -t 9 -p 942 beam_0000000472-0000.evt > 472_overhead.jpg
+$ ddump  -t 9 -p 941 beam_0000000474-0000.evt > 474.jpg
+$ ddump  -t 9 -p 942 beam_0000000474-0000.evt > 474_overhead.jpg
 \end{verbatim} 
 
 Here you can see these snapshots:
@@ -2013,7 +2154,7 @@ the external trigger triggers the board. Keep in mind that if you
 choose to \emph{not} make the system trigger here, you need another
 device to do that; you will not get any events else.
 
-There is another speciality in the standard Linux parameter
+There is another specialty in the standard Linux parameter
 parsing that you need to think of and which is shown in this setup
 example:
 
