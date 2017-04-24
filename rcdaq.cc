@@ -91,6 +91,7 @@ static std::string CurrentFilename = "";
 static std::string TheRunnumberfile = " ";
 static int RunnumberfileIsSet = 0;
 
+static std::string MyName = ""; 
 
 static int daq_open_flag = 0;  //no files written unless asked for
 static int file_is_open = 0;
@@ -129,7 +130,7 @@ int Event_number;
 
 int TriggerControl = 0;
 
-int ThePort=8080;
+int ThePort=8899;
 
 daqBuffer  *fillBuffer, *transportBuffer;
 
@@ -716,6 +717,16 @@ int daq_set_filerule(const char *rule)
   return 0;
 }
 
+int daq_set_name(const char *name)
+{
+  MyName = name; 
+  return 0;
+}
+
+
+
+
+
 // this is selecting from any of the existing run types 
 int daq_setruntype(const char *type, std::ostream& os )
 {
@@ -804,6 +815,16 @@ int daq_list_runtypes(const int flag, std::ostream& os)
   return 0;
 }    
 
+int daq_get_name (std::ostream& os )
+{
+  os << MyName << endl;
+  return 0;
+}
+
+std::string daq_get_myname()
+{
+  return MyName;
+}
 
 std::string& daq_get_filerule()
 {
@@ -1537,11 +1558,14 @@ int daq_status (const int flag, std::ostream& os)
 	     << v << " " 
 	     << daq_open_flag << " " 
 	     << get_current_filename() << " "
-	     << time(0) - StartTime << endl;
+	     << time(0) - StartTime
+	     << " \"" << MyName << "\"" << endl;
 	}
       else
 	{
-	  os << "-1 0 0 " << daq_open_flag << " 0 0" << endl;
+	  os << "-1 0 0 " << daq_open_flag << " 0 0"
+	     << " \"" << MyName << "\"" << endl;
+
 	}
       
       break;
@@ -1552,7 +1576,14 @@ int daq_status (const int flag, std::ostream& os)
 	  os << "Run " << TheRun  
 	     << " Event: " << Event_number 
 	     << " Volume: " << v;
-	  if ( daq_open_flag )  os << "  Logging enabled";
+	  if ( daq_open_flag )
+	    {
+	      os << "  Logging enabled";
+	    }
+	  else
+	    {
+	      os << "  Logging disabled";
+	    }	      
 	  os<< endl;
 	}
       else
@@ -1585,8 +1616,15 @@ int daq_status (const int flag, std::ostream& os)
       else
 	{
 	  os << "Stopped"  << endl;
-	  if ( daq_open_flag )  os << "Logging enabled"  << endl;
-
+	  if ( daq_open_flag )
+	    {
+	      os << "Logging enabled"  << endl;
+	    }
+	  else
+	    {
+	      os << "Logging disabled"  << endl;
+	    }
+	  
 	  if (max_volume)
 	    {
 	      os << "Volume Limit: " <<  max_volume /(1024 *1024) << " Mb" << endl;
@@ -1604,6 +1642,17 @@ int daq_status (const int flag, std::ostream& os)
 	  os << " adaptive buffering: " << adaptivebuffering << " s"; 
 	}
       os << endl;
+
+      if ( ThePort)
+      	{
+      	  os << "Web control Port:  " << ThePort <<  endl;
+      	}
+      else
+      	{
+      	  os << "No Web control defined" << endl;
+      	}
+
+
       if ( ElogH)
       	{
       	  os << "Elog:  " << ElogH->getHost() << " " << ElogH->getLogbookName() << " Port " << ElogH->getPort() <<  endl;
@@ -1628,7 +1677,7 @@ int daq_webcontrol(const int port, std::ostream& os)
 
   if (  port ==0)
     {
-      ThePort=8080;
+      ThePort=8899;
     }
   else
     {
@@ -1649,6 +1698,7 @@ int daq_webcontrol(const int port, std::ostream& os)
   if (status ) 
     {
       os << "error in web service creation " << status << endl;
+      ThePort=0;
       return -1;
     }
   else

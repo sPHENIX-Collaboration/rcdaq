@@ -29,6 +29,10 @@
 #define DAQ_LOAD          122
 
 #define DAQ_WEBCONTROL    123
+#define DAQ_SETNAME       124
+#define DAQ_GETNAME       125
+
+
 
 #define DAQ_DEVICE_RANDOM         1001
 #define DAQ_DEVICE_FILE           1002

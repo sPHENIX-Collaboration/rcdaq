@@ -46,6 +46,11 @@ std::string& daq_get_filerule();
 int daq_open(std::ostream& os = std::cout);
 int daq_shutdown(std::ostream& os = std::cout);
 int is_open();
+
+int daq_set_name(const char *name);
+int daq_get_name(std::ostream& os = std::cout);
+std::string daq_get_myname();
+
 std::string& get_current_filename();
 int daq_close (std::ostream& os = std::cout);
 

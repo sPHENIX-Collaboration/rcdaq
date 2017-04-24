@@ -11,14 +11,15 @@
 table {
     width: 50%;
     height: 30px;
-    border: 3px solid #CCCC99;
     cellpadding: 8;
+    border-spacing: 0px;
+    border-collapse: collapse;
 }
 
 td {
-       width: 100px;
+       width: 100%;
        height: 30px;
-       border: 1px solid #CCCC99;
+       border: 2px solid #bbbbbb;
        text-align:center;
        vertical-align:middle;
    }
@@ -49,6 +50,7 @@ var OpenDisabledFlag = false;
 // color definitions
 
 var StandardColor        = "#cccc00";
+var StatusColor          = "#bbbb00";
 var StandardColor2       = "#00CC99";
 var BorderColor          = "#CCCC99";
 var ButtonBgColor        = "#33CCCC";
@@ -146,7 +148,8 @@ function full_parse(j)
 	}
 		
 	if ( document.getElementById(list[i]) )
-	{
+        {
+		//console.log("setting " + list[i] + " to " + o[list[i]] );
 		document.getElementById(list[i]).textContent=o[list[i]];
 	}
     }
@@ -270,40 +273,43 @@ Event.observe(window, "load", init(true) );
 
 <TABLE>
 
-<tr BGCOLOR="#cccc00">
-<td colspan="2" style="width:100%; height:45px;font-size:140%;">RCDAQ Control</td>
+<tr>
+<td colspan="2" style="background-color: #cccc00; height:45px;font-size:140%;">RCDAQ Control</td>
+</tr>
+<tr>
+<td id="Name" colspan="2" style="background-color: #bbbb00; height:18px;font-size:80%;"> test </td>
 </tr>
 
-<tr BGCOLOR="#cc9900">
-<td id="Status" colspan="2" style="width:100%" class="bold" BGCOLOR="#cc9900">Not Running</td>
+<tr>
+<td id="Status" colspan="2" style="background-color: #cc9900;font-size:120%" class="bold">Not Running</td>
 </tr>
 
-<tr BGCOLOR="#00cc99">
-<td colspan="1" style="width:50%">Run:
-<td id="RunNr"></td>
+<tr>
+<td colspan="1" style="background-color: #00cc99; width:50%">Run:
+<td id="RunNr" style="background-color: #00cc99;" ></td>
 </tr>
 
-<tr BGCOLOR="#00cc99">
-<td colspan="1" style="width:50%">Events:
-<td id="Events"></td>
+<tr>
+<td colspan="1" style="background-color: #00cc99; width:50%">Events:
+<td id="Events" style="background-color: #00cc99;" ></td>
 </tr>
 
-<tr BGCOLOR="#00cc99">
-<td colspan="1" style="width:50%">Volume:
-<td id="Volume">0 MB</td>
+<tr>
+<td colspan="1" style="background-color:#00cc99; width:50%">Volume:
+<td id="Volume" style="background-color: #00cc99;" >0 MB</td>
 </tr>
 
-<tr BGCOLOR="#00cc99">
-<td id="Logging" colspan="2" style="width:100%"></td>
+<tr>
+<td id="Logging" colspan="2" style="background-color:#00cc99" ></td>
 </tr>
 
 
 <tr>
-    <td colspan="2" style="width:100%" BGCOLOR="#33BBBB">  <input type="button" value="Open" onClick="OpenHandler()" BGCOLOR="#33CCCC" id="OpenButton"></td>
+    <td colspan="2" style="background-color:#33bbbb;">  <input type="button" value="Open" onClick="OpenHandler()" BGCOLOR="#33CCCC" id="OpenButton"></td>
 </tr>
 
 <tr>
-    <td colspan="2" style="width:100%" BGCOLOR="#33BBBB">  <input type="button" value="Begin" onClick="RunHandler()" BGCOLOR="#33CCCC" id="BeginButton"></td>
+    <td colspan="2" style="background-color:#33bbbb;">  <input type="button" value="Begin" onClick="RunHandler()" BGCOLOR="#33CCCC" id="BeginButton"></td>
 <tr/>
 
 

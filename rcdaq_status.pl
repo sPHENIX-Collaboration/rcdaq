@@ -25,6 +25,13 @@ if ($opt_display)
 
 $time_used = 2;
 
+$name =  `rcdaq_client daq_getname  2>&1`;
+if ( $name =~ /system error/ )
+{
+    $name=" ";
+}
+
+
 #$color1 = "#cccc99";
 #$color1 = "#999900";
 $color1 = "#CCCC99";
@@ -41,6 +48,8 @@ $smalltextfg = '#00CCFF';
 $smalltextbg = '#333366';
 
 $slinebg='#cccc00';
+$sline2bg='#bbbb00';
+#$sline2bg='#ffb90f';
 
 $oncolor = "orange2";
 $offcolor = "yellow4";
@@ -53,6 +62,7 @@ $runstatcolor = "aquamarine";
 $stopstatcolor = "palegreen";
 $neutralcolor = "khaki";
 
+$old_run = -1;
 
 
 if ($opt_large)
@@ -66,8 +76,8 @@ if ($opt_large)
 
     $titlefontsize=30;
     $fontsize=27;
-    $subtitlefontsize=25;
-        $smallfont = ['arial', $subtitlefontsize];
+    $subtitlefontsize=22;
+    $smallfont = ['arial', $subtitlefontsize];
     $normalfont = ['arial', $fontsize];
     $bigfont = ['arial', $titlefontsize, 'bold'];
 
@@ -81,7 +91,7 @@ else
 
     $titlefontsize=13;
     $fontsize=12;
-    $subtitlefontsize=11;
+    $subtitlefontsize=10;
     $smallfont = ['arial', $subtitlefontsize];
     $normalfont = ['arial', $fontsize];
     $bigfont = ['arial', $titlefontsize, 'bold'];
@@ -105,6 +115,8 @@ $mw->title("RCDAQ Status");
 $label{'sline'} = $mw->Label(-text => "RCDAQ Status", -background=>$slinebg, -font =>$bigfont);
 $label{'sline'}->pack(-side=> 'top', -fill=> 'x', -ipadx=> $ipadx, -ipady=> $pady);
 
+$label{'sline2'} = $mw->Label(-text => $name, -background=>$sline2bg, -font =>$smallfont);
+$label{'sline2'}->pack(-side=> 'top', -fill=> 'x', -ipadx=> '15m', -ipady=> '0.2m');
 
 
 $frame{'center'} = $mw->Frame()->pack(-side => 'top', -fill => 'x');
@@ -166,16 +178,25 @@ sub update()
 	$evt =  "n/a";
 	$v =  "n/a";
 	$duration = 0;
+	$name=" ";
     }
     else
     {
 	($run, $evt, $v, $openflag, $fn, $duration)= split (/\s/ ,$res);
+	($junk, $name )= split (/\"/ ,$res);
 #    print " run $run  evt $evt  vol $v open  $openflag file  $fn \n";
 	
 	if ( $run < 0)
 	{
-	    $runstatuslabel->configure(-text =>"Stopped   Run $old_run");
-
+	    if ( $old_run < 0)
+	    {
+		$runstatuslabel->configure(-text =>"Stopped");
+	    }
+	    else
+	    {
+		$runstatuslabel->configure(-text =>"Stopped   Run $old_run");
+	    }
+		
 	    if ( $openflag )
 	    {
 		
@@ -204,7 +225,8 @@ sub update()
 	}
     
     }
-       
+
+    $label{'sline2'}->configure( -text =>  $name);
     $runnumberlabel->configure(-text => "Run:    $run");
     
     $eventcountlabel->configure(-text =>"Events: $evt");

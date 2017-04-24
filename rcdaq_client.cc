@@ -62,6 +62,7 @@ void showHelp()
   std::cout << "   load  shared_library_name            load a \"plugin\" shared library" << std::endl;
   std::cout << "   create_device [device-specific parameters] " << std::endl;
   std::cout << std::endl; 
+  std::cout << "   daq_setname <string>               define an identifying string for this RCDAQ instance" << std::endl;
   std::cout << "   daq_setrunnumberfile file            define a file to maintain the current run number" << std::endl;
 
 
@@ -339,6 +340,32 @@ int command_execute( int argc, char **argv)
       
     }
   
+  else if ( strcasecmp(command,"daq_setname") == 0)
+    {
+      if ( argc != optind + 2) return -1;
+
+      ab.action = DAQ_SETNAME;
+      ab.spar = argv[optind + 1];
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+  else if ( strcasecmp(command,"daq_getname") == 0)
+    {
+      ab.action = DAQ_GETNAME;
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
 
   
   else if ( strcasecmp(command,"daq_open") == 0)

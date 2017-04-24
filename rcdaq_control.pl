@@ -51,6 +51,8 @@ $smalltextfg = '#00CCFF';
 $smalltextbg = '#333366';
 
 $slinebg='#cccc00';
+$sline2bg='#bbbb00';
+#$sline2bg='#ffb90f';
 
 $oncolor = "orange2";
 $offcolor = "yellow4";
@@ -63,14 +65,28 @@ $runstatcolor = "aquamarine";
 $stopstatcolor = "palegreen";
 $neutralcolor = "khaki";
 
-$smallfont = "6x10";
+#$smallfont = "6x10";
 
-$normalfont = "6x13";
-$bigfont = "9x15bold";
+$titlefontsize=13;
+$fontsize=12;
+$subtitlefontsize=10;
+$smallfont = ['arial', $subtitlefontsize];
+$normalfont = ['arial', $fontsize];
+$bigfont = ['arial', $titlefontsize, 'bold'];
+
+
+$old_run = "-1";
+
+$name =  `rcdaq_client daq_getname  2>&1`;
+if ( $name =~ /system error/ )
+{
+    $name=" ";
+}
 
 
 $mw = MainWindow->new();
 
+$smallfont = $mw->fontCreate('code', -family => 'fixed',-size => 10);
 
 
 $mw->title("RCDAQ Control");
@@ -78,6 +94,9 @@ $mw->title("RCDAQ Control");
 
 $label{'sline'} = $mw->Label(-text => "RCDAQ Control", -background=>$slinebg, -font =>$bigfont);
 $label{'sline'}->pack(-side=> 'top', -fill=> 'x', -ipadx=> '15m', -ipady=> '1m');
+
+$label{'sline2'} = $mw->Label(-text => $name, -background=>$sline2bg, -font =>$smallfont);
+$label{'sline2'}->pack(-side=> 'top', -fill=> 'x', -ipadx=> '15m', -ipady=> '0.2m');
 
 #$label{'time'} = $mw->Label(-background =>$smalltextbg, -fg=>$smalltextfg, -font =>$normalfont);
 #$label{'time'}->pack(-in => $label{'sline'}, -side=> 'left');
@@ -93,7 +112,7 @@ $outerlabel = $framename->Label(-bg => $color1)->pack(-side =>'top', -fill=> 'x'
 
 
 $runstatuslabel = $outerlabel->
-      Label(-text=> "Status", -font => $bigfont, -fg =>'red', -bg => $neutralcolor)->
+      Label(-text=> "Status", -font => $bigfont, -fg =>'red', -bg => $neutralcolor,  -relief=> 'raised')->
       pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
 
 $runnumberlabel = $outerlabel->
@@ -109,7 +128,7 @@ $volumelabel = $outerlabel->
       pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
 
 $filenamelabel = $outerlabel->
-      Label(-text => "filename", -font => $smallfont, -bg => $okcolor, -relief=> 'raised')->
+      Label(-text => "", -font => $normalfont, -bg => $okcolor, -relief=> 'raised')->
       pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
 
 
@@ -151,19 +170,28 @@ sub update()
 	$evt =  "n/a";
 	$v =  "n/a";
 	$duration = 0;
+	$name=" ";
     }
     else
     {
-	($run, $evt, $v, $openflag, $fn, $duration)= split (/\s/ ,$res);
-#    print " run $run  evt $evt  vol $v open  $openflag file  $fn \n";
+	($run, $evt, $v, $openflag, $fn, $duration )= split (/\s/ ,$res);
+	($junk, $name )= split (/\"/ ,$res);
+	#print " run $run  evt $evt  vol $v open  $openflag file  $fn $name \n";
 	
 	if ( $run < 0)
 	{
-	    
 	    $button_begin->configure(-text =>"Begin");
 	    $button_begin->configure(-command => [\&daq_begin]);
 	    
-	    $runstatuslabel->configure(-text =>"Stopped   Run $old_run");
+	    if ( $old_run < 0)
+	    {
+		$runstatuslabel->configure(-text =>"Stopped");
+	    }
+	    else
+	    {
+		$runstatuslabel->configure(-text =>"Stopped   Run $old_run");
+	    }
+
 	    $button_open->configure(-bg => $buttonbgcolor );
 	    
 	    if ( $openflag)
@@ -211,7 +239,8 @@ sub update()
 	}
     
     }
-       
+
+    $label{'sline2'}->configure( -text =>  $name);
     $runnumberlabel->configure(-text => "Run:    $run");
     
     $eventcountlabel->configure(-text =>"Events: $evt");

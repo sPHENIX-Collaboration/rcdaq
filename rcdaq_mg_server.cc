@@ -62,7 +62,7 @@ void initial_update (struct mg_connection *nc)
 {
   char str[512];
   int len;
-  len = sprintf(str, "{ \"RunFlag\":%d, \"Status\":\"%s\" , \"RunNr\":%d , \"Events\":%d , \"Volume\":\"%f\", \"Duration\":%d, \"Logging\":\"%s\" ,\"Filename\":\"%s \" , \"OpenFlag\":%d  } "
+  len = sprintf(str, "{ \"RunFlag\":%d, \"Status\":\"%s\" , \"RunNr\":%d , \"Events\":%d , \"Volume\":\"%f\", \"Duration\":%d, \"Logging\":\"%s\" ,\"Filename\":\"%s \" , \"OpenFlag\":%d , \"Name\":\"%s\"  } "
 		, daq_running()
 		, get_statusstring().c_str()
 		, get_runnumber()
@@ -72,6 +72,7 @@ void initial_update (struct mg_connection *nc)
 		, get_loggingstring().c_str()
 		, get_current_filename().c_str()
 		, get_openflag()
+		, daq_get_myname().c_str()
 		);
   
   nc->flags |= MG_F_SEND_AND_CLOSE;
@@ -87,10 +88,12 @@ void send_updates (struct mg_connection *nc)
   char str[512];
   int len;
   static int evt=10;
-  len = sprintf(str, "{ \"Events\":%d , \"Volume\":\"%f\" , \"Status\":\"%s\" }"
+  len = sprintf(str, "{ \"Events\":%d , \"Volume\":\"%f\" , \"Status\":\"%s\" , \"Name\":\"%s\" }"
 		, get_eventnumber()
 		, get_runvolume()
-		, get_statusstring().c_str());
+		, get_statusstring().c_str()
+		, daq_get_myname().c_str()
+		);
 
 
   nc->flags |= MG_F_SEND_AND_CLOSE;

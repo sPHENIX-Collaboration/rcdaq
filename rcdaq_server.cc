@@ -472,14 +472,17 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       break;
 
     case DAQ_RUNNUMBERFILE:
-      // cout << "daq_set_filerule " << ab->spar << endl;
       daq_set_runnumberfile(ab->spar);
       break;
 
     case DAQ_SETFILERULE:
-      // cout << "daq_set_filerule " << ab->spar << endl;
       daq_set_filerule(ab->spar);
       break;
+
+    case DAQ_SETNAME:
+      daq_set_name(ab->spar);
+      break;
+
 
     case DAQ_SETRUNTYPE:
       result.status = daq_setruntype(ab->spar,outputstream);
@@ -519,6 +522,17 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       return &result;
       break;
 
+    case DAQ_GETNAME:
+      result.status = daq_get_name(outputstream);
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
+      
     case DAQ_OPEN:
       // cout << "daq_open " << ab->spar << endl;
       result.status = daq_open(outputstream);
@@ -758,7 +772,11 @@ main (int argc, char **argv)
     fprintf (stderr, "%s", "unable to register (RCDAQ+servernumber, RCDAQ_VERS, tcp).");
     exit(1);
   }
-  
+
+  char hostname[1024];
+  i = gethostname(hostname, 1024);
+  i = daq_set_name(hostname);
+
   svc_run ();
   fprintf (stderr, "%s", "svc_run returned");
   exit (1);
