@@ -36,6 +36,27 @@
 
 \section{Changelog}
 
+\subsection{February 22, 2017}
+\begin{itemize}
+\item I added the concept of a named RCDAQ instance. We found that we
+  are often running multiple RCDAQ systems (such as the main DAQ and
+  the wirechamber readout at Fermilab). This has sometimes led to
+  confusion which instance you are interacting with. The name
+  defaults to the hostname, and can be set with
+  \verb|rcdaq_client daq_setname|, and retrieved with
+  \verb|rcdaq_client daq_getname|.  The aliases have also been
+  updated to make the command shortcuts, and the GUIs show the name
+  now, too. 
+\item The \verb|daq_status| used to show ``logging enabled'', and nothing if
+  disabled. So the absence of the ``enabled'' message indicated
+  that we are not logging. That has led to a number of operator
+  errors. \verb|daq_status| now shows ``enabled'' or ``disabled''. 
+\item I have added the start of the web service on the standard port
+  8899 in the template setup script ``\verb|setup.sh|''. If this port
+  is taken on your system, you need to change it. 
+
+\end{itemize}
+
 \subsection{August 30, 2016}
 \begin{itemize}
 \item Added documentation about the newly implemented web-based controls. 
@@ -70,12 +91,12 @@
 \subsection{What This is About}
 
 RCDAQ is a data acquisition package which is used in the R\&D efforts
-of the PHENIX experiment at the Relativistic Heavy Ion Collider.  The
-experiment has its main data acquisition which fills a room about
-size of a squash court. For a variety of R\&D efforts, it was
-necessary to get a smaller, portable, and lightweight data acquisition
-system which would support test beams, electronics developments,
-cosmic ray tests, and the like.
+of the PHENIX and sPHENIX experiments at the Relativistic Heavy Ion
+Collider.  The experiment has its main data acquisition which fills a
+room about size of a squash court. For a variety of R\&D efforts, it
+was necessary to get a smaller, portable, and lightweight data
+acquisition system which would support test beams, electronics
+developments, cosmic ray tests, and the like.
 
 Meanwhile, the system is in use for a number of other projects, such
 as a number of PET scanners for medical imaging applications, the
@@ -104,7 +125,7 @@ The development of RCDAQ was governed by a number of design principles:
   You do not have to devote your system to the task of running the
   DAQ. (As a rule of thumb, if your system has a working version of the 
   root package, you will be able to install RCDAQ and the assorted
-  components). 
+  components). RCDAQ is also able to build and run on a Raspberry Pi.
 
 \item {\bf powerful and fast.} The most demanding device supported by
   RCDAQ produces sustained data rates of 400\,MB/s.
@@ -211,7 +232,7 @@ voltage slightly'').
 The Packet id, however, does not specify how the data are stored
 within the Packet. That is done by another field, historically called
 the \emph{hitformat}, which indicates what kind of data is kept in
-that Packet. This is the field which in the end identifies a decoding
+that Packet. This is the field that in the end identifies a decoding
 algorithm for the data, and which assures that your analysis code is
 shielded from changes in the low-level data format of a given FEM or other
 readout device. 
@@ -340,12 +361,15 @@ at this stage there is no more information to be had. Later we will look
 at a ``double-ell'' -- ``-ll'' -- switch output.  
 
 \begin{verbatim}
-$ rcdaq_client daq_status -l
+$ daq_status -l
 Stopped
-Filerule:   rcdaq-%08d-%04d.evt
-Buffer Sizes:     65536 KB
+Logging disabled
+Filerule:     rcdaq-%08d-%04d.evt
+Buffer Sizes:     32832 KB adaptive buffering: 15 s
+Web control Port:  8899
+Elog: not defined
+ -- defined Run Types:  (none)
 No Plugins loaded
-$
 \end{verbatim}
 
 The last line says that we have not acquainted RCDAQ with any particular
@@ -460,14 +484,18 @@ run (number 3), and look at the ``long'' status:
 $ rcdaq_client daq_open
 $ rcdaq_client daq_begin
 Run 3 started
-$ rcdaq_client daq_status -l
+$ daq_status -l
 Running
 Run Number:   3
-Event:        436
-Run Volume:   0.072876 MB
+Event:        2
+Run Volume:   3.05176e-05 MB
 Filename:     rcdaq-00000003-0000.evt
+Duration:     34 s
 Filerule:     rcdaq-%08d-%04d.evt
-Duration:     5 s
+Buffer Sizes:     32832 KB adaptive buffering: 15 s
+Web control Port:  8899
+Elog: not defined
+ -- defined Run Types:  (none)
 No Plugins loaded
 \end{verbatim}
 
@@ -560,29 +588,29 @@ depending on your preferred shell.
 
 In scripts you should \emph{always} use the long form of the commands. 
 
-Here are the aliases which you get:
+Here are the aliases that you get:
 
 \begin{verbatim}
 alias daq_begin='rcdaq_client  daq_begin'
-alias daq_clear_readlist='rcdaq_client  daq_clear_readlist'
-alias daq_close='rcdaq_client  daq_close'
-alias daq_define_runtype='rcdaq_client  daq_define_runtype'
 alias daq_end='rcdaq_client  daq_end'
-alias daq_fake_trigger='rcdaq_client  daq_fake_trigger'
+alias daq_setrunnumberfile='rcdaq_client  daq_setrunnumberfile'
+alias daq_define_runtype='rcdaq_client  daq_define_runtype'
+alias daq_set_runtype='rcdaq_client  daq_set_runtype'
 alias daq_get_runtype='rcdaq_client  daq_get_runtype'
-alias daq_list_readlist='rcdaq_client  daq_list_readlist'
 alias daq_list_runtypes='rcdaq_client  daq_list_runtypes'
+alias daq_setfilerule='rcdaq_client  daq_setfilerule'
 alias daq_open='rcdaq_client  daq_open'
-alias daq_set_adaptivebuffering='rcdaq_client  daq_set_adaptivebuffering'
-alias daq_set_maxbuffersize='rcdaq_client  daq_set_maxbuffersize'
+alias daq_close='rcdaq_client  daq_close'
+alias daq_fake_trigger='rcdaq_client  daq_fake_trigger'
+alias daq_list_readlist='rcdaq_client  daq_list_readlist'
+alias daq_clear_readlist='rcdaq_client  daq_clear_readlist'
+alias daq_status='rcdaq_client  daq_status'
 alias daq_set_maxevents='rcdaq_client  daq_set_maxevents'
 alias daq_set_maxvolume='rcdaq_client  daq_set_maxvolume'
-alias daq_set_runtype='rcdaq_client  daq_set_runtype'
-alias daq_setfilerule='rcdaq_client  daq_setfilerule'
-alias daq_setrunnumberfile='rcdaq_client  daq_setrunnumberfile'
-alias daq_setruntype='rcdaq_client  daq_setruntype'
+alias daq_set_maxbuffersize='rcdaq_client  daq_set_maxbuffersize'
+alias daq_setname='rcdaq_client  daq_setname'
+alias daq_set_adaptivebuffering='rcdaq_client  daq_set_adaptivebuffering'
 alias daq_shutdown='rcdaq_client  daq_shutdown'
-alias daq_status='rcdaq_client  daq_status'
 alias daq_webcontrol='rcdaq_client daq_webcontrol'
 \end{verbatim}
 
@@ -752,43 +780,48 @@ data.  The ``device\_random'' we have used before is in this group.
 The most prominent pseudo devices are 
 \begin{description}
 
-\item{device\_file} this device absorbs the contents of another
+\item[\bf device\_file] this device absorbs the contents of another
   (small\footnote{Without going into all the details: if your file is
-  expected to be larger than 128KB, you need to say how big it is. RCDAQ
-  needs to calculate the worst-case maximum event size per event type,
-  although virtually all events will be smaller due to
+  expected to be larger than 128KB, you need to say how big it
+  is. RCDAQ needs to calculate the worst-case maximum event size per
+  event type, although virtually all events will be smaller due to
   zero-suppression. RCDAQ knows the maximum sizes of each device
   except this one.}) file as its readout. In this way, you can add the
   contents of any other file to your data stream. You can use this to
   add a description, or add automatically generated files, or even an
-  image to the data stream. If the file does not exist, no packet is generated.
+  image to the data stream. If the file does not exist, no packet is
+  generated. You can see on page~\pageref{packet900} how we use this
+  feature to self-document the RCDAQ setup itself. It is not uncommon
+  to have a large number of such file devices in the begin-run event
+  -- at a recent test beam we had about 60 of them to capture all
+  relevant detector settings for each run.
 
-\item{device\_file\_delete} \label{delete}like device\_file, except
-  that this device also deletes the file after it has been read. {\bf
-    Use this device with caution.} This device was added to allow you
-  to \emph{occasionally} add some information to the data
+\item[\bf device\_file\_delete] \label{delete}like device\_file,
+  except that this device also deletes the file after it has been
+  read. {\bf Use this device with caution.} This device was added to
+  allow you to \emph{occasionally} add some information to the data
   stream. Let's say that you want some ``slow'' readout added, for
   eample, a temperature reading.  Since no packet is generated if the
   file does not exist, you can define a device\_file\_delete to the
   readout of data events, and most events will not have the
   packet. But every few minutes, an external process, such as a cron
-  job, could generate the file with the temperature information. It will
-  be added as a packet in the next event and subsequently deleted, so
-  it would be added to one event only. In this way you could track the
-  temperature over time.
+  job, could generate the file with the temperature information. It
+  will be added as a packet in the next event and subsequently
+  deleted, so it would be added to one event only. In this way you
+  could track the temperature over time.
 
 
-\item{device\_filenumbers} this device reads a text file and looks for
+\item[\bf device\_filenumbers] this device reads a text file and looks for
   (integer) numbers on a line all by themselves. While the
   device\_file adds the original text, device\_filenumbers discards
   the text and adds those numbers in binary form.  This makes them
   much easier accessible in the later analysis.
 
-\item{device\_filenumbers\_delete} like device\_filenumbers, except
+\item[\bf device\_filenumbers\_delete] like device\_filenumbers, except
   that this device also deletes the file after it has been read. See
   the explanation of device\_file\_delete above. 
 
-\item{device\_command} this device does not add any data but executes
+\item[\bf device\_command] this device does not add any data but executes
   an arbitrary command.  This way, you can trigger actions at certain
   times.  {\bf You must not call rcdaq\_client commands from the
     command, as this leads to a deadlock.} As a convenience, rcdaq
@@ -811,19 +844,20 @@ The most prominent pseudo devices are
     from a script. If no Elog is defined, the variables are empty. 
   \end{description}
 
-\item{device\_random} we have already seen the random
+\item[\bf device\_random] we have already seen the random
   number-generating device in the example above.
 
-\item{device\_deadtime} this device can add a configurable amount of
-  artificial deadtime anywhere in the traversal of the readlist.  I
+\item[\bf device\_deadtime] this device can add a configurable amount
+  of artificial deadtime anywhere in the traversal of the readlist.  I
   could envision a few applications in actual data taking, but mostly
   this is a debugging tool that can be used to slow down the data
   rate, but also to make the event loop run as fast as possible
   (enable this device to trigger but set zero deadtime) for benchmarks
   or debugging. It can optionally pretend to generate adjustable
   amounts of data. Different from daq\_device\_random, it wastes no
-  time to fill in any meaningful values. If you then enable writing, 
-  one can benchmark the ``empty'' DAQ speed. 
+  time to fill in any meaningful values. If you then enable writing,
+  one can benchmark the ``empty'' DAQ speed. See
+  chapter~\ref{speedtests} for details.
 
 
 \end{description}
@@ -916,14 +950,18 @@ Now we start and end a run:
 \begin{verbatim}
 $ rcdaq_client daq_begin
 Run 4 started
-$ rcdaq_client daq_status -l
+$ daq_status -l
 Running
 Run Number:   4
-Event:        764
-Run Volume:   0.129135 MB
+Event:        1324
+Run Volume:   0.5662 MB
 Filename:     rcdaq-00000004-0000.evt
+Duration:     28 s
 Filerule:     rcdaq-%08d-%04d.evt
-Duration:     8 s
+Buffer Sizes:     32832 KB adaptive buffering: 15 s
+Web control Port:  8899
+Elog: not defined
+ -- defined Run Types:  (none)
 No Plugins loaded
 $ rcdaq_client daq_end
 Run 4 ended
@@ -1101,7 +1139,7 @@ The command \verb|rcdaq_client help| lists all available rcdaq commands:
    help                                 show this help text
    daq_status [-s] [-l]                 display status [short] [long]
    daq_open                             enable logging
-   daq_begin [run-number]               start taking data for run-number, or auto-increment
+   daq_begin [run-number]              start taking data for run-number, or auto-increment
    daq_end                              end the run
    daq_close                            disable logging
    daq_setfilerule file-rule            set the file rule default rcdaq-%08d-%04d.evt
@@ -1120,6 +1158,7 @@ The command \verb|rcdaq_client help| lists all available rcdaq commands:
    load  shared_library_name            load a "plugin" shared library
    create_device [device-specific parameters]
 
+   daq_setname <string>               define an identifying string for this RCDAQ instance
    daq_setrunnumberfile file            define a file to maintain the current run number
    daq_set_maxbuffersize n_KB           adjust the size of buffers written to n KB
    daq_set_adaptivebuffering seconds    enable adaptive buffering at n seconds (0 = off)
@@ -1199,7 +1238,7 @@ calibration runs apart from actual beam runs, and have more meaningful
 file names.  There is no practical limit to the number of such
 types. However, it is no more than a convenient shortcut to set file
 rules. You can still manually set a file rule which is different from
-any of the defines ones.
+any of the defined ones.
 
 \item[daq\_set\_runtype type] This sets the file rule to the
   predefined file rule, such as (from the example above)
@@ -1246,23 +1285,16 @@ rcdaq_client daq_setrunnumberfile $HOME/.last_rcdaq_runnumber.txt
 
 \item[daq\_set\_maxbuffersize n\_KB] Adjust the size of buffers to n
   KB. With the advent of ``adaptive buffering'' (next command), this
-  can largely be ignored. RCDAQ knows up front how large an event can
-  become, worst case (if zero-suppression yields no savings etc). The
-  DAQ is filling a memory buffer which holds many events; this is
-  largely a storage-technology concept and generally invisible to
-  you. Since the event gets assembled directly in the memory buffer,
-  and the actual length is known only once the assembly is complete,
-  RCDAQ needs to check that a maximum-sized event will still fit into
-  the buffer. If not, it will start a new buffer, scheduling the other
-  one to be written out. This command was available mostly for the
+  can largely be ignored. This command was available mostly for the
   benfit of the online monitoring, since the monitoring receives one
-  buffer at a time. If you have a low data rate and small events, it
-  can take several minutes (or even hours) for one buffer to be filled
-  and the monitoring to receive data. This was the reason why one
-  could reduce the size, to feed the online monitoring a more steady
-  data stream. This was very sub-optimal, because the data taking
-  efficiency is lower with smaller buffers, so one (small) size does
-  not fit all. This brings us to the next command:
+  buffer at a time. If you have a low data rate (think a cosmics
+  telescope) and small events, it can take several minutes (or even
+  hours) for a large buffer to be filled and the monitoring to receive
+  data. This was the reason why one could reduce the buffer size, to
+  feed the online monitoring a more steady data stream. This was very
+  sub-optimal, because the data taking efficiency is lower with
+  smaller buffers, so one (small) size does not fit all. This brings
+  us to the next command:
 
 \item[daq\_set\_adaptivebuffering seconds] This is a much better
   solution for the above problem. By default, adaptive buffering is
@@ -1273,7 +1305,7 @@ rcdaq_client daq_setrunnumberfile $HOME/.last_rcdaq_runnumber.txt
   time to 0 disables adaptive buffering.
 
 \item[daq\_webcontrol port\_number ] Start the web-based controls on
-  the given port number (defaults to port 8080 if omitted). See
+  the given port number (defaults to port 8899 if omitted). See
   chapter~\ref{webcontrols} for details.
 
 \item[elog elog-server port logbook] Specify the whereabouts for an
@@ -1526,7 +1558,7 @@ The web-based control interface acts like a web server running on the
 chosen port. Since the RCDAQ system cannot make any assumptions about
 port numbers available on your system, the web-based control interface
 cannot be brought up automatically at startup. The default port is
-8080, but you can choose any port number that is available on your
+8899, but you can choose any port number that is available on your
 system.
 
 You need to start the web control interface with the command
@@ -1538,14 +1570,14 @@ For example,
 \begin{verbatim}
  rcdaq_client  daq_webcontrol
 \end{verbatim}
-starts the interface on the default port number 8080. You can then access the
+starts the interface on the default port number 8899. You can then access the
 web-based controls on your local machine where RCDAQ is running as
 \begin{verbatim}
- http://localhost:8080
+ http://localhost:8899
 \end{verbatim}
 or on another system as
 \begin{verbatim}
- http://your.daq.machine:8080
+ http://your.daq.machine:8899
 \end{verbatim}
 
 It is highly recommended that you add the web control startup command 
@@ -1637,7 +1669,7 @@ I show a few examples of real-life setups that were used in the past.
 I will expand on this chapter as time progresses.
 
 \subsection{Running Speed Tests}
-
+\label{speedtests}
 Let's say that you want to see how fast your system can take data when
 you pull out all the stops. Actually reading out devices later will
 invariably slow you down, but it is good to know where the limits of
@@ -1736,6 +1768,7 @@ motion_cam_parse.pl > "$FILE"
 \end{verbatim}
 
 and then we configure rcdaq as follows:
+\label{packet900}
 
 \begin{verbatim} 
 #! /bin/sh
@@ -2120,12 +2153,17 @@ Stopped
 Logging enabled
 have a trigger object
 Filerule:     rcdaq-%08d-%04d.evt
-Buffer Sizes:     1032 KB adaptive buffering: 15 s
-Elog:  localhost RCDAQLog Port 666
+Buffer Sizes:     32832 KB adaptive buffering: 15 s
+Web control Port:  8899
+Elog: not defined
  -- defined Run Types:  (none)
 List of loaded Plugins:
  - DRS Plugin, provides -
- -     device_drs (evttype, subid, triggerchannel, triggerthreshold[mV], slope[n/p], delay[ns], speed) - DRS4 Eval Board
+ -     device_drs (evttype, subid, triggerchannel, triggerthreshold[mV], slope[n/p], delay[ns], 
+                   speed, start_ch, nch, baseline[mV]) - DRS4 Eval Board
+ -     device_drs_by_serialnumber (evttype, subid, serialnumber, triggerchannel, 
+                   triggerthreshold[mV], slope[n/p], delay[ns], 
+                   speed, start_ch, nch, baseline[mV]) - DRS4 Eval Board
 \end{verbatim}
 }
 
