@@ -15,6 +15,46 @@
 \usepackage{hyperref}
 \usepackage{wrapfig}
 \usepackage{color}
+\usepackage{pifont}
+
+
+\newcommand{\pointout}[1]{
+\vskip 3mm
+\begin{minipage}[c]{\linewidth}
+\hrule
+\vskip 2mm
+\begin{minipage}[c]{0.1\linewidth}
+{\Huge\color{red}\ding{43}}
+\end{minipage}
+\begin{minipage}[c]{0.9\linewidth}
+#1
+\end{minipage}
+\vskip 2mm
+\hrule
+\end{minipage}
+\vskip 3mm
+}
+
+\newcommand{\warning}[1]{
+\vskip 3mm
+\begin{minipage}[c]{\linewidth}
+\hrule
+\vskip 2mm
+\begin{minipage}[c]{0.1\linewidth}
+{\Huge\color{red}{\fontencoding{U}\fontfamily{futs}\selectfont\char 66\relax}}
+\end{minipage}
+\begin{minipage}[c]{0.9\linewidth}
+#1
+\end{minipage}
+\vskip 2mm
+\hrule
+\end{minipage}
+\vskip 3mm
+}
+
+
+
+
 \makeatletter
 \def\verbatim{\footnotesize\@verbatim \frenchspacing\@vobeyspaces \@xverbatim}
 \makeatother
@@ -48,7 +88,7 @@
   updated to make the command shortcuts, and the GUIs show the name
   now, too. 
 \item The \verb|daq_status| used to show ``logging enabled'', and nothing if
-  disabled. So the absence of the ``enabled'' message indicated
+  disabled. So the absence of the ``enabled'' messgage indicated
   that we are not logging. That has led to a number of operator
   errors. \verb|daq_status| now shows ``enabled'' or ``disabled''. 
 \item I have added the start of the web service on the standard port
@@ -320,18 +360,11 @@ except that it fills in some random numbers. I made this ``device'' in
 order to allow to test-drive RCDAQ without the need for any actual
 acquisition hardware.
 
-\vskip 3mm
-\begin{minipage}[c]{0.1\linewidth}
-{\Huge\color{darkred}{\fontencoding{U}\fontfamily{futs}\selectfont\char 116\relax}}
-\end{minipage}
-\begin{minipage}[c]{0.9\linewidth}
-I provide a guaranteed-to-work setup script ``\verb|setup.sh|'' with
+\pointout{I provide a guaranteed-to-work setup script ``{\tt setup.sh}'' with
 the RCDAQ source code. It exercises a number of features that will be
 presented in the next chapters. It uses the pseudo devices we will see
 in a minute. This script allows you to test the proper working of a
-RCDAQ installation.
-\end{minipage}
-\vskip 3mm
+RCDAQ installation.}
 
 
 For now, get yourself two terminal windows on the machine that has
@@ -1583,18 +1616,11 @@ or on another system as
 It is highly recommended that you add the web control startup command 
 to your startup script.  
 
-\vskip 3mm
-\begin{minipage}[c]{0.1\linewidth}
-{\Huge\color{darkred}{\fontencoding{U}\fontfamily{futs}\selectfont\char 66\relax}}
-\end{minipage}
-\begin{minipage}[c]{0.9\linewidth}
-Keep in mind that RCDAQ is running without special privileges and
+\warning{Keep in mind that RCDAQ is running without special privileges and
 cannot use any privileged ports such as the ``http'' port 80. If you
 use a port number different from the default, you \emph{must} use a
 non-privileged port higher than 1024, and it is recommended that you
-use a port number above 8000.
-\end{minipage}
-\vskip 3mm
+use a port number above 8000.}
 
 At this point in time, only the equivalent of the standard control GUI
 has been implemented as a web-based control. The web-based equivalent
