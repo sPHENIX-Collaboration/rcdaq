@@ -154,6 +154,11 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
   subid = get_value ( db->argv2); // subevent id
 
 
+  // now we will see what device we are supposed to set up.
+  // we first check if it is one of our built-in ones, such as
+  // device_random, or device_file or so.
+  
+
   if ( strcasecmp(db->argv0,"device_random") == 0 ) 
     {
 
@@ -397,6 +402,19 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
     }
 
 
+  // nada, it was none of the built-in ones if we arrive here.
+
+  // we now go through through the list of plugins and see if any one of
+  // our plugins can make the device.
+
+  // there are three possibilities:
+  //  1) the plugin can make the device, all done. In that case, return = 0 
+  //  2) the plugin can make the device but the parameters are wrong, return  = 1 
+  //  3) the plugin dosn not knwo about tha device, we keep on going...  return = 2
+
+  // we keep doing that until we either find a plugin that knows the device or  we run
+  // out of plugins
+  
   std::vector<RCDAQPlugin *>::iterator it;
 
   int status;
