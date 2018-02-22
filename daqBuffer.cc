@@ -75,7 +75,7 @@ int daqBuffer::nextEvent(const int etype, const int evtseq, const int evtsize)
     {
       current_event = new daqPRDFEvent(&(bptr->data[current_index]), evtsize
 			     ,bptr->Runnr, etype, evtseq);
-      left -= EVTHEADERLENGTH -8 ;
+      left -= (EVTHEADERLENGTH + 8);
       current_index += EVTHEADERLENGTH+8;
       bptr->Length  += (EVTHEADERLENGTH+8)*4;
     }
