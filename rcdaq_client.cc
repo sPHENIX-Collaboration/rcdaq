@@ -92,6 +92,7 @@ int handle_device( int argc, char **argv, const int optind)
   // and else's:
   char **arglist[NSTRINGPAR];
 
+
   arglist[0] = &db.argv0;
   arglist[1] = &db.argv1;
   arglist[2] = &db.argv2;
@@ -119,7 +120,31 @@ int handle_device( int argc, char **argv, const int optind)
 
   for ( i = optind+1; i < argc; i++)
     {
+
+      // this is only the case here - the event type
+      // if it's "B, D, S, or E", we replace with the begin- data- scaler- endrun event
+      if ( i == optind + 2)  
+	{
+	  if ( *argv[i] == 'B' || *argv[i] == 'b')
+	    {
+		argv[i] = (char * ) "9"; // begin-run; 
+	    }
+	  else if ( *argv[i] == 'D' ||  *argv[i] == 'd')
+	    {
+	      argv[i] = (char *) "1"; // data event
+	    }	
+	  else if ( *argv[i] == 'E' || *argv[i] == 'e')
+	    {
+	      argv[i] = (char *) "12";   // end-run
+	    }
+	  else if ( *argv[i] == 'S' || *argv[i] == 's')
+	    {
+	      argv[i] = (char *) "14";  // scaler event 
+	    }
+	}
+      
       *arglist[db.npar++] = argv[i];
+      
       if ( db.npar >= NSTRINGPAR) 
 	{
 	  cout << "Too many parameters to handle for me" << endl;
@@ -164,7 +189,7 @@ int command_execute( int argc, char **argv)
 	{
 
 	case 'v': // set the verbose flag
-	  verbose_flag = 1;
+	  verbose_flag++;
 	  break;
 
 	case 'l': // set the long flag; we can step up the verbosity with multiple -l's 
@@ -178,10 +203,11 @@ int command_execute( int argc, char **argv)
 	}
     }
 
-
+  
   //  std::cout << "Server number is " << servernumber << std::endl;
 
-  char *host = "localhost";
+  char lh[] = "localhost";
+  char *host = lh;
     
   if ( getenv("RCDAQHOST")  )
     {
@@ -199,14 +225,14 @@ int command_execute( int argc, char **argv)
     {
       ab.ipar[i] = 0;
     }
-  
-  ab.spar = " ";
-  ab.spar2 = " ";
+
+  char space[] = " ";
+  ab.spar = space;
+  ab.spar2 = space;
 
   int convertstatus;
 
   strcpy(command, argv[optind]);
-
 
   if ( strcasecmp(command,"help") == 0 ) 
     {
@@ -588,9 +614,7 @@ int command_execute( int argc, char **argv)
 
   else if ( strcasecmp(command,"create_device") == 0)
     {
-
-      return handle_device ( argc, argv, optind);
- 
+      return handle_device ( argc, argv, optind); 
     }
 
   else if ( strcasecmp(command,"daq_shutdown") == 0)
