@@ -76,6 +76,13 @@
 
 \section{Changelog}
 
+\subsection{March 13, 2018}
+\begin{itemize}
+\item I added a new built-in pseudo device \verb|device_rtclock|.  It
+  allows you ti measure the event timing, and the distance in time to
+  the most recent event. See chaper~\ref{eventtiming}
+\end{itemize}
+
 \subsection{February 22, 2017}
 \begin{itemize}
 \item I added the concept of a named RCDAQ instance. We found that we
@@ -892,6 +899,10 @@ The most prominent pseudo devices are
   one can benchmark the ``empty'' DAQ speed. See
   chapter~\ref{speedtests} for details.
 
+\item[\bf device\_rtclock] this device records the current
+  high-resolution system clock value, as well as the same value from
+  the most-recent event where this ``device'' was read. See
+  chapter~\ref{eventtiming} for an example how to use this. 
 
 \end{description}
 
@@ -1716,7 +1727,7 @@ rcdaq_client create_device device_deadtime 1 0 150
 \end{verbatim}
 
 The 3rd parameter is the deadtime added in units of the Unix \verb|usleep|
-system call, which is meant to be microsconds, but you may have to calibrate and 
+system call, which is meant to be microseconds, but you may have to calibrate and 
 adjust the unit on your system a little bit.  
 
 With the above parameters, it will not add anything to the data stream
@@ -1724,10 +1735,10 @@ With the above parameters, it will not add anything to the data stream
 adjustable amount of data to the event (and generate a packet,
 obviously). And it can also provide the system trigger. That allows
 you to dial in any desired data rate. Here is how you run the speed
-test: You set the deadtime to 0 (no deadtime), set a packet id (I chose 1005 here), 
-have the device add 64 (32-bit) words to the event,  and provide the system
-trigger (the last ``1''). Since this is now the only device defined in a data event,
-it will run as fast as it can:
+test: You set the deadtime to 0 (no deadtime), set a packet id (I
+chose 1005 here), have the device add 64 (32-bit) words to the event,
+and provide the system trigger (the last ``1''). Since this is now the
+only device defined in a data event, it will run as fast as it can:
 
 \begin{verbatim}
 rcdaq_client create_device device_deadtime 1 1005 0 64 1
@@ -1742,6 +1753,52 @@ Be warned, though, that the artificial data do not have meaningful
 values. Different from the \verb|device_random|, this devices wastes
 no time filling in any actual values; it just says that it has added
 so many words, no matter what the contents of the packet payload are.
+
+\subsection{Measuring Event Timing}
+\label{eventtiming}
+
+Especially under test beam conditions, it is often useful to see what
+the ``spacing'' in time between events is. Ideally, you would expect a
+somewhat balanced distribution with events being apart in time by
+roughly the same amount, but very often you find that there is a
+macroscopic structure in that distribution for a myriad of reasons.
+
+If you see that in a beam setting, you should definitely find out why
+that is. This usually points to some undesired feature in the beam,
+which might have a microstructure, or some other structure. 
+
+A trivial way of getting such an artificial structure is to have a
+really slow file system to write the data to, such as a USB stick or
+something similarly slow. Then the time it takes to write out a buffer to
+storage is much longer than the time it takes to fill it. RCDAQ uses a
+double-buffering scheme so one buffer is getting filled while 
+another one is being written to disk. In modern solid-state disks and
+especially in today's RAID systems, the writing is virtually always
+faster than the filling. However, if the writing is slow, the readout
+needs to wait for the writing to complete before that buffer becomes
+available again, and the busy goes up.
+
+In order to measure the distance between events, the system offers a
+built-in pseudo device \verb|device_rtclock|. This device uses the
+\verb|clock_gettime| system service and retrieves the
+\verb|CLOCK_MONOTONIC_RAW| system clock, which is strictly continuous
+and not affected by ``jumps'' due to NTP-driven or manual time
+adjustments. The clock reports clock ticks in units of nanoseconds,
+but that may need a system-dependent calibration. Still, it provides a
+``heartbeat'' to gauge the relative timing of events. 
+
+The device records both the current clock value, as well as the same
+value from the last event where the ``device'' was read out. This
+makes it easy to compute the relative timing of events.
+
+Here is an example how to set up such a pseude device in a data event:
+
+\begin{verbatim}
+rcdaq_client create_device device_deadtime 1 1010
+\end{verbatim}
+
+It does not take any configuration parameters, only the event type and
+the packet id.
 
 \subsection{Adding a webcam picture to a packet}
 
@@ -2102,7 +2159,7 @@ OPTIONS="-i"
 
 \end{description}
 
-\section{Currently Implemented Readout Devices}
+\section{A Selection of Currently Implemented Readout Devices}
 
 \subsection{The PSI DRS4 Evaluation Board}
 \label{instructions}

@@ -19,6 +19,7 @@ allsources = \
   daq_device_file.cc \
   daq_device_filenumbers.cc \
   daq_device_command.cc \
+  daq_device_rtclock.cc \
   rcdaq.cc \
   daqBuffer.cc \
   rcdaq_mg_server.cc \
@@ -43,6 +44,7 @@ noinst_HEADERS = \
   daq_device_file.h \
   daq_device_filenumbers.h \
   daq_device_command.h \
+  daq_device_rtclock.h \
   mongoose.h \
   all.h
 
@@ -79,6 +81,7 @@ librcdaq_la_SOURCES = rcdaq.cc \
   daq_device_file.cc \
   daq_device_filenumbers.cc \
   daq_device_command.cc \
+  daq_device_rtclock.cc \
   daqBuffer.cc \
   daq_device.cc \
   rcdaq_mg_server.cc \

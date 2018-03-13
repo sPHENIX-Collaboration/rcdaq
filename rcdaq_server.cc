@@ -400,6 +400,14 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 	}
 
     }
+  else if ( strcasecmp(db->argv0,"device_rtclock") == 0 )  
+    {
+      
+      add_readoutdevice ( new daq_device_rtclock( eventtype,
+					       subid));
+			  
+      return &result;
+    }
 
 
   // nada, it was none of the built-in ones if we arrive here.
