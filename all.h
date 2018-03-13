@@ -6,6 +6,7 @@
 #include "daq_device_file.h"
 #include "daq_device_filenumbers.h"
 #include "daq_device_command.h"
+#include "daq_device_rtclock.h"
 
 
 #endif

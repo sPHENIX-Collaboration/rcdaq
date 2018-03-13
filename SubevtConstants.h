@@ -38,6 +38,7 @@
 #define ID2EVT    5 
 #define ID4EVT    6 
 #define ID2SUP    7 
+#define IDRTCLK    9 
 
 // ---------------------------------------------------------------------
 // the next methods are for the hammond/g-2 board.
