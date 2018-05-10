@@ -438,6 +438,7 @@ void *shutdown_thread (void *arg)
 
   pthread_mutex_lock(&M_cout);
   cout << "shutting down... " << endl;
+  if ( TriggerH) delete TriggerH;
   pthread_mutex_unlock(&M_cout);
   sleep(2);
   exit(0);
@@ -1101,12 +1102,12 @@ void * EventLoop( void *arg)
 		  Trigger_Todo = 0;
 		  Origin ^= DAQ_TRIGGER;
 			  
+		  reset_deadtime();
 		  if (  rstatus)    // we got an endrun signal
 		    {
 		      daq_end ( std::cout);
 		      //go_on = 0;
 		    }
-		  reset_deadtime();
 		  		  
 		}
 	    }

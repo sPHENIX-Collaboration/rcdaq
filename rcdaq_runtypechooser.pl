@@ -131,7 +131,7 @@ sub update()
     my $res = `rcdaq_client daq_get_runtype  2>&1`;
 #    print $res;
 
-    if ( $res =~ /system error/ )
+    if ( $res =~ /system error/  || $res =~ /Program not registered/ )
     {
 	$currenttypelabel->configure(-text =>"RCDAQ not running");
 
