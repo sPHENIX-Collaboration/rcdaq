@@ -12,6 +12,10 @@ AC_PROG_INSTALL
 
 AC_PROG_LIBTOOL
 
+AC_CHECK_HEADER([rpc/rpc.h], [ ],
+                [AC_SUBST(AM_CPPFLAGS, "$AM_CPPFLAGS -I/usr/include/tirpc")] [AC_SUBST(RPC_LDD, "-ltirpc")])
+
+
 CXXFLAGS=" -g -O2"
 
 

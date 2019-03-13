@@ -29,9 +29,7 @@ allsources = \
 
 AM_LDFLAGS = -L$(libdir) -L$(ONLINE_MAIN)/lib
 
-
-
-INCLUDES = -I$(includedir) -I$(ONLINE_MAIN)/include 
+INCLUDES = $(AM_CPPFLAGS) -I$(includedir) -I$(ONLINE_MAIN)/include $(RPC_INCLUDE)
 
 noinst_HEADERS = \
   EvtConstants.h \
@@ -104,11 +102,11 @@ elogtest_LDADD = eloghandler.lo
 
 
 rcdaq_client_SOURCES = rcdaq_client.cc  rcdaq_rpc.h
-rcdaq_client_LDADD = rcdaq_rpc_clnt.lo rcdaq_rpc_xdr.lo parseargument.lo
+rcdaq_client_LDADD = rcdaq_rpc_clnt.lo rcdaq_rpc_xdr.lo parseargument.lo $(RPC_LDD)
 
 
 rcdaq_server_SOURCES = rcdaq_server.cc 
-rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo -lpthread -ldl 
+rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo $(RPC_LDD) -lpthread -ldl 
 
 rcdaq_server_LDFLAGS =  -Wl,-export-dynamic
 
