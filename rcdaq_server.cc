@@ -65,7 +65,16 @@ void plugin_unregister(RCDAQPlugin * p )
 
 int daq_load_plugin( const char *sharedlib, std::ostream& os)
 {
-  
+  void * v = dlopen(sharedlib, RTLD_GLOBAL | RTLD_NOW | RTLD_NOLOAD);
+  if (v) 
+    {
+      std::cout << "Plugin " 
+		<< sharedlib << " already loaded" << std::endl;
+      os << "Plugin " 
+		<< sharedlib << " already loaded" << std::endl;
+      return 0;
+    }
+    
   void * voidpointer = dlopen(sharedlib, RTLD_GLOBAL | RTLD_NOW);
   if (!voidpointer) 
     {
