@@ -78,7 +78,8 @@ $bigfont = ['arial', $titlefontsize, 'bold'];
 $old_run = "-1";
 
 $name =  `rcdaq_client daq_getname  2>&1`;
-if ( $name =~ /system error/ )
+my $status = $?;
+if ( $status != 0  )
 {
     $name=" ";
 }
@@ -133,11 +134,11 @@ $filenamelabel = $outerlabel->
 
 
 $button_open = $outerlabel->
-	Button( -bg => $buttonbgcolor, -text => "open", -command => [\&daq_open,$b],  -relief =>'raised',  -font=> $normalfont)->
+	Button( -bg => $buttonbgcolor, -text => "Open", -command => [\&daq_open,$b],  -relief =>'raised',  -font=> $normalfont)->
 	pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
 
 $button_begin = $outerlabel->
-	Button(-bg => $buttonbgcolor, -text => "begin", -command => [\&daq_begin, $b],  -relief =>'raised',  -font=> $normalfont)->
+	Button(-bg => $buttonbgcolor, -text => "Begin", -command => [\&daq_begin, $b],  -relief =>'raised',  -font=> $normalfont)->
 	pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
 
 
@@ -161,9 +162,10 @@ sub update()
 
 
     my $res = `rcdaq_client daq_status -s 2>&1`;
-#    print $res;
+    #    print $res;
 
-    if ( $res =~ /system error/ )
+    my $status = $?;
+    if ( $status != 0  )
     {
 	$runstatuslabel->configure(-text =>"RCDAQ not running");
 	$run = "n/a";
