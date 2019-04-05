@@ -436,10 +436,16 @@ int open_file(const int run_number, int *fd)
 void *shutdown_thread (void *arg)
 {
 
+  unsigned long *t_args = (unsigned long *) arg;
+
+  
   pthread_mutex_lock(&M_cout);
-  cout << "shutting down... " << endl;
+  cout << "shutting down... " <<  t_args[0] << "  " <<  t_args[1] << endl;
   if ( TriggerH) delete TriggerH;
   pthread_mutex_unlock(&M_cout);
+  // unregister out service 
+  svc_unregister ( t_args[0], t_args[1]);
+
   sleep(2);
   exit(0);
 }
@@ -1273,7 +1279,8 @@ int daq_open (std::ostream& os)
   return 0;
 }
 
-int daq_shutdown (std::ostream& os)
+int daq_shutdown(const unsigned long servernumber, const unsigned long versionnumber,
+		 std::ostream& os)
 {
 
   if ( Daq_Status & DAQ_RUNNING ) 
@@ -1282,12 +1289,16 @@ int daq_shutdown (std::ostream& os)
       return -1;
     }
 
+  static unsigned long  t_args[2];
+  t_args[0] = servernumber;
+  t_args[1] = versionnumber;
 
+  
   pthread_t t;
 
   int status = pthread_create(&t, NULL, 
 			  shutdown_thread, 
-			  (void *) 0);
+			  (void *) t_args);
    
   if (status ) 
     {
@@ -1295,7 +1306,7 @@ int daq_shutdown (std::ostream& os)
       os << "cannot shut down " << status << endl;
       return -1;
     }
-
+  os << " ";
   return 0;
 }
 
