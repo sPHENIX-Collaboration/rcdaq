@@ -26,7 +26,8 @@ if ($opt_display)
 $time_used = 2;
 
 $name =  `rcdaq_client daq_getname  2>&1`;
-if ( $name =~ /system error/ )
+my $status = $?;
+if ( $status != 0  )
 {
     $name=" ";
 }
@@ -171,7 +172,8 @@ sub update()
     my $res = `rcdaq_client daq_status -s 2>&1`;
 #    print $res;
 
-    if ( $res =~ /system error/ )
+    my $status = $?;
+    if ( $status != 0  )
     {
 	$runstatuslabel->configure(-text =>"RCDAQ not running");
 	$run = "n/a";
