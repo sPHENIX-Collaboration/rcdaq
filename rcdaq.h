@@ -44,7 +44,9 @@ std::string& daq_get_filerule();
 
 
 int daq_open(std::ostream& os = std::cout);
-int daq_shutdown(std::ostream& os = std::cout);
+int daq_shutdown(const unsigned long servernumber, const unsigned long versionnumber,
+		 std::ostream& os = std::cout);
+
 int is_open();
 
 int daq_set_name(const char *name);

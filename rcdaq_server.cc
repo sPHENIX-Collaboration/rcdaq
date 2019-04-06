@@ -37,7 +37,7 @@ static pthread_mutex_t M_output;
 
 std::vector<RCDAQPlugin *> pluginlist;
 
-
+static unsigned long  my_servernumber = 0;
 
 void rcdaq_1(struct svc_req *rqstp, register SVCXPRT *transp);
 
@@ -126,17 +126,22 @@ int daq_status_plugin (const int flag, std::ostream& os )
 shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 {
   static shortResult  result, error;
-
+  static char e_string[512];
+  static char r_string[512];
+  error.str = e_string;
+  result.str = r_string;
+  strcpy ( r_string, " ");
+  
   if ( daq_running() )
     {
-      error.str     = "Run is active";
+      strcpy(e_string, "Run is active");
       error.content = 1;
       error.what    = 0;
       error.status  = -1;
       return &error;
     }
 
-  error.str     = "Device needs at least 2 parameters";
+  strcpy(e_string, "Device needs at least 2 parameters");
   error.content = 1;
   error.what    = 0;
   error.status  = -1;
@@ -144,7 +149,6 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
   result.status = 0;
   result.what   = 0;
   result.content= 0;
-  result.str    = " ";
 
 
   int eventtype;
@@ -154,9 +158,14 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
   int i;
 
 
-  if ( db->npar < 3) return &error;
+  if ( db->npar < 3)
+    {
+      strcpy(r_string, "Device needs at least 2 parameters");
+      return &error;
+    }
   
-  error.str     = "Wrong number of parameters";
+      
+  strcpy(r_string, "Wrong number of parameters");
 
   // and we decode the event type and subid
   eventtype  = get_value ( db->argv1); // event type
@@ -445,7 +454,7 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
     }
 
   result.content=1;
-  result.str= "Unknown device";
+  strcpy(r_string, "Unknown device");
   return &result;
 
 }
@@ -461,6 +470,7 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
   static int currentmaxresultlength = 10*2048;
   static char *resultstring = new char[currentmaxresultlength+1];
 
+  
   if ( outputstream.str().size() > currentmaxresultlength )
     {
       currentmaxresultlength = outputstream.str().size();
@@ -472,7 +482,8 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 
 
   pthread_mutex_lock(&M_output);
-  result.str=" ";
+  result.str=resultstring;
+  strcpy(resultstring," ");
   result.content = 0;
   result.what = 0;
   result.status = 0;
@@ -724,7 +735,7 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 
 
     default:
-      result.str =   "Unknown action";
+      strcpy(resultstring, "Unknown action");
       result.content = 1;
       result.status = 1;
       break;
@@ -742,14 +753,13 @@ shortResult * r_shutdown_1_svc(void *x, struct svc_req *rqstp)
 
   
   static shortResult  result;
-
+  
   static std::ostringstream outputstream;
+  
 
   pthread_mutex_lock(&M_output);
 
-  cout << "daq_shutdown "  << endl;
-
-  result.str=" ";
+  
   result.content = 0;
   result.what = 0;
   result.status = 0;
@@ -757,8 +767,10 @@ shortResult * r_shutdown_1_svc(void *x, struct svc_req *rqstp)
   int status;
 
   outputstream.str("");
+  result.str = (char *) outputstream.str().c_str();
 
-  result.status = daq_shutdown ( outputstream);
+  result.status = daq_shutdown ( my_servernumber, RCDAQ_VERS, outputstream);
+  cout << "daq_shutdown status = " << result.status  << endl;
   if (result.status) 
     {
       result.str = (char *) outputstream.str().c_str();
@@ -793,17 +805,18 @@ main (int argc, char **argv)
     }
   std::cout << "Server number is " << servernumber << std::endl;
 
+  my_servernumber = RCDAQ+servernumber;  // remember who we are for later
+
   register SVCXPRT *transp;
   
-  pmap_unset (RCDAQ+servernumber, RCDAQ_VERS);
-    
-  
+  pmap_unset (my_servernumber, RCDAQ_VERS);
+
   transp = svctcp_create(RPC_ANYSOCK, 0, 0);
   if (transp == NULL) {
     fprintf (stderr, "%s", "cannot create tcp service.");
     exit(1);
   }
-  if (!svc_register(transp, RCDAQ+servernumber, RCDAQ_VERS, rcdaq_1, IPPROTO_TCP)) {
+  if (!svc_register(transp, my_servernumber, RCDAQ_VERS, rcdaq_1, IPPROTO_TCP)) {
     fprintf (stderr, "%s", "unable to register (RCDAQ+servernumber, RCDAQ_VERS, tcp).");
     exit(1);
   }
