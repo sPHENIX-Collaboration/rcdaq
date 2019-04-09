@@ -65,7 +65,8 @@ var LoggingEnabledColor      = RunActiveColor;
 var ServerDeadColor      = "#F93D5C";
 var ButtonInactiveColor  = "#666666";
 
-
+var RunCommand = "daq_begin";
+var OpenCommand = "daq_open";
 
 function init(flag)
 {
@@ -113,11 +114,13 @@ function full_parse(j)
 	    {
 		document.getElementById("OpenButton").value = "Close";
 		document.getElementById("Logging").style.backgroundColor    = LoggingEnabledColor;
+		OpenCommand = "daq_close";
 	    }
 	    else
 	    {
 		document.getElementById("OpenButton").value = "Open";
 		document.getElementById("Logging").style.backgroundColor    = LoggingDisabledColor;
+		OpenCommand = "daq_open";
 	    }
 	}
 	else if ( list[i] == "RunFlag")
@@ -132,7 +135,7 @@ function full_parse(j)
 		// console.log("setting RunActiveColor");
 		// and we change the text to "end"
 		document.getElementById("BeginButton").value = "End";
-		
+		RunCommand = "daq_end";
 	    }
 	    else
 	    {
@@ -144,6 +147,7 @@ function full_parse(j)
 		//console.log("setting RunInactiveColor");
 		// and we change the text to "Begin"
 		document.getElementById("BeginButton").value = "Begin";
+		RunCommand = "daq_begin";
 	    }
 	}
 		
@@ -223,7 +227,7 @@ function OpenHandler()
     {
 	return;
     }
-    var uri = "daq_open";
+    var uri = OpenCommand;
     var xhttp = new XMLHttpRequest();
 
     xhttp.onreadystatechange = function()
@@ -243,7 +247,7 @@ function RunHandler()
 {
     //console.log("in RunHandler");
 		     
-    var uri = "daq_begin";
+    var uri = RunCommand;
     var xhttp = new XMLHttpRequest();
 
     xhttp.onreadystatechange = function()
