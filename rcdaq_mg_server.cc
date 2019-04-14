@@ -182,31 +182,14 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	 
 	 else if ( mg_vcmp ( &hm->uri, "/daq_begin") == 0)
 	   {
-	     if ( daq_running()  )
+	     status = daq_begin(0,out);
+	     if (status)
 	       {
-		 status = daq_end(out);
-		 if (status)
-		   {
-		     send_status(nc,out.str() );
-		   }
-		 else
-		   {
-		     send_nothing(nc);
-
-
-		   }
+		 send_status(nc,out.str() );
 	       }
 	     else
 	       {
-		 status = daq_begin(0,out);
-		 if (status)
-		   {
-		     send_status(nc,out.str() );
-		   }
-		 else
-		   {
 		     send_nothing(nc);
-		   }
 	       }
 	     return;
 	   }
