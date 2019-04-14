@@ -210,18 +210,34 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	       }
 	     return;
 	   }
-	 
-	 else if ( mg_vcmp ( &hm->uri, "/daq_open") == 0)
+
+	 else if ( mg_vcmp ( &hm->uri, "/daq_end") == 0)
 	   {
-	     //    cout << __FILE__ << " " << __LINE__ << " daq_open request" << endl;
-	     if ( get_openflag() )
+	     status = daq_end(out);
+	     if (status)
 	       {
-		 daq_close();
+		 send_status(nc,out.str() );
 	       }
 	     else
 	       {
-		 daq_open();
+		 send_nothing(nc);
+		 
 	       }
+	     return;
+	   }
+
+	 else if ( mg_vcmp ( &hm->uri, "/daq_open") == 0)
+	   {
+	     //    cout << __FILE__ << " " << __LINE__ << " daq_open request" << endl;
+	     daq_open();
+	     send_nothing(nc);
+	     return;
+	   }
+	 
+	 else if ( mg_vcmp ( &hm->uri, "/daq_close") == 0)
+	   {
+	     //    cout << __FILE__ << " " << __LINE__ << " daq_open request" << endl;
+	     daq_close();
 	     send_nothing(nc);
 	     return;
 	   }

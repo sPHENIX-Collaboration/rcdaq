@@ -1510,10 +1510,9 @@ int rcdaq_init( pthread_mutex_t &M)
       pthread_mutex_unlock(&M_cout);
     }
    
-
-
-
-
+  //  std::ostringstream outputstream;
+  //  daq_webcontrol ( ThePort, outputstream);
+  daq_webcontrol ( ThePort);
 
 
   
