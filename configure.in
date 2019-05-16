@@ -17,7 +17,7 @@ AC_CHECK_HEADER([rpc/rpc.h], [ ],
 
 dnl Example of default-disabled feature
 AC_ARG_ENABLE([WRITEPRDF],
-    AS_HELP_STRING([--enable-WRITEPRDF], [compile for legcacy PRDF version]))
+    AS_HELP_STRING([--enable-WRITEPRDF], [compile for legacy PRDF version]))
 
 AS_IF([test "x$enable_WRITEPRDF" = "xyes"], [AC_DEFINE_UNQUOTED([WRITEPRDF],[1])])
 
