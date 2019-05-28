@@ -68,7 +68,7 @@ BUILT_SOURCES = \
         rcdaq_rpc.h
 
 
-lib_LTLIBRARIES =  librcdaq.la librcdaqutils.la  librcdaqplugin_example.la 
+lib_LTLIBRARIES =  librcdaq.la librcdaqutils.la  librcdaqplugin_example.la librcdaqplugin_gauss.la
 
 librcdaq_la_SOURCES = rcdaq.cc \
   daqEvent.cc \
@@ -92,6 +92,8 @@ librcdaq_la_CPPFLAGS = -DHTMLFILE=\"$(html_DATA)\" -DHTMLDIR=\"$(htmldir)\"
 librcdaqutils_la_SOURCES =  parseargument.cc
 
 librcdaqplugin_example_la_SOURCES = daq_device_pluginexample.cc example_plugin.cc
+
+librcdaqplugin_gauss_la_SOURCES = daq_device_gauss.cc gauss_plugin.cc simpleRandom.cc
 
 bin_SCRIPTS =  rcdaq_control.pl rcdaq_status.pl rcdaq_runtypechooser.pl rcdaq_configmenu.pl aliases.csh aliases.sh automated_run_example.sh wait_for_run_end.sh
 
