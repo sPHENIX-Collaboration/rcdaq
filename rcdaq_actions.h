@@ -32,6 +32,8 @@
 #define DAQ_SETNAME       124
 #define DAQ_GETNAME       125
 
+#define DAQ_GETLASTFILENAME    126
+
 
 
 #define DAQ_DEVICE_RANDOM         1001

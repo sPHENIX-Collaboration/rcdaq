@@ -573,6 +573,22 @@ int command_execute( int argc, char **argv)
  
     }
 
+  else if ( strcasecmp(command,"daq_getlastfilename") == 0)
+    {
+
+      ab.action = DAQ_GETLASTFILENAME;
+
+      ab.ipar[0] = 0;
+
+      r = r_action_1 (&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
   else if ( strcasecmp(command,"elog") == 0)
     {
 

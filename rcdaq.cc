@@ -87,6 +87,7 @@ static std::map<string,string> RunTypes;
 
 static std::string TheFileRule = "rcdaq-%08d-%04d.evt";
 static std::string CurrentFilename = "";
+static std::string PreviousFilename = "";
 
 static std::string TheRunnumberfile = " ";
 static int RunnumberfileIsSet = 0;
@@ -427,6 +428,7 @@ int open_file(const int run_number, int *fd)
 
   *fd = ifd;
   CurrentFilename = d;
+  PreviousFilename = CurrentFilename;
 
   file_is_open =1;
 
@@ -843,6 +845,11 @@ std::string& get_current_filename()
   return CurrentFilename;
 }
 
+std::string& get_previous_filename()
+{
+  return PreviousFilename;
+}
+
 int daq_begin(const int irun, std::ostream& os)
 {
   if ( Daq_Status & DAQ_RUNNING ) 
@@ -991,6 +998,7 @@ int daq_end(std::ostream& os)
   run_volume = 0;    // volume in longwords 
   BytesInThisRun = 0;    // bytes actually written
   Buffer_number = 0;
+  PreviousFilename = CurrentFilename;
   CurrentFilename = "";
   StartTime = 0;
   return 0;
@@ -1720,6 +1728,15 @@ int daq_webcontrol(const int port, std::ostream& os)
   return 0;
 
 }
+
+int daq_getlastfilename( std::ostream& os)
+{
+
+  os <<  get_previous_filename() << endl;
+  return 0;
+
+}
+
 
 int daq_running()
 {
