@@ -2,6 +2,8 @@
 //#define WRITEPRDF
 
 #include <pthread.h>
+#include <semaphore.h>
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -46,19 +48,20 @@
 #include "rcdaq.h"
 #include "rcdaq_rpc.h"
 
-pthread_mutex_t WriteSem;
-pthread_mutex_t WriteProtectSem;
+pthread_mutex_t FdManagementMutex;
 
-pthread_mutex_t MonitoringRequestSem;
-pthread_mutex_t SendSem;
-pthread_mutex_t SendProtectSem;
+sem_t WriteSem;
+sem_t WriteProtectSem;
 
-pthread_mutex_t FdManagementSem;
+sem_t MonitoringRequestSem;
+sem_t SendSem;
+sem_t SendProtectSem;
 
 
-pthread_mutex_t TriggerSem;
-pthread_mutex_t TriggerDone;
-pthread_mutex_t TriggerLoop;
+
+sem_t TriggerSem;
+sem_t TriggerDone;
+sem_t TriggerLoop;
 
 
 // those are the "todo" definitions. DAQ can be woken up by a trigger
@@ -212,7 +215,7 @@ void sig_handler(int i)
 int reset_deadtime() 
 {
   if ( TriggerH) TriggerH->rearm();
-  pthread_mutex_unlock ( &TriggerDone );
+  sem_post ( &TriggerDone );
 
 }
 
@@ -518,12 +521,12 @@ void *monitorRequestwatcher_thread (void *arg)
 	  // cout << ctime(&x) << "new request for monitoring connection accepted from " << host << endl;
 	  // pthread_mutex_unlock(&M_cout);
 
-	  pthread_mutex_lock(&FdManagementSem);
+	  pthread_mutex_lock(&FdManagementMutex);
 	  fd_queue.push(dd_fd);
-	  pthread_mutex_unlock(&FdManagementSem);
+	  pthread_mutex_unlock(&FdManagementMutex);
 	  
 	  //kick off "the sender of monitoring data" thread
-	  pthread_mutex_unlock(&MonitoringRequestSem);
+	  sem_post(&MonitoringRequestSem);
 	}
     }
 }
@@ -533,7 +536,7 @@ void handler ( int sig)
   //pthread_mutex_lock(&M_cout);
   // cout  << " in handler..." << endl;
   //pthread_mutex_unlock(&M_cout);
-  pthread_mutex_unlock(&SendProtectSem);
+  sem_post(&SendProtectSem);
 }  
 
 void *sendMonitorData( void *arg)
@@ -545,7 +548,7 @@ void *sendMonitorData( void *arg)
   while (1)
     {
       // we wait here until a monitoring request comes
-      //pthread_mutex_lock(&MonitoringRequestSem);
+      //sem_wait(&MonitoringRequestSem);
 
       // when we get here, there are requestst. Now wait for a buffer
       // to be available:
@@ -554,7 +557,7 @@ void *sendMonitorData( void *arg)
       // cout <<  "  locking SendSem " << endl;
       // pthread_mutex_unlock(&M_cout);
 
-      pthread_mutex_lock( &SendSem);
+      sem_wait( &SendSem);
 
       // struct sigaction act;
       // act.sa_handler = handler;
@@ -569,18 +572,18 @@ void *sendMonitorData( void *arg)
 	  // lock-protect this:
 	  
 	  // pthread_mutex_lock(&M_cout);
-	  // cout <<  "  locking FdManagementSem " << endl;
+	  // cout <<  "  locking FdManagementMutex " << endl;
 	  // pthread_mutex_unlock(&M_cout);
 
-	  pthread_mutex_lock(&FdManagementSem);
+	  pthread_mutex_lock(&FdManagementMutex);
 	  fd = fd_queue.front();
 	  fd_queue.pop();
 
 	  // pthread_mutex_lock(&M_cout);
-	  // cout <<  "  unlocking FdManagementSem " << endl;
+	  // cout <<  "  unlocking FdManagementMutex " << endl;
 	  // pthread_mutex_unlock(&M_cout);
 
-	  pthread_mutex_unlock(&FdManagementSem);
+	  pthread_mutex_unlock(&FdManagementMutex);
 
 	  int max_length =0;
 	  	  
@@ -628,7 +631,7 @@ void *sendMonitorData( void *arg)
       // cout <<  "  unlocking SendProtectSem " << endl;
       // pthread_mutex_unlock(&M_cout);
 
-      pthread_mutex_unlock(&SendProtectSem);
+      sem_post(&SendProtectSem);
       if ( end_thread) pthread_exit(0);
 
     }
@@ -642,7 +645,7 @@ void *writebuffers ( void * arg)
   while(1)
     {
 
-      pthread_mutex_lock( &WriteSem); // we wait for an unlock
+      sem_wait( &WriteSem); // we wait for an unlock
 
 
       last_bufferwritetime  = time(0);
@@ -655,7 +658,7 @@ void *writebuffers ( void * arg)
 
       if ( end_thread) pthread_exit(0);
       
-      pthread_mutex_unlock(&WriteProtectSem);
+      sem_post(&WriteProtectSem);
     }
   
 }
@@ -669,8 +672,8 @@ int switch_buffer()
 
   daqBuffer *spare;
   
-  pthread_mutex_lock(&WriteProtectSem);
-  pthread_mutex_lock(&SendProtectSem);
+  sem_wait(&WriteProtectSem);
+  sem_wait(&SendProtectSem);
 
   fillBuffer->addEoB();
 
@@ -680,8 +683,8 @@ int switch_buffer()
   fillBuffer = spare;
   fillBuffer->prepare_next(++Buffer_number, TheRun);
 
-  pthread_mutex_unlock(&WriteSem);
-  pthread_mutex_unlock(&SendSem);
+  sem_post(&WriteSem);
+  sem_post(&SendSem);
   return 0;
 
 }
@@ -976,8 +979,8 @@ int daq_end(std::ostream& os)
 		
   if ( file_is_open )
     {
-      pthread_mutex_lock(&WriteProtectSem);
-      pthread_mutex_unlock(&WriteProtectSem);
+      sem_wait(&WriteProtectSem);
+      sem_post(&WriteProtectSem);
 
       double v = run_volume;
       v /= (1024*1024);
@@ -1009,7 +1012,7 @@ int Command (const int command)
   Command_Todo = command;
   Origin |= DAQ_COMMAND;
   
-  pthread_mutex_unlock ( &TriggerSem );
+  sem_post ( &TriggerSem );
 
   return 0;
 }
@@ -1030,13 +1033,13 @@ void * daq_triggerloop (void * arg)
 	      Trigger_Todo=DAQ_READ;
 	      Origin |= DAQ_TRIGGER;
 	      CurrentEventType = evttype;
-	      pthread_mutex_unlock ( &TriggerSem );
+	      sem_post ( &TriggerSem );
 
-	      // pthread_mutex_lock(&M_cout);
+	      // sem_wait(&M_cout);
 	      // cout << __LINE__ << "  " << __FILE__ << " trigger, triggercontrol = " << TriggerControl  << endl;
 	      //  pthread_mutex_unlock(&M_cout);
 	      
-	      pthread_mutex_lock ( &TriggerDone );
+	      sem_wait ( &TriggerDone );
 
 	      // pthread_mutex_lock(&M_cout);
 	      // cout << __LINE__ << "  " << __FILE__ << " after lock triggercontrol = " << TriggerControl  << endl;
@@ -1049,8 +1052,8 @@ void * daq_triggerloop (void * arg)
       	{
 	  //      	  Trigger_Todo=DAQ_READ;
 	  // Origin |= DAQ_TRIGGER;
-      	  //pthread_mutex_unlock ( &TriggerSem );
-      	  //pthread_mutex_lock ( &TriggerDone );
+      	  //sem_post ( &TriggerSem );
+      	  //sem_wait ( &TriggerDone );
       	  usleep (100000);
       	}
     }
@@ -1070,8 +1073,8 @@ int daq_fake_trigger (const int n, const int waitinterval)
       
       Trigger_Todo=DAQ_READ;
       Origin |= DAQ_TRIGGER;
-      pthread_mutex_unlock ( &TriggerSem );
-      pthread_mutex_lock ( &TriggerDone );
+      sem_post ( &TriggerSem );
+      sem_wait ( &TriggerDone );
 	  
 //       pthread_mutex_lock(&M_cout);
 //       cout << "trigger" << endl;
@@ -1091,7 +1094,7 @@ void * EventLoop( void *arg)
   while (go_on)
     {
 
-      pthread_mutex_lock ( &TriggerSem );
+      sem_wait ( &TriggerSem );
       // cout << __LINE__ << "  " << __FILE__ << " Origin "  << Origin<< dec << endl;
       //      Origin &= ( DAQ_TRIGGER | DAQ_COMMAND | DAQ_SPECIAL);
       Origin &= DAQ_TRIGGER;
@@ -1417,27 +1420,30 @@ int rcdaq_init( pthread_mutex_t &M)
   //  pthread_mutex_init(&M_cout, 0); 
   M_cout = M;
 
-  pthread_mutex_init( &WriteSem, 0);
-  pthread_mutex_init( &WriteProtectSem, 0);
+  pthread_mutex_init( &FdManagementMutex,0);
+  
+  // pthread_mutex_lock( &WriteSem);
+  sem_init( &WriteSem, 0, 0 );
+  sem_init( &WriteProtectSem, 0, 1);
 
   
-  pthread_mutex_init( &MonitoringRequestSem, 0);
-  pthread_mutex_init( &SendSem, 0);
-  pthread_mutex_init( &SendProtectSem, 0);
-  pthread_mutex_init( &FdManagementSem,0);
+  // pthread_mutex_lock( &MonitoringRequestSem);
+  sem_init( &MonitoringRequestSem, 0, 0);
 
-  pthread_mutex_init( &TriggerSem, 0);
-  pthread_mutex_init( &TriggerDone, 0);
-  pthread_mutex_init( &TriggerLoop, 0);
+  // pthread_mutex_lock( &SendSem);
+  sem_init( &SendSem, 0, 0);
+
+  sem_init( &SendProtectSem, 0, 1);
+
+  // pthread_mutex_lock( &TriggerSem);
+  sem_init( &TriggerSem, 0, 0);
+  // pthread_mutex_lock( &TriggerDone);
+  sem_init( &TriggerDone, 0, 0);
+  // pthread_mutex_lock( &TriggerLoop);
+  sem_init( &TriggerLoop, 0, 0);
 
   // pre-lock them except the "protect" ones
-  pthread_mutex_lock( &MonitoringRequestSem);
-  pthread_mutex_lock( &WriteSem);
-  pthread_mutex_lock( &SendSem);
 
-  pthread_mutex_lock( &TriggerDone);
-  pthread_mutex_lock( &TriggerSem);
-  pthread_mutex_lock( &TriggerLoop);
 
 
 
