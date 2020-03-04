@@ -1731,7 +1731,7 @@ int daq_webcontrol(const int port, std::ostream& os)
 
 int daq_getlastfilename( std::ostream& os)
 {
-
+  if (get_previous_filename().empty() ) return -1;
   os <<  get_previous_filename() << endl;
   return 0;
 

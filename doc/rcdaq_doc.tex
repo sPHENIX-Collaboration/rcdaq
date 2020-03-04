@@ -76,6 +76,19 @@
 
 \section{Changelog}
 
+\subsection{February 20, 2020}
+\begin{itemize}
+\item I added a command \verb|daq_get_lastfilename| (see
+  chapter~\ref{CommandOverview}) that returns the most recent (or
+  current) filename, if any. If you took a run without logging, the
+  name will be empty. The purpose of this command is for automated,
+  scripted measurements. You can obtain the last filename \emph{after}
+  the run has ended, so you can use it to start some analysis on the
+  file right away after the run ends. Before it was hard to get at
+  that filename in a script.
+
+\end{itemize}
+
 \subsection{February 13, 2019}
 \begin{itemize}
 \item I added a new built-in pseudo device \verb|device_gauss|.  Its
@@ -664,6 +677,7 @@ alias daq_setname='rcdaq_client  daq_setname'
 alias daq_set_adaptivebuffering='rcdaq_client  daq_set_adaptivebuffering'
 alias daq_shutdown='rcdaq_client  daq_shutdown'
 alias daq_webcontrol='rcdaq_client daq_webcontrol'
+alias daq_get_lastfilename="rcdaq_client  daq_get_lastfilename"
 \end{verbatim}
 
 If you routinely use a specific account for rcdaq work, you should add the 
@@ -1195,6 +1209,7 @@ as a template.
 
 
 \section{Command overview}
+\label{CommandOverview}
 
 The command \verb|rcdaq_client help| lists all available rcdaq commands:
 
@@ -1202,7 +1217,7 @@ The command \verb|rcdaq_client help| lists all available rcdaq commands:
    help                                 show this help text
    daq_status [-s] [-l]                 display status [short] [long]
    daq_open                             enable logging
-   daq_begin [run-number]              start taking data for run-number, or auto-increment
+   daq_begin [run-number]             	start taking data for run-number, or auto-increment
    daq_end                              end the run
    daq_close                            disable logging
    daq_setfilerule file-rule            set the file rule default rcdaq-%08d-%04d.evt
@@ -1214,6 +1229,7 @@ The command \verb|rcdaq_client help| lists all available rcdaq commands:
    daq_set_runtype type                 activate a predefined run type
    daq_get_runtype [-l]                 list the active runtype (if any)
    daq_list_runtypes [-s]               list defined run types
+   daq_get_lastfilename                 return the last file name written, if any
 
    daq_set_maxevents nevt               set automatic end at so many events
    daq_set_maxvolume n_MB               set automatic end at n_MB MegaByte
@@ -1221,7 +1237,7 @@ The command \verb|rcdaq_client help| lists all available rcdaq commands:
    load  shared_library_name            load a "plugin" shared library
    create_device [device-specific parameters]
 
-   daq_setname <string>               define an identifying string for this RCDAQ instance
+   daq_setname <string>                 define an identifying string for this RCDAQ instance
    daq_setrunnumberfile file            define a file to maintain the current run number
    daq_set_maxbuffersize n_KB           adjust the size of buffers written to n KB
    daq_set_adaptivebuffering seconds    enable adaptive buffering at n seconds (0 = off)
@@ -1368,6 +1384,23 @@ rcdaq_client daq_setrunnumberfile $HOME/.last_rcdaq_runnumber.txt
   you should leave the adaptive buffering switched on. Setting the
   time to 0 disables adaptive buffering.
 
+\item[daq\_get\_lastfilename] This returns the filename of the last
+  written file, if any (if logging was disabled in the most recent
+  run, you get an empty string). The purpose of this command is for
+  automated, scripted measurements. You can obtain the last filename
+  \emph{after} the run has ended, so you can use it to start some
+  analysis on the file right away after the run ends. Here is an example:
+
+\begin{verbatim}
+while (some_condition) ; do 
+    rcdaq_client daq_begin
+    wait_for_run_end.sh                       # wait until the run automatically ends 
+    FILE=$(rcdaq_client daq_get_lastfilename) # get the filename, if any 
+    # if there was a file, start the analysis, presumably in the background
+    [ -n "$FILE" ] && start_analysis $FILE
+done
+\end{verbatim}
+  
 \item[daq\_webcontrol port\_number ] Start the web-based controls on
   the given port number (defaults to port 8899 if omitted). See
   chapter~\ref{webcontrols} for details.

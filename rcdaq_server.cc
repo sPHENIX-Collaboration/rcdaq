@@ -735,7 +735,7 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 
     case DAQ_GETLASTFILENAME:
       result.status = daq_getlastfilename ( outputstream);
-      if ( outputstream.str().size() == 0 )
+      if ( result.status )
 	{
 	  pthread_mutex_unlock(&M_output);
 	  result.content = 0;
