@@ -58,7 +58,6 @@ pthread_mutex_t FdManagementSem;
 
 pthread_mutex_t TriggerSem;
 pthread_mutex_t TriggerDone;
-pthread_mutex_t TriggerLoop;
 
 
 // those are the "todo" definitions. DAQ can be woken up by a trigger
@@ -87,6 +86,7 @@ static std::map<string,string> RunTypes;
 
 static std::string TheFileRule = "rcdaq-%08d-%04d.evt";
 static std::string CurrentFilename = "";
+static std::string PreviousFilename = "";
 
 static std::string TheRunnumberfile = " ";
 static int RunnumberfileIsSet = 0;
@@ -121,7 +121,6 @@ static daqBuffer Buffer2;
 
 int Trigger_Todo;
 int Command_Todo;
-int Origin;
 
 int TheRun = 0;
 time_t StartTime = 0;
@@ -212,7 +211,7 @@ int reset_deadtime()
 {
   if ( TriggerH) TriggerH->rearm();
   pthread_mutex_unlock ( &TriggerDone );
-
+  return 0;
 }
 
 int enable_trigger() 
@@ -236,7 +235,7 @@ int enable_trigger()
   else
     {
       pthread_mutex_lock(&M_cout);
-      cout << "trigger loop created " << endl;
+      cout << "trigger loop created for run " << TheRun<< endl;
       pthread_mutex_unlock(&M_cout);
       if ( TriggerH) TriggerH->rearm();
 
@@ -427,6 +426,7 @@ int open_file(const int run_number, int *fd)
 
   *fd = ifd;
   CurrentFilename = d;
+  PreviousFilename = CurrentFilename;
 
   file_is_open =1;
 
@@ -524,6 +524,7 @@ void *monitorRequestwatcher_thread (void *arg)
 	  pthread_mutex_unlock(&MonitoringRequestSem);
 	}
     }
+  return 0;
 }
 
 void handler ( int sig)
@@ -554,29 +555,15 @@ void *sendMonitorData( void *arg)
 
       pthread_mutex_lock( &SendSem);
 
-      // struct sigaction act;
-      // act.sa_handler = handler;
-      // sigemptyset(&act.sa_mask);
-      // act.sa_flags = 0;
-      // sigaction(SIGPIPE, &act, 0);
-
       // Now we go through all requests in the queue
       while ( !fd_queue.empty() )
 	{
 	  // now we are manipulating the queue. To do that, we need to
 	  // lock-protect this:
 	  
-	  // pthread_mutex_lock(&M_cout);
-	  // cout <<  "  locking FdManagementSem " << endl;
-	  // pthread_mutex_unlock(&M_cout);
-
 	  pthread_mutex_lock(&FdManagementSem);
 	  fd = fd_queue.front();
 	  fd_queue.pop();
-
-	  // pthread_mutex_lock(&M_cout);
-	  // cout <<  "  unlocking FdManagementSem " << endl;
-	  // pthread_mutex_unlock(&M_cout);
 
 	  pthread_mutex_unlock(&FdManagementSem);
 
@@ -585,25 +572,14 @@ void *sendMonitorData( void *arg)
 	  // we always wait for a controlword which tells us what to do next.
 	  if ( (status = readn (fd, (char *) &max_length, 4) ) <= 0)
 	    {
-	      // pthread_mutex_lock(&M_cout);
-	      // time_t x =  time(0);
-	      // cout << ctime(&x) << "  connection was broken for fd  " << fd << endl;
-	      // pthread_mutex_unlock(&M_cout);
 	      max_length = 0;
 	    }
 	  else
 	    {
 	      max_length = ntohl(max_length);
-	      // pthread_mutex_lock(&M_cout);
-	      // cout  << " max requested length = " << max_length << endl;
-	      // pthread_mutex_unlock(&M_cout);
 
 	      status = transportBuffer->sendData(fd, max_length);
 
-	      // pthread_mutex_lock(&M_cout);
-	      // cout  << " senddata reurn = " << status << endl;
-	      // pthread_mutex_unlock(&M_cout);
-	      
 	      int reply;
 	      if ( ! status && ( status = readn (fd, (char *) &reply, 4) ) <= 0)
 		{
@@ -630,6 +606,7 @@ void *sendMonitorData( void *arg)
       if ( end_thread) pthread_exit(0);
 
     }
+  return 0;
 }
 
 void *writebuffers ( void * arg)
@@ -655,7 +632,7 @@ void *writebuffers ( void * arg)
       
       pthread_mutex_unlock(&WriteProtectSem);
     }
-  
+  return 0;
 }
 
 int switch_buffer()
@@ -692,8 +669,8 @@ int daq_set_runnumberfile(const char *file)
   int r = 0;
   if (fp > 0)
     {
-      fscanf(fp, "%d", &r);
-      //cout << "runnumber read " << r << endl;      
+      int status = fscanf(fp, "%d", &r);
+      if ( status != 1) r = 0; 
       if ( ! TheRun )
 	{
 	  TheRun = r;
@@ -841,6 +818,11 @@ std::string& daq_get_filerule()
 std::string& get_current_filename()
 {
   return CurrentFilename;
+}
+
+std::string& get_previous_filename()
+{
+  return PreviousFilename;
 }
 
 int daq_begin(const int irun, std::ostream& os)
@@ -991,18 +973,9 @@ int daq_end(std::ostream& os)
   run_volume = 0;    // volume in longwords 
   BytesInThisRun = 0;    // bytes actually written
   Buffer_number = 0;
+  PreviousFilename = CurrentFilename;
   CurrentFilename = "";
   StartTime = 0;
-  return 0;
-}
-
-int Command (const int command)
-{
-  Command_Todo = command;
-  Origin |= DAQ_COMMAND;
-  
-  pthread_mutex_unlock ( &TriggerSem );
-
   return 0;
 }
 
@@ -1020,7 +993,6 @@ void * daq_triggerloop (void * arg)
 	  if (evttype) 
 	    {
 	      Trigger_Todo=DAQ_READ;
-	      Origin |= DAQ_TRIGGER;
 	      CurrentEventType = evttype;
 	      pthread_mutex_unlock ( &TriggerSem );
 
@@ -1039,17 +1011,19 @@ void * daq_triggerloop (void * arg)
 	}
       else
       	{
-	  //      	  Trigger_Todo=DAQ_READ;
-	  // Origin |= DAQ_TRIGGER;
-      	  //pthread_mutex_unlock ( &TriggerSem );
-      	  //pthread_mutex_lock ( &TriggerDone );
+	  Trigger_Todo=DAQ_READ;
+	  CurrentEventType = 1;
+	  pthread_mutex_unlock ( &TriggerSem );
+
+	  pthread_mutex_lock ( &TriggerDone );
+
       	  usleep (100000);
       	}
     }
-  //  pthread_mutex_lock(&M_cout);
-  //  cout << __LINE__ << "  " << __FILE__ << " trigger loop exits" << endl;
-  //  pthread_mutex_unlock(&M_cout);
-
+   pthread_mutex_lock(&M_cout);
+   cout << "trigger loop ended for run " << TheRun<< endl;
+   pthread_mutex_unlock(&M_cout);
+  return 0;
 }
 
 
@@ -1061,7 +1035,6 @@ int daq_fake_trigger (const int n, const int waitinterval)
     {
       
       Trigger_Todo=DAQ_READ;
-      Origin |= DAQ_TRIGGER;
       pthread_mutex_unlock ( &TriggerSem );
       pthread_mutex_lock ( &TriggerDone );
 	  
@@ -1072,6 +1045,7 @@ int daq_fake_trigger (const int n, const int waitinterval)
       usleep (200000);
 
     }
+  return 0;
 }
 
 
@@ -1084,53 +1058,44 @@ void * EventLoop( void *arg)
     {
 
       pthread_mutex_lock ( &TriggerSem );
-      // cout << __LINE__ << "  " << __FILE__ << " Origin "  << Origin<< dec << endl;
-      //      Origin &= ( DAQ_TRIGGER | DAQ_COMMAND | DAQ_SPECIAL);
-      Origin &= DAQ_TRIGGER;
 
-      if ( Origin & DAQ_TRIGGER )
-	// yep, a trigger.
+      if ( Daq_Status & DAQ_RUNNING ) 
 	{
-	  if ( Daq_Status & DAQ_RUNNING ) 
+	  if  (Trigger_Todo == DAQ_READ)
 	    {
-	      switch (Trigger_Todo)
-		{
-		case DAQ_READ:
-		  Daq_Status |= DAQ_READING;
-
-		  int rstatus = readout(CurrentEventType);
-		  Daq_Status ^= DAQ_READING;
+	      Daq_Status |= DAQ_READING;
+	      
+	      int rstatus = readout(CurrentEventType);
+	      Daq_Status ^= DAQ_READING;
 
 
-		  rearm(DATAEVENT);
-		      
-		  // reset todo, and the DAQ_TRIGGER bit. 
-		  Trigger_Todo = 0;
-		  Origin ^= DAQ_TRIGGER;
-			  
-		  reset_deadtime();
-		  if (  rstatus)    // we got an endrun signal
-		    {
-		      daq_end ( std::cout);
-		      //go_on = 0;
-		    }
-		  		  
-		}
-	    }
-	  else
-	    // no, we are not running
-	    {
-	      cout << "Run not active" << endl;
+	      rearm(DATAEVENT);
+	      
 	      // reset todo, and the DAQ_TRIGGER bit. 
 	      Trigger_Todo = 0;
-	      Origin ^= DAQ_TRIGGER;
+			  
 	      reset_deadtime();
-	    }
+	      if (  rstatus)    // we got an endrun signal
+		{
+		  daq_end ( std::cout);
+		  //go_on = 0;
+		}
+		  		  
+		}
 	}
-      
-      
+      else
+	// no, we are not running
+	{
+	  cout << "Run not active" << endl;
+	  // reset todo, and the DAQ_TRIGGER bit. 
+	  Trigger_Todo = 0;
+	  reset_deadtime();
+	}
     }
+  
+  return 0;
 }
+
 
 int add_readoutdevice ( daq_device *d)
 {
@@ -1420,7 +1385,6 @@ int rcdaq_init( pthread_mutex_t &M)
 
   pthread_mutex_init( &TriggerSem, 0);
   pthread_mutex_init( &TriggerDone, 0);
-  pthread_mutex_init( &TriggerLoop, 0);
 
   // pre-lock them except the "protect" ones
   pthread_mutex_lock( &MonitoringRequestSem);
@@ -1429,7 +1393,6 @@ int rcdaq_init( pthread_mutex_t &M)
 
   pthread_mutex_lock( &TriggerDone);
   pthread_mutex_lock( &TriggerSem);
-  pthread_mutex_lock( &TriggerLoop);
 
 
 
@@ -1565,7 +1528,7 @@ int daq_status (const int flag, std::ostream& os)
       
       if ( Daq_Status & DAQ_RUNNING ) 
 	{
-	  os << TheRun  << " " <<  Event_number << " " 
+	  os << TheRun  << " " <<  Event_number -1 << " " 
 	     << v << " " 
 	     << daq_open_flag << " " 
 	     << get_current_filename() << " "
@@ -1720,6 +1683,15 @@ int daq_webcontrol(const int port, std::ostream& os)
   return 0;
 
 }
+
+int daq_getlastfilename( std::ostream& os)
+{
+  if (get_previous_filename().empty() ) return -1;
+  os <<  get_previous_filename() << endl;
+  return 0;
+
+}
+
 
 int daq_running()
 {

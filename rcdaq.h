@@ -81,6 +81,8 @@ int daq_load_plugin( const char *sharedlib, std::ostream& os);
 
 int daq_webcontrol(const int port,std::ostream& os = std::cout );
 
+int daq_getlastfilename(std::ostream& os = std::cout );
+
 
 int get_runnumber();
 int get_oldrunnumber();

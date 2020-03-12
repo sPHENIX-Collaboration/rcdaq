@@ -733,6 +733,21 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       return &result;
       break;
 
+    case DAQ_GETLASTFILENAME:
+      result.status = daq_getlastfilename ( outputstream);
+      if ( result.status )
+	{
+	  pthread_mutex_unlock(&M_output);
+	  result.content = 0;
+	  return &result;
+	}
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
 
     default:
       strcpy(resultstring, "Unknown action");

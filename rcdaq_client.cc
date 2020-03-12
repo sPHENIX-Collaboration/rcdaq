@@ -55,20 +55,23 @@ void showHelp()
   std::cout << "   daq_set_runtype type                 activate a predefined run type" << std::endl;
   std::cout << "   daq_get_runtype [-l]                 list the active runtype (if any)" << std::endl;
   std::cout << "   daq_list_runtypes [-s]               list defined run types" << std::endl;
+  std::cout << "   daq_get_lastfilename                 return the last file name written, if any" << std::endl;
   std::cout << std::endl; 
+
   std::cout << "   daq_set_maxevents nevt               set automatic end at so many events" << std::endl;
   std::cout << "   daq_set_maxvolume n_MB               set automatic end at n_MB MegaByte" << std::endl;
   std::cout << std::endl; 
+
   std::cout << "   load  shared_library_name            load a \"plugin\" shared library" << std::endl;
   std::cout << "   create_device [device-specific parameters] " << std::endl;
   std::cout << std::endl; 
-  std::cout << "   daq_setname <string>               define an identifying string for this RCDAQ instance" << std::endl;
+
+  std::cout << "   daq_setname <string>                 define an identifying string for this RCDAQ instance" << std::endl;
   std::cout << "   daq_setrunnumberfile file            define a file to maintain the current run number" << std::endl;
-
-
   std::cout << "   daq_set_maxbuffersize n_KB           adjust the size of buffers written to n KB" << std::endl;
   std::cout << "   daq_set_adaptivebuffering seconds    enable adaptive buffering at n seconds (0 = off)" << std::endl;
   std::cout << std::endl; 
+
   std::cout << "   daq_webcontrol <port number>         restart web controls on a new port (default 8080)" << std::endl;
   std::cout << std::endl; 
   std::cout << "   elog elog-server port                specify coordinates for an Elog server" << std::endl;
@@ -564,6 +567,22 @@ int command_execute( int argc, char **argv)
 	{
 	  ab.ipar[0] = 0;
 	}
+      r = r_action_1 (&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+  else if ( strcasecmp(command,"daq_get_lastfilename") == 0)
+    {
+
+      ab.action = DAQ_GETLASTFILENAME;
+
+      ab.ipar[0] = 0;
+
       r = r_action_1 (&ab, clnt);
       if (r == (shortResult *) NULL) 
 	{
