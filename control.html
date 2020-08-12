@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <head>
-   <title>RCDAQ Controls</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+  <title>RCDAQ Controls</title>
 
 <style>
     body {
@@ -264,9 +266,9 @@ function RunHandler()
     xhttp.send();
 }
 
-
-
-Event.observe(window, "load", init(true) );
+document.addEventListener("DOMContentLoaded", function() {
+    init(true);
+});
 
 
 </script>
