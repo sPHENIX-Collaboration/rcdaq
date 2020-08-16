@@ -70,24 +70,54 @@ var ButtonInactiveColor  = "#666666";
 var RunCommand = "daq_begin";
 var OpenCommand = "daq_open";
 
-function init(flag)
+function init()
 {
-    
-    initial_update();
+//    console.log('starting init');
+    // we are recursively calling this function.
+    // This stopMe tells this round not to proceed. 
+    var stopMe = false;
 
     webSocket = new WebSocket("ws://"+location.host);
+
     webSocket.onerror = function(e) {
-	alert("Websocket error "+e.data);
+	e.preventDefault();
     }
+
+
+    webSocket.onopen = function(e) {
+	//console.log('Websocket opened - sending initial update request');
+	webSocket.send("initial_update");
+    }
+    
+
+    webSocket.onclose = function(event) {
+	//console.log('Websocket closed');
+	delete  webSocket;
+	stopMe = true;
+
+	ServerWasDeadFlag = true;
+
+	document.getElementById("Status").style.backgroundColor = ServerDeadColor;
+	document.getElementById("Status").style.color    = "white";
+	document.getElementById("Status").textContent="RCDAQ not running";
+
+	document.getElementById("RunNr").textContent="n/a";
+	document.getElementById("Events").textContent="n/a";
+	document.getElementById("Volume").textContent="n/a";
+	document.getElementById("Logging").textContent=" ";
+
+	retryTimer = setTimeout(init, 5000);
+    }
+    if ( stopMe) return;
+
     webSocket.onmessage = wsReceive;
-    if (flag)
-    {
-	send_updates();
-    }
+
+    
 }
 
 function wsReceive(e)
 {
+    //console.log('Websocket received ' + e.data);
     full_parse(e.data);
     
 }
@@ -101,9 +131,8 @@ function full_parse(j)
 	return;
     }
     
-//    console.log(j);
+    //console.log(j);
     var o  = JSON.parse(j);
-//    document.getElementById("Events").textContent=o.Events;
 
     list = Object.keys(o);
     var i;
@@ -182,93 +211,25 @@ function initial_update()
 }
 
 
-function send_updates()
-{
-    var uri = "send_updates";
-    var xhttp = new XMLHttpRequest();
-    xhttp.onerror = function()
-    {
-	//console.log("error");
-	ServerWasDeadFlag = true;
-
-	document.getElementById("Status").style.backgroundColor = ServerDeadColor;
-	document.getElementById("Status").style.color    = "white";
-	document.getElementById("Status").textContent="RCDAQ not running";
-
-	document.getElementById("RunNr").textContent="n/a";
-	document.getElementById("Events").textContent="n/a";
-	document.getElementById("Volume").textContent="n/a";
-	document.getElementById("Logging").textContent=" ";
-	setTimeout(send_updates, 2000);
-    };
-    
-    xhttp.onreadystatechange = function()
-    {
-     	if (xhttp.readyState == 4 && xhttp.status == 200)
-     	{
-	    if ( ServerWasDeadFlag )
-	    {
-		//console.log(" reconnecting to server");
-		ServerWasDeadFlag = false;
-		init(false);
-	    }
-	    //console.log(" response " + xhttp.responseText);
-     	    full_parse(xhttp.responseText);
-	    var t = setTimeout(send_updates, 2000);
-     	}
-    };
-
-    xhttp.open("get", uri, true);
-    xhttp.send();
-}
 
 function OpenHandler()
 {
-    //console.log("in OpenHandler");
-    if ( OpenDisabledFlag)
-    {
-	return;
-    }
-    var uri = OpenCommand;
-    var xhttp = new XMLHttpRequest();
-
-    xhttp.onreadystatechange = function()
-    {
-     	if (xhttp.readyState == 4 && xhttp.status == 200)
-     	{
-	  //  console.log(" response " + xhttp.responseText);
-     	    full_parse(xhttp.responseText);
-     	}
-      };
+    console.log("in OpenHandler");
     
-    xhttp.open("GET", uri, true);
-    xhttp.send();
+    webSocket.send(OpenCommand);
 }
 
 function RunHandler()
 {
-    //console.log("in RunHandler");
-		     
-    var uri = RunCommand;
-    var xhttp = new XMLHttpRequest();
+    console.log("in RunHandler");
 
-    xhttp.onreadystatechange = function()
-    {
-     	if (xhttp.readyState == 4 && xhttp.status == 200)
-     	{
-	    //console.log(" response " + xhttp.responseText);
-	    full_parse(xhttp.responseText);
-     	}
-      };
+    webSocket.send(RunCommand);
 
-
-    xhttp.open("GET", uri, true);
-    xhttp.send();
 }
 
-document.addEventListener("DOMContentLoaded", function() {
-    init(true);
-});
+// document.addEventListener("DOMContentLoaded", function() {
+//     init();
+// });
 
 
 </script>
@@ -320,4 +281,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
 </table>
+
+<script>
+  window.onload = init;
+</script>
+
+
 </body>

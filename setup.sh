@@ -36,8 +36,6 @@ if ! rcdaq_client daq_status > /dev/null 2>&1 ; then
     ELOG=$(which elog 2>/dev/null)
     [ -n "$ELOG" ]  && rcdaq_client elog localhost 666 RCDAQLog
 
-    rcdaq_client daq_webcontrol 8899
-    
 fi
 
 # remember this is an executable script. We
