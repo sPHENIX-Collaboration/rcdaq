@@ -56,7 +56,8 @@ include_HEADERS =  \
   parseargument.h
 
 htmldir = $(datadir)/html
-html_DATA = control.html
+html_DATA = control.html  favicon.ico
+html_INDEX = control.html
 
 RPCGEN = rpcgen
 
@@ -87,7 +88,7 @@ librcdaq_la_SOURCES = rcdaq.cc \
   parseargument.cc
 
 
-librcdaq_la_CPPFLAGS = -DHTMLFILE=\"$(html_DATA)\" -DHTMLDIR=\"$(htmldir)\"
+librcdaq_la_CPPFLAGS = -DHTMLFILE=\"$(html_INDEX)\" -DHTMLDIR=\"$(htmldir)\"
 
 librcdaqutils_la_SOURCES =  parseargument.cc
 

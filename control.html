@@ -37,7 +37,45 @@ input {
 .bold {
     font-weight: bold;
 }
-	
+
+
+.RunActiveStatus {
+    color: red;
+    background-color: #F5D88B;
+    font-weight: bold;
+}
+
+.RunInActiveStatus {
+    color: blue;
+    background-color: #CCCCCC;
+}
+
+.ServerDeadStatus {
+    color: white;
+    background-color:  #F93D5C;
+}
+
+
+
+.LoggingActive {
+    color: black;
+    background-color: #F5D88B;
+}
+.LoggingInActive {
+    color: black;
+    background-color: #CCCCCC;
+}
+
+.ButtonActive {
+    color: black;
+    background-color: #33CCCC;
+}
+.ButtonInActive {
+    color: black;
+    background-color: #666666;
+}
+
+
 </style>
 
 
@@ -72,7 +110,7 @@ var OpenCommand = "daq_open";
 
 function init()
 {
-//    console.log('starting init');
+    //console.log('starting init');
     // we are recursively calling this function.
     // This stopMe tells this round not to proceed. 
     var stopMe = false;
@@ -97,10 +135,12 @@ function init()
 
 	ServerWasDeadFlag = true;
 
-	document.getElementById("Status").style.backgroundColor = ServerDeadColor;
-	document.getElementById("Status").style.color    = "white";
+	document.getElementById("Status").className = "ServerDeadStatus";
 	document.getElementById("Status").textContent="RCDAQ not running";
-
+	document.getElementById("Logging").className='LoggingInActive';
+	document.getElementById("OpenButton").className='ButtonInActive';
+	document.getElementById("BeginButton").className='ButtonInActive';
+	
 	document.getElementById("RunNr").textContent="n/a";
 	document.getElementById("Events").textContent="n/a";
 	document.getElementById("Volume").textContent="n/a";
@@ -138,31 +178,32 @@ function full_parse(j)
     var i;
     for ( i = 0; i < list.length; i++)
     {
-	//	console.log(list[i] + "  " + o[list[i]]);
+	//console.log(list[i] + "  " + o[list[i]]);
 	if ( list[i] == "OpenFlag")
 	{
 	    if ( o[list[i]] == 1 ) 
 	    {
 		document.getElementById("OpenButton").value = "Close";
-		document.getElementById("Logging").style.backgroundColor    = LoggingEnabledColor;
+		document.getElementById("Logging").className='LoggingActive';
 		OpenCommand = "daq_close";
 	    }
 	    else
 	    {
 		document.getElementById("OpenButton").value = "Open";
-		document.getElementById("Logging").style.backgroundColor    = LoggingDisabledColor;
+		document.getElementById("Logging").className='LoggingInActive';
 		OpenCommand = "daq_open";
 	    }
 	}
 	else if ( list[i] == "RunFlag")
 	{
+	    document.getElementById("BeginButton").className='ButtonActive';
+
 	    if ( o[list[i]] == 1 ) 
 	    {
 		// we dim the open/close button since it's going inactive
-		document.getElementById("OpenButton").style.backgroundColor    = ButtonInactiveColor;
+		document.getElementById("OpenButton").className='ButtonInActive';
 		// we re-color the status field
-		document.getElementById("Status").style.backgroundColor    = RunActiveColor;
-		document.getElementById("Status").style.color    = "red";
+		document.getElementById("Status").className='RunActiveStatus';
 		// console.log("setting RunActiveColor");
 		// and we change the text to "end"
 		document.getElementById("BeginButton").value = "End";
@@ -171,11 +212,9 @@ function full_parse(j)
 	    else
 	    {
 		// we un-dim the open/close button since it's active again
-		document.getElementById("OpenButton").style.backgroundColor    = ButtonBgColor;
+		document.getElementById("OpenButton").className='ButtonActive';
 		// we re-color the status field
-		document.getElementById("Status").style.backgroundColor    = RunInactiveColor;
-		document.getElementById("Status").style.color    = "red";
-		//console.log("setting RunInactiveColor");
+		document.getElementById("Status").className='RunInActiveStatus';
 		// and we change the text to "Begin"
 		document.getElementById("BeginButton").value = "Begin";
 		RunCommand = "daq_begin";
@@ -214,14 +253,14 @@ function initial_update()
 
 function OpenHandler()
 {
-    console.log("in OpenHandler");
+    //console.log("in OpenHandler");
     
     webSocket.send(OpenCommand);
 }
 
 function RunHandler()
 {
-    console.log("in RunHandler");
+    //console.log("in RunHandler");
 
     webSocket.send(RunCommand);
 
@@ -244,11 +283,11 @@ function RunHandler()
 <td colspan="2" style="background-color: #cccc00; height:45px;font-size:140%;">RCDAQ Control</td>
 </tr>
 <tr>
-<td id="Name" colspan="2" style="background-color: #bbbb00; height:18px;font-size:80%;"> test </td>
+<td id="Name" colspan="2" style="background-color: #bbbb00; height:18px;font-size:80%;">  </td>
 </tr>
 
 <tr>
-<td id="Status" colspan="2" style="background-color: #cc9900;font-size:120%" class="bold">Not Running</td>
+<td id="Status" colspan="2" class="RunInActiveStatus"> </td>
 </tr>
 
 <tr>
@@ -267,16 +306,16 @@ function RunHandler()
 </tr>
 
 <tr>
-<td id="Logging" colspan="2" style="background-color:#00cc99" ></td>
+<td id="Logging" colspan="2" class="LoggingInActive" ></td>
 </tr>
 
 
 <tr>
-    <td colspan="2" style="background-color:#33bbbb;">  <input type="button" value="Open" onClick="OpenHandler()" BGCOLOR="#33CCCC" id="OpenButton"></td>
+    <td colspan="2" style="background-color:#33bbbb";>  <input type="button" value="Open" onClick="OpenHandler()" style="ButtonActive" id="OpenButton"></td>
 </tr>
 
 <tr>
-    <td colspan="2" style="background-color:#33bbbb;">  <input type="button" value="Begin" onClick="RunHandler()" BGCOLOR="#33CCCC" id="BeginButton"></td>
+    <td colspan="2" style="background-color:#33bbbb";>  <input type="button" value="Begin" onClick="RunHandler()" style="ButtonActive" id="BeginButton"></td>
 <tr/>
 
 
