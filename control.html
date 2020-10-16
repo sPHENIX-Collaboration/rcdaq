@@ -81,6 +81,7 @@ input {
 
 <script>
 
+var debug = false;
 var webSocket; 
 
 // global flags 
@@ -110,7 +111,7 @@ var OpenCommand = "daq_open";
 
 function init()
 {
-    //console.log('starting init');
+    if ( debug) {console.log('starting init');}
     // we are recursively calling this function.
     // This stopMe tells this round not to proceed. 
     var stopMe = false;
@@ -123,13 +124,13 @@ function init()
 
 
     webSocket.onopen = function(e) {
-	//console.log('Websocket opened - sending initial update request');
+	if ( debug) {console.log('Websocket opened - sending initial update request');}
 	webSocket.send("initial_update");
     }
     
 
     webSocket.onclose = function(event) {
-	//console.log('Websocket closed');
+	if ( debug) { console.log('Websocket closed'); };
 	delete  webSocket;
 	stopMe = true;
 
@@ -157,7 +158,7 @@ function init()
 
 function wsReceive(e)
 {
-    //console.log('Websocket received ' + e.data);
+    if ( debug) { console.log('Websocket received ' + e.data); }
     full_parse(e.data);
     
 }
@@ -165,20 +166,18 @@ function wsReceive(e)
 function full_parse(j)
 {
 
-    //console.log(" j.length " + j.length);
     if ( j.length == 0)
     {
 	return;
     }
     
-    //console.log(j);
+
     var o  = JSON.parse(j);
 
     list = Object.keys(o);
     var i;
     for ( i = 0; i < list.length; i++)
     {
-	//console.log(list[i] + "  " + o[list[i]]);
 	if ( list[i] == "OpenFlag")
 	{
 	    if ( o[list[i]] == 1 ) 
@@ -204,7 +203,7 @@ function full_parse(j)
 		document.getElementById("OpenButton").className='ButtonInActive';
 		// we re-color the status field
 		document.getElementById("Status").className='RunActiveStatus';
-		// console.log("setting RunActiveColor");
+
 		// and we change the text to "end"
 		document.getElementById("BeginButton").value = "End";
 		RunCommand = "daq_end";
@@ -223,7 +222,6 @@ function full_parse(j)
 		
 	if ( document.getElementById(list[i]) )
         {
-		//console.log("setting " + list[i] + " to " + o[list[i]] );
 		document.getElementById(list[i]).textContent=o[list[i]];
 	}
     }
@@ -235,7 +233,6 @@ function initial_update()
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function()
     {
-    // 	alert(" readystate " + xhttp.readyState + " " + xhttp.status);
      	if (xhttp.readyState == 4 && xhttp.status == 200)
      	{
 	    //console.log(" response " + xhttp.responseText);
@@ -243,8 +240,7 @@ function initial_update()
      	}
       };
 
-//    xhttp.open("POST", uri, false);
-//    xhttp.send("htmlResponse received&delay=3");
+
     xhttp.open("get", uri, true);
     xhttp.send();
 }
@@ -253,14 +249,12 @@ function initial_update()
 
 function OpenHandler()
 {
-    //console.log("in OpenHandler");
     
     webSocket.send(OpenCommand);
 }
 
 function RunHandler()
 {
-    //console.log("in RunHandler");
 
     webSocket.send(RunCommand);
 
@@ -311,12 +305,12 @@ function RunHandler()
 
 
 <tr>
-    <td colspan="2" style="background-color:#33bbbb";>  <input type="button" value="Open" onClick="OpenHandler()" style="ButtonActive" id="OpenButton"></td>
+    <td colspan="2" style="background-color:#33bbbb";>  <input type="button" value="Open" onClick="OpenHandler()" class="ButtonActive" id="OpenButton"></td>
 </tr>
 
 <tr>
-    <td colspan="2" style="background-color:#33bbbb";>  <input type="button" value="Begin" onClick="RunHandler()" style="ButtonActive" id="BeginButton"></td>
-<tr/>
+    <td colspan="2" style="background-color:#33bbbb";>  <input type="button" value="Begin" onClick="RunHandler()" class="ButtonActive" id="BeginButton"></td>
+</tr>
 
 
 </table>

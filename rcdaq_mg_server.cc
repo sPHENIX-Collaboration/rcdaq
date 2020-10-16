@@ -101,7 +101,7 @@ void initial_ws_update (struct mg_connection *nc)
 		, get_openflag()
 		, daq_get_myname().c_str()
 		);
-  cout << __FILE__ << " " << __LINE__ << " " << str << endl;
+  //  cout << __FILE__ << " " << __LINE__ << " " << str << endl;
   
   broadcast(nc, str, len);
   
@@ -158,7 +158,7 @@ void send_ws_updates (struct mg_connection *nc)
   int len;
   if ( daq_running() )
     {
-      cout << __FILE__ << " " << __LINE__ << " in send_ws_updates" << endl;
+      //      cout << __FILE__ << " " << __LINE__ << " in send_ws_updates" << endl;
       update(nc, "Volume", get_runvolume());
       update(nc, "Events", get_eventnumber());
       update(nc, "Status", get_statusstring().c_str() );
@@ -178,7 +178,7 @@ void send_updates (struct mg_connection *nc)
 		, get_statusstring().c_str()
 		);
 
-  cout << __FILE__ << " " << __LINE__ << " sending " << str << endl;
+  //cout << __FILE__ << " " << __LINE__ << " sending " << str << endl;
   nc->flags |= MG_F_SEND_AND_CLOSE;
   mg_printf(nc, "HTTP/1.0 200 OK\r\nContent-Length: %d\r\n"
 	    "Content-Type: application/json\r\n\r\n%s",
@@ -194,7 +194,7 @@ void send_status (struct mg_connection *nc, std::string out)
   x<< endl;
   
   out.replace(out.find(x.str()),x.str().length(),"");
-  cout << __FILE__ << " " << __LINE__ << " " << out << endl;
+  //cout << __FILE__ << " " << __LINE__ << " " << out << endl;
 
 
   
@@ -220,7 +220,7 @@ void send_error (struct mg_connection *nc, std::string out)
   x<< endl;
   
   out.replace(out.find(x.str()),x.str().length(),"");
-  cout << __FILE__ << " " << __LINE__ << " " << out << endl;
+  //cout << __FILE__ << " " << __LINE__ << " " << out << endl;
 
 
   
