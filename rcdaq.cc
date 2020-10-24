@@ -165,6 +165,10 @@ unsigned long long run_volume, max_volume;
 unsigned int max_events;
 
 
+time_t old_time; // to measure MB/s
+double old_volume = 0;
+double mb_per_second = 0; 
+
 int EvtId = 0;
 
 
@@ -897,7 +901,8 @@ int daq_begin(const int irun, std::ostream& os)
       
     }
 
-  StartTime = time(0);
+  old_time =  StartTime = time(0);
+  old_volume = 0;
 
       
   // here we sucessfully start a run. So now we set the env. variables
@@ -1165,6 +1170,17 @@ int readout(const int etype)
     }
 
   run_volume += 4*len;
+
+  time_t now_time = time(0);
+    
+  if ( now_time - old_time > 10) // calculate avg speed
+    {
+      mb_per_second = ( run_volume - old_volume) / ( now_time - old_time) / 1024 /1204;
+      //      cout << " mb/s: " << run_volume << " " << old_volume << "  " << now_time << "  " << old_time << "  " << mb_per_second << endl;
+      old_volume = run_volume;
+      old_time = now_time;
+    }
+  
   //  cout << "len, run_volume = " << len << "  " << run_volume << endl;
 
   int returncode = 0;
