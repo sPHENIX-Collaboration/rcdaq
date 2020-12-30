@@ -517,6 +517,17 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       return &result;
       break;
 
+    case DAQ_END_IMMEDIATE:
+        // cout << "daq_end "  << endl;
+      result.status = daq_end_immediate(outputstream);
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
     case DAQ_RUNNUMBERFILE:
       daq_set_runnumberfile(ab->spar);
       break;

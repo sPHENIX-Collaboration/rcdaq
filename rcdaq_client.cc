@@ -180,13 +180,14 @@ int command_execute( int argc, char **argv)
   // the log and short flags are for qualifying the 
   // status output
   int long_flag = 1;
+  int immediate_flag = 0;  // only used for daq_end so far
 
   int c;
   
   optind = 0; // tell getopt to start over
   int servernumber=0;
 
-  while ((c = getopt(argc, argv, "vls")) != EOF)
+  while ((c = getopt(argc, argv, "vlsi")) != EOF)
     {
       switch (c) 
 	{
@@ -201,6 +202,10 @@ int command_execute( int argc, char **argv)
 
 	case 's': // set the short flag (0) (note that long_flag is pre-set to 1 for "normal") 
 	  long_flag=0;
+	  break;
+
+	case 'i': // set the "immediate" flag; onoy used in daq_end to request an asynchronous end
+	  immediate_flag=1;
 	  break;
 
 	}
@@ -267,7 +272,15 @@ int command_execute( int argc, char **argv)
   else if ( strcasecmp(command,"daq_end") == 0)
     {
 
-      ab.action = DAQ_END;
+      if (immediate_flag)
+	{
+	  ab.action = DAQ_END_IMMEDIATE;
+	}
+      else
+	{
+	  ab.action = DAQ_END;
+	}
+      
       r = r_action_1(&ab, clnt);
       if (r == (shortResult *) NULL) 
 	{

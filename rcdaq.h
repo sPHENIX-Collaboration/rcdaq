@@ -14,7 +14,7 @@ void set_eventsizes();
 void *writebuffers ( void * arg);
 void *EventLoop( void *arg);
 
-int daq_end();
+//int daq_end();
 int Command( const int command);
 
 
@@ -27,7 +27,10 @@ int rcdaq_init(pthread_mutex_t &M );
 int add_readoutdevice( daq_device *d);
 
 int daq_begin(const int irun,std::ostream& os = std::cout );
+
+int daq_end_immediate(std::ostream& os = std::cout);
 int daq_end(std::ostream& os = std::cout);
+
 int daq_fake_trigger (const int n, const int waitinterval);
 
 int daq_write_runnumberfile(const int run);
