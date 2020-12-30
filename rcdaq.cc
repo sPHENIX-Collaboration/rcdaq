@@ -114,6 +114,7 @@ int Daq_Status;
 
 #define DAQ_RUNNING  0x01
 #define DAQ_READING  0x02
+#define DAQ_ENDREQUESTED  0x04
 #define DAQ_PROTOCOL 0x10
 
 static daqBuffer Buffer1;
@@ -255,12 +256,12 @@ int disable_trigger()
   if ( TriggerH) TriggerH->disable();
   
 
-  sleep (1);
+  //  sleep (1);
 
-  // pthread_cancel(ThreadTrigger);
-  // cout << __FILE__ << " " << __LINE__ << " waiting for trigger loop to exit " << endl;
-  // pthread_join(ThreadTrigger, NULL);
-  // cout << __FILE__ << " " << __LINE__ << " done " << endl;
+  //   pthread_cancel(ThreadTrigger);
+  cout << __FILE__ << " " << __LINE__ << " waiting for trigger loop to exit " << endl;
+  pthread_join(ThreadTrigger, NULL);
+  cout << __FILE__ << " " << __LINE__ << " done " << endl;
 
 
   return 0;
@@ -871,6 +872,10 @@ int daq_begin(const int irun, std::ostream& os)
   
   // set the status to "running"
   Daq_Status |= DAQ_RUNNING;
+
+  // just to be safe, clear the "end requested" bit
+  if ( Daq_Status & DAQ_ENDREQUESTED ) Daq_Status ^= DAQ_ENDREQUESTED;
+  
   set_eventsizes();
   // initialize Buffer1 to be the fill buffer
   fillBuffer      = &Buffer1;
@@ -938,6 +943,18 @@ int daq_begin(const int irun, std::ostream& os)
   return 0;
 }
 
+int daq_end_immediate(std::ostream& os)
+{
+  if ( ! (Daq_Status & DAQ_RUNNING) ) 
+    {
+      os << "Run is not active" << endl;;
+      return -1;
+    }
+  os << "Run " << TheRun << " end requested" << endl;
+  Daq_Status |= DAQ_ENDREQUESTED;
+  return 0;
+}
+
 
 int daq_end(std::ostream& os)
 {
@@ -950,6 +967,7 @@ int daq_end(std::ostream& os)
   device_endrun();
 
   Daq_Status ^= DAQ_RUNNING;
+  Daq_Status ^= DAQ_ENDREQUESTED;
 		
   readout(ENDRUNEVENT);
   switch_buffer();  // we force a buffer flush
@@ -1187,6 +1205,13 @@ int readout(const int etype)
 
   if (  Daq_Status & DAQ_RUNNING )
     {
+
+      if (  Daq_Status & DAQ_ENDREQUESTED )
+	{
+	  cout << " asynchronous end requested "  << endl;
+	  returncode = 1;
+	}
+      
       if ( etype == DATAEVENT && max_volume > 0 && run_volume >= max_volume) 
 	{
 	  cout << " automatic end after " << max_volume /(1024*1024) << " Mb" << endl;
