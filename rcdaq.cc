@@ -128,7 +128,8 @@ time_t StartTime = 0;
 int Buffer_number;
 int Event_number;
 
-int TriggerControl = 0;
+static int TriggerControl = 0;
+static int TriggerStatus =0;
 
 int ThePort=8899;
 
@@ -223,6 +224,7 @@ int enable_trigger()
 {
 
   TriggerControl=1;
+  TriggerStatus = 0;
   if ( TriggerH) TriggerH->enable();
 
   int status = pthread_create(&ThreadTrigger, NULL, 
@@ -255,13 +257,14 @@ int disable_trigger()
   TriggerControl=0;  // this makes the trigger process terminate
   if ( TriggerH) TriggerH->disable();
   
+  cout << __FILE__ << " " << __LINE__ << " waiting for trigger loop to exit " << endl;
+  while ( !TriggerStatus) usleep(10);
+  cout << __FILE__ << " " << __LINE__ << " done " << endl;
 
   //  sleep (1);
 
-  //   pthread_cancel(ThreadTrigger);
-  cout << __FILE__ << " " << __LINE__ << " waiting for trigger loop to exit " << endl;
-  pthread_join(ThreadTrigger, NULL);
-  cout << __FILE__ << " " << __LINE__ << " done " << endl;
+  //  pthread_cancel(ThreadTrigger);
+  //pthread_join(ThreadTrigger, NULL);
 
 
   return 0;
@@ -955,6 +958,12 @@ int daq_end_immediate(std::ostream& os)
   return 0;
 }
 
+// this function is to avoid a race condition with the asynchronous "end requested" feature
+int daq_wait_for_actual_end()
+{
+    while ( Daq_Status & DAQ_ENDREQUESTED ) usleep(1000);
+    return 0;
+}
 
 int daq_end(std::ostream& os)
 {
@@ -967,7 +976,7 @@ int daq_end(std::ostream& os)
   device_endrun();
 
   Daq_Status ^= DAQ_RUNNING;
-  Daq_Status ^= DAQ_ENDREQUESTED;
+  if ( Daq_Status & DAQ_ENDREQUESTED) Daq_Status ^= DAQ_ENDREQUESTED;
 		
   readout(ENDRUNEVENT);
   switch_buffer();  // we force a buffer flush
@@ -1006,6 +1015,9 @@ int daq_end(std::ostream& os)
 void * daq_triggerloop (void * arg)
 {
   int evttype;
+
+  pthread_detach(pthread_self());
+  
   while (TriggerControl)
     {
       // let's se if we have a TriggerHelper object
@@ -1046,7 +1058,8 @@ void * daq_triggerloop (void * arg)
    pthread_mutex_lock(&M_cout);
    cout << "trigger loop ended for run " << TheRun<< endl;
    pthread_mutex_unlock(&M_cout);
-  return 0;
+   TriggerStatus =1;
+   return 0;
 }
 
 

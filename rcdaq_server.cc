@@ -470,6 +470,10 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
   static int currentmaxresultlength = 10*2048;
   static char *resultstring = new char[currentmaxresultlength+1];
 
+  // to avoid a race condition with the asynchronous "end requested" feature,
+  // wait here...
+  daq_wait_for_actual_end();
+
   
   if ( outputstream.str().size() > currentmaxresultlength )
     {
