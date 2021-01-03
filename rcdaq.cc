@@ -241,9 +241,9 @@ int enable_trigger()
     }
   else
     {
-      pthread_mutex_lock(&M_cout);
-      cout << "trigger loop created for run " << TheRun<< endl;
-      pthread_mutex_unlock(&M_cout);
+      // pthread_mutex_lock(&M_cout);
+      // cout << "trigger loop created for run " << TheRun<< endl;
+      // pthread_mutex_unlock(&M_cout);
       if ( TriggerH) TriggerH->rearm();
 
     }
@@ -257,9 +257,14 @@ int disable_trigger()
   TriggerControl=0;  // this makes the trigger process terminate
   if ( TriggerH) TriggerH->disable();
   
-  cout << __FILE__ << " " << __LINE__ << " waiting for trigger loop to exit " << endl;
-  while ( !TriggerStatus) usleep(10);
-  cout << __FILE__ << " " << __LINE__ << " done " << endl;
+  // cout << __FILE__ << " " << __LINE__ << " waiting for trigger loop to exit " << endl;
+  // while ( !TriggerStatus)
+  //   {
+  //     cout << __FILE__ << " " << __LINE__ << " triggerstatus " << TriggerStatus << endl;
+  //     usleep(10000);
+  //   }
+  
+  //  cout << __FILE__ << " " << __LINE__ << " done " << endl;
 
   //  sleep (1);
 
@@ -973,11 +978,9 @@ int daq_end(std::ostream& os)
       return -1;
     }
   disable_trigger();
+  Daq_Status ^= DAQ_RUNNING;
   device_endrun();
 
-  Daq_Status ^= DAQ_RUNNING;
-  if ( Daq_Status & DAQ_ENDREQUESTED) Daq_Status ^= DAQ_ENDREQUESTED;
-		
   readout(ENDRUNEVENT);
   switch_buffer();  // we force a buffer flush
 		
@@ -995,8 +998,10 @@ int daq_end(std::ostream& os)
       file_is_open = 0;
  
     }
-  os << "Run " << TheRun << " ended" << endl;
+  if ( Daq_Status & DAQ_ENDREQUESTED) Daq_Status ^= DAQ_ENDREQUESTED;
 
+  os << "Run " << TheRun << " ended" << endl;
+  
   unsetenv ("DAQ_RUNNUMBER");
   unsetenv ("DAQ_FILENAME");
   unsetenv ("DAQ_STARTTIME");
@@ -1016,11 +1021,11 @@ void * daq_triggerloop (void * arg)
 {
   int evttype;
 
-  pthread_detach(pthread_self());
+  //  pthread_detach(pthread_self());
   
   while (TriggerControl)
     {
-      // let's se if we have a TriggerHelper object
+      // let's see if we have a TriggerHelper object
       if (TriggerH)
 	{
 	  evttype = TriggerH->wait_for_trigger();
@@ -1031,11 +1036,13 @@ void * daq_triggerloop (void * arg)
 	      CurrentEventType = evttype;
 	      pthread_mutex_unlock ( &TriggerSem );
 
-	      // pthread_mutex_lock(&M_cout);
-	      // cout << __LINE__ << "  " << __FILE__ << " trigger, triggercontrol = " << TriggerControl  << endl;
-	      //  pthread_mutex_unlock(&M_cout);
+	       // pthread_mutex_lock(&M_cout);
+	       // cout << __LINE__ << "  " << __FILE__ << " triggercontrol = " << TriggerControl  << endl;
+	       //  pthread_mutex_unlock(&M_cout);
 	      
 	      pthread_mutex_lock ( &TriggerDone );
+
+	      if ( !TriggerControl) continue;
 
 	      // pthread_mutex_lock(&M_cout);
 	      // cout << __LINE__ << "  " << __FILE__ << " after lock triggercontrol = " << TriggerControl  << endl;
@@ -1051,12 +1058,13 @@ void * daq_triggerloop (void * arg)
 	  pthread_mutex_unlock ( &TriggerSem );
 
 	  pthread_mutex_lock ( &TriggerDone );
+	  if ( !TriggerControl) continue;
 
       	  usleep (100000);
       	}
     }
    pthread_mutex_lock(&M_cout);
-   cout << "trigger loop ended for run " << TheRun<< endl;
+   //cout << "trigger loop ended for run " << TheRun<< endl;
    pthread_mutex_unlock(&M_cout);
    TriggerStatus =1;
    return 0;
@@ -1094,6 +1102,7 @@ void * EventLoop( void *arg)
     {
 
       pthread_mutex_lock ( &TriggerSem );
+      //cout << __LINE__ << "  " << __FILE__ << " unlocked by TriggerSem"  << endl;
 
       if ( Daq_Status & DAQ_RUNNING ) 
 	{
@@ -1102,6 +1111,8 @@ void * EventLoop( void *arg)
 	      Daq_Status |= DAQ_READING;
 	      
 	      int rstatus = readout(CurrentEventType);
+	      // cout << __LINE__ << "  " << __FILE__ << " readout status: " << rstatus << endl;
+
 	      Daq_Status ^= DAQ_READING;
 
 
@@ -1110,14 +1121,20 @@ void * EventLoop( void *arg)
 	      // reset todo, and the DAQ_TRIGGER bit. 
 	      Trigger_Todo = 0;
 			  
-	      reset_deadtime();
 	      if (  rstatus)    // we got an endrun signal
 		{
+		  cout << __LINE__ << "  " << __FILE__ << " internal end-run requested"  << endl;
+		  TriggerControl = 0;
+		  reset_deadtime();
+
 		  daq_end ( std::cout);
 		  //go_on = 0;
 		}
-		  		  
+	      else
+		{
+		  reset_deadtime();
 		}
+	    }
 	}
       else
 	// no, we are not running
