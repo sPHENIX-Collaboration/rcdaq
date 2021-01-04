@@ -980,7 +980,6 @@ int daq_end(std::ostream& os)
       return -1;
     }
   disable_trigger();
-  Daq_Status ^= DAQ_RUNNING;
   device_endrun();
 
   readout(ENDRUNEVENT);
@@ -1015,6 +1014,7 @@ int daq_end(std::ostream& os)
   PreviousFilename = CurrentFilename;
   CurrentFilename = "";
   StartTime = 0;
+  Daq_Status ^= DAQ_RUNNING;
   return 0;
 }
 
