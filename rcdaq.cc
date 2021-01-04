@@ -846,6 +846,8 @@ int daq_begin(const int irun, std::ostream& os)
       return -1;
     }
 
+  // set the status to "running"
+  Daq_Status |= DAQ_RUNNING;
 
   if (  irun ==0)
     {
@@ -871,6 +873,7 @@ int daq_begin(const int irun, std::ostream& os)
       else
 	{
 	  os << "Could not open output file - Run " << TheRun << " not started" << endl;;
+	  Daq_Status ^= DAQ_RUNNING;
 	  return -1;
 	}
     }
@@ -878,8 +881,6 @@ int daq_begin(const int irun, std::ostream& os)
   Buffer_number = 1;
   Event_number  = 1;
   
-  // set the status to "running"
-  Daq_Status |= DAQ_RUNNING;
 
   // just to be safe, clear the "end requested" bit
   if ( Daq_Status & DAQ_ENDREQUESTED ) Daq_Status ^= DAQ_ENDREQUESTED;
@@ -908,6 +909,7 @@ int daq_begin(const int irun, std::ostream& os)
 	  os << "Cannot start run - event sizes larger than buffer, size " 
 	     <<  wantedmaxsize/1024 << " Buffer size " 
 	     << transportBuffer->getMaxSize()/1024 << endl;
+	  Daq_Status ^= DAQ_RUNNING;
 	  return -1;
 	}
       //      os << " Buffer size increased to " << transportBuffer->getMaxSize()/1024 << " KB"<< endl;
@@ -946,8 +948,8 @@ int daq_begin(const int irun, std::ostream& os)
   enable_trigger();
 
 
-  os << "Run " << TheRun << " started" << endl;;
-	  
+  os << "Run " << TheRun << " started" << endl;
+
   return 0;
 }
 
@@ -1123,7 +1125,6 @@ void * EventLoop( void *arg)
 			  
 	      if (  rstatus)    // we got an endrun signal
 		{
-		  cout << __LINE__ << "  " << __FILE__ << " internal end-run requested"  << endl;
 		  TriggerControl = 0;
 		  reset_deadtime();
 
