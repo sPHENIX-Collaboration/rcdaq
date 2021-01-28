@@ -98,7 +98,7 @@ librcdaqplugin_gauss_la_SOURCES = daq_device_gauss.cc gauss_plugin.cc simpleRand
 
 bin_SCRIPTS =  rcdaq_control.pl rcdaq_status.pl rcdaq_runtypechooser.pl rcdaq_configmenu.pl aliases.csh aliases.sh automated_run_example.sh wait_for_run_end.sh
 
-bin_PROGRAMS =  rcdaq_client rcdaq_server elogtest
+bin_PROGRAMS =  rcdaq_client rcdaq_server elogtest sfs
 
 elogtest_SOURCES = elogtest.cc
 elogtest_LDADD = eloghandler.lo 
@@ -113,8 +113,8 @@ rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.l
 
 rcdaq_server_LDFLAGS =  -Wl,-export-dynamic
 
-#rcdaq_sa_SOURCES = rcdaq_frontend.cc 
-#rcdaq_sa_LDADD =  librcdaq.la -lpthread
+sfs_SOURCES = sfs.cc 
+sfs_LDADD = -lpthread 
 
 
 

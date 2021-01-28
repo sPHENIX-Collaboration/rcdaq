@@ -199,10 +199,13 @@ sub update()
 		$runstatuslabel->configure(-text =>"Stopped   Run $old_run");
 	    }
 		
-	    if ( $openflag )
-	    {
-		
+	    if ( $openflag == 1)
+	    {		
 		$filenamelabel->configure(-text =>"Logging enabled");
+	    }
+	    elsif ( $openflag == 2)
+	    {		
+		$filenamelabel->configure(-text =>"Logging enabled (Server)");
 	    }
 	    else
 	    {
@@ -215,10 +218,13 @@ sub update()
 	    
 	    $runstatuslabel->configure(-text =>"Running for $duration s");
 	    
-	    if ( $openflag )
+ 	    if ( $openflag == 1 )
 	    {
-		
 		$filenamelabel->configure(-text =>"File: $fn");
+	    }
+	    elsif ( $openflag ==2 )
+	    {
+		$filenamelabel->configure(-text =>"File on server: $fn");
 	    }
 	    else
 	    {

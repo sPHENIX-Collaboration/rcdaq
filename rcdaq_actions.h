@@ -36,6 +36,8 @@
 
 #define DAQ_END_IMMEDIATE      127
 
+#define DAQ_OPEN_SERVER        128
+
 
 
 #define DAQ_DEVICE_RANDOM         1001

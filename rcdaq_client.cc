@@ -43,6 +43,7 @@ void showHelp()
   std::cout << "   help                                 show this help text"  << std::endl; 
   std::cout << "   daq_status [-s] [-l]                 display status [short] [long]" << std::endl;
   std::cout << "   daq_open                             enable logging" << std::endl;
+  std::cout << "   daq_open_server hostname [port]      enable logging to server" << std::endl;
   std::cout << "   daq_begin [run-number]             	start taking data for run-number, or auto-increment" << std::endl;
   std::cout << "   daq_end                              end the run " << std::endl;
   std::cout << "   daq_close                            disable logging" << std::endl;
@@ -421,6 +422,29 @@ int command_execute( int argc, char **argv)
 	}
       if (r->content) std::cout <<  r->str << std::flush;
  
+    }
+
+  else if ( strcasecmp(command,"daq_open_server") == 0)
+    {
+      
+      if ( argc <  optind + 2) return -1;
+
+      ab.action = DAQ_OPEN_SERVER;
+      ab.spar = argv[optind + 1];
+      if ( argc == optind + 3)
+	{
+	  ab.ipar[0] = get_value(argv[optind + 2]);
+	}
+      else
+	{
+	  ab.ipar[0] = 0;
+	}
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
     }
   
   else if ( strcasecmp(command,"daq_close") == 0)
