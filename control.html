@@ -180,7 +180,7 @@ function full_parse(j)
     {
 	if ( list[i] == "OpenFlag")
 	{
-	    if ( o[list[i]] == 1 ) 
+	    if ( o[list[i]] > 0  ) 
 	    {
 		document.getElementById("OpenButton").value = "Close";
 		document.getElementById("Logging").className='LoggingActive';

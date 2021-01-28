@@ -208,10 +208,13 @@ sub update()
 	    }
 	    
 	    
-	    if ( $openflag )
-	    {
-		
+	    if ( $openflag == 1)
+	    {		
 		$filenamelabel->configure(-text =>"Logging enabled");
+	    }
+	    elsif ( $openflag == 2)
+	    {		
+		$filenamelabel->configure(-text =>"Logging enabled (Server)");
 	    }
 	    else
 	    {
@@ -229,10 +232,13 @@ sub update()
 	    $button_open->configure(-bg => $graycolor );
 	    $button_open->configure(-command => [\&dummy] );
 	    
-	    if ( $openflag )
+	    if ( $openflag == 1 )
 	    {
-		
 		$filenamelabel->configure(-text =>"File: $fn");
+	    }
+	    elsif ( $openflag ==2 )
+	    {
+		$filenamelabel->configure(-text =>"File on server: $fn");
 	    }
 	    else
 	    {

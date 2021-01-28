@@ -49,15 +49,20 @@ std::string& daq_get_filerule();
 int daq_open(std::ostream& os = std::cout);
 int daq_shutdown(const unsigned long servernumber, const unsigned long versionnumber,
 		 std::ostream& os = std::cout);
-
+std::string& get_current_filename();
+int daq_close (std::ostream& os = std::cout);
 int is_open();
+
+int daq_open_server (const char *hostname, const int port, std::ostream& os = std::cout);
+int is_server_open();
+int daq_server_close (std::ostream& os = std::cout);
+int get_serverflag();
+
 
 int daq_set_name(const char *name);
 int daq_get_name(std::ostream& os = std::cout);
 std::string daq_get_myname();
 
-std::string& get_current_filename();
-int daq_close (std::ostream& os = std::cout);
 
 int daq_list_readlist(std::ostream& os = std::cout );
 int daq_clear_readlist(std::ostream& os = std::cout);

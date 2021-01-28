@@ -68,7 +68,7 @@ std::string get_statusstring()
 std::string get_loggingstring()
 {
   stringstream out;
-  if ( get_openflag() )
+  if ( get_openflag())
     {
       if ( daq_running() )
 	{
@@ -80,6 +80,18 @@ std::string get_loggingstring()
 	  return "Logging enabled";
 	}
     }
+  else if ( get_serverflag() )
+    {
+      if ( daq_running() )
+	{
+	  out << "File on server: " << get_current_filename();
+	  return out.str();
+	}
+      else
+	{
+	  return "Logging enabled (Server)";
+	}
+    }
 
   return "Logging disabled";
 }
@@ -89,6 +101,9 @@ void initial_ws_update (struct mg_connection *nc)
 {
   char str[2048];
   int len;
+  
+  int openvalue = get_openflag() | get_serverflag();
+  
   len = sprintf(str, "{ \"RunFlag\":%d, \"Status\":\"%s\" , \"RunNr\":%d , \"Events\":%d , \"Volume\":\"%f\", \"Duration\":%d, \"Logging\":\"%s\" ,\"Filename\":\"%s \" , \"OpenFlag\":%d , \"Name\":\"%s\"  } "
 		, daq_running()
 		, get_statusstring().c_str()
@@ -98,7 +113,7 @@ void initial_ws_update (struct mg_connection *nc)
 		, get_runduration()
 		, get_loggingstring().c_str()
 		, get_current_filename().c_str()
-		, get_openflag()
+		, openvalue
 		, daq_get_myname().c_str()
 		);
   //  cout << __FILE__ << " " << __LINE__ << " " << str << endl;
@@ -402,6 +417,7 @@ static int  last_eventnumber;
 static double  last_runvolume;
 static int  last_runduration;
 static int  last_openflag;
+static int  last_serverflag;
 static int  last_current_filename; 
 
 
@@ -429,6 +445,12 @@ int trigger_updates(struct mg_connection *nc)
       last_openflag = get_openflag();
       update(nc, "Logging", get_loggingstring().c_str());
       update(nc, "OpenFlag", get_openflag());
+    }
+  if  ( last_serverflag != get_serverflag() )
+    {
+      last_serverflag = get_serverflag();
+      update(nc, "Logging", get_loggingstring().c_str());
+      update(nc, "ServerFlag", get_serverflag());
     }
   
   return 0;
@@ -458,6 +480,7 @@ void * mg_server (void *arg)
   last_runvolume   = get_runvolume();
   last_runduration = get_runduration();
   last_openflag    = get_openflag();
+  last_serverflag  = get_serverflag();
   //  last_current_filename; 
 
 
