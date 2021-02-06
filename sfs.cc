@@ -52,10 +52,13 @@
 #include <getopt.h>
 #endif
 
-//#include <Event/BufferConstants.h>
-//#include <Event/A_Event.h>
 
-#include <Event/buffer.h>
+typedef unsigned int PHDWORD;
+typedef unsigned short SWORD;
+typedef unsigned char BYTE;
+typedef unsigned int UINT;
+
+#define BUFFERBLOCKSIZE 8192U
 
 
 #define CTRL_BEGINRUN        1
