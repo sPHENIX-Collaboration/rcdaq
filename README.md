@@ -1,8 +1,4 @@
 # data_acquisition
-This is the DAQ repository for the time being. It will host rcdaq and the plugins.
+This is the repository for the RCDAQ data acquisition system.
 
-I will try to import the existing git repository where rcdaq and the plugins have been maintained for a long time.
-Let's see if that works. I don't want to loose several years worth of history.
-
-It didn't come out the way I wanted... I wanted data_acqusition/rcdaq etc. Next try.
-
+RCDAQ is a DAQ system in use at the Brookhaven Lab's sPHENIX experiment, and for a number of R&D efforts for the future Electron-Ion Collider. 
