@@ -32,7 +32,6 @@ pthread_mutex_t M_ws_send;
 
 int error_flag = 0;
 std::string error_string = "";
-int initial_update_flag = 0;
 
 int mg_end()
 {
@@ -117,8 +116,9 @@ void initial_ws_update (struct mg_connection *nc)
 		, daq_get_myname().c_str()
 		);
   //  cout << __FILE__ << " " << __LINE__ << " " << str << endl;
-  
-  broadcast(nc, str, len);
+
+  mg_send_websocket_frame(nc, WEBSOCKET_OP_TEXT, str, len);
+//  broadcast(nc, str, len);
   
 }
 
@@ -285,7 +285,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
     case MG_EV_WEBSOCKET_FRAME:
       {
 	struct mg_str msg = {(char *) wm->data, wm->size};
-//	cout << __FILE__ << " " << __LINE__ << " ws message " << wm->data << endl;
+	//cout << __FILE__ << " " << __LINE__ << " ws message " << wm->data << endl;
 	 
 	if ( mg_vcmp ( &msg, "daq_begin") == 0)
 	  {
@@ -333,7 +333,8 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 
 	else if ( mg_vcmp ( &msg, "initial_update") == 0)
 	  {
-	    initial_update_flag= 1;
+	    //cout << __FILE__ << " " << __LINE__ << "sending initial update" << endl;
+	    initial_ws_update(nc);
 	    return;
 	  }
 
@@ -504,20 +505,12 @@ void * mg_server (void *arg)
   while(!end_web_thread) 
     {
       mg_mgr_poll(&mgr, 1000);
-      //       printf ("time %d\n", (int) time(0) );
-      if (initial_update_flag)
+
+      trigger_updates(nc);
+      if ( time(0) - last_time > 1)
 	{
-	  initial_update_flag = 0;
-	  initial_ws_update (nc);
-	}
-      else
-	{
-	  trigger_updates(nc);
-	  if ( time(0) - last_time > 1)
-	    {
-	      send_ws_updates(nc);
-	      last_time = time(0);
-	    }
+	  send_ws_updates(nc);
+	  last_time = time(0);
 	}
     }
   //   cout  << __FILE__ << " " << __LINE__ <<  " web server is ending"  << endl;
