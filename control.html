@@ -147,7 +147,7 @@ function init()
 	document.getElementById("Volume").textContent="n/a";
 	document.getElementById("Logging").textContent=" ";
 
-	retryTimer = setTimeout(init, 5000);
+	retryTimer = setTimeout(init, 2500);
     }
     if ( stopMe) return;
 
@@ -180,7 +180,7 @@ function full_parse(j)
     {
 	if ( list[i] == "OpenFlag")
 	{
-	    if ( o[list[i]] == 1 ) 
+	    if ( o[list[i]] > 0  ) 
 	    {
 		document.getElementById("OpenButton").value = "Close";
 		document.getElementById("Logging").className='LoggingActive';

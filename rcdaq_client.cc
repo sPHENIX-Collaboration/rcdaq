@@ -43,6 +43,7 @@ void showHelp()
   std::cout << "   help                                 show this help text"  << std::endl; 
   std::cout << "   daq_status [-s] [-l]                 display status [short] [long]" << std::endl;
   std::cout << "   daq_open                             enable logging" << std::endl;
+  std::cout << "   daq_open_server hostname [port]      enable logging to server" << std::endl;
   std::cout << "   daq_begin [run-number]             	start taking data for run-number, or auto-increment" << std::endl;
   std::cout << "   daq_end                              end the run " << std::endl;
   std::cout << "   daq_close                            disable logging" << std::endl;
@@ -180,13 +181,14 @@ int command_execute( int argc, char **argv)
   // the log and short flags are for qualifying the 
   // status output
   int long_flag = 1;
+  int immediate_flag = 0;  // only used for daq_end so far
 
   int c;
   
   optind = 0; // tell getopt to start over
   int servernumber=0;
 
-  while ((c = getopt(argc, argv, "vls")) != EOF)
+  while ((c = getopt(argc, argv, "vlsi")) != EOF)
     {
       switch (c) 
 	{
@@ -201,6 +203,10 @@ int command_execute( int argc, char **argv)
 
 	case 's': // set the short flag (0) (note that long_flag is pre-set to 1 for "normal") 
 	  long_flag=0;
+	  break;
+
+	case 'i': // set the "immediate" flag; onoy used in daq_end to request an asynchronous end
+	  immediate_flag=1;
 	  break;
 
 	}
@@ -267,7 +273,15 @@ int command_execute( int argc, char **argv)
   else if ( strcasecmp(command,"daq_end") == 0)
     {
 
-      ab.action = DAQ_END;
+      if (immediate_flag)
+	{
+	  ab.action = DAQ_END_IMMEDIATE;
+	}
+      else
+	{
+	  ab.action = DAQ_END;
+	}
+      
       r = r_action_1(&ab, clnt);
       if (r == (shortResult *) NULL) 
 	{
@@ -408,6 +422,29 @@ int command_execute( int argc, char **argv)
 	}
       if (r->content) std::cout <<  r->str << std::flush;
  
+    }
+
+  else if ( strcasecmp(command,"daq_open_server") == 0)
+    {
+      
+      if ( argc <  optind + 2) return -1;
+
+      ab.action = DAQ_OPEN_SERVER;
+      ab.spar = argv[optind + 1];
+      if ( argc == optind + 3)
+	{
+	  ab.ipar[0] = get_value(argv[optind + 2]);
+	}
+      else
+	{
+	  ab.ipar[0] = 0;
+	}
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
     }
   
   else if ( strcasecmp(command,"daq_close") == 0)

@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 
+
 using namespace std;
 
 int readn (int fd, char *ptr, const int nbytes);
@@ -144,6 +145,37 @@ unsigned int daqBuffer::writeout ( int fd)
 
 #define ACKVALUE 101
 
+unsigned int daqBuffer::sendout ( int fd )
+{
+
+  if (!has_end) addEoB();
+
+  int total = getLength();
+
+  //std::cout << __FILE__ << " " << __LINE__ << " sending  opcode ctrl_data" <<  CTRL_DATA << std::endl ;
+  // send "CTRL_DATA" opcode in network byte ordering
+  int opcode = htonl(CTRL_DATA);
+  int status = writen(fd, (char *) &opcode, sizeof(int));
+
+  //  std::cout << __FILE__ << " " << __LINE__ << " sending  buffer size " <<  total << std::endl ;
+
+  // re-use variable to send the length in network byte ordering 
+  opcode = htonl(total);
+  status |= writen(fd, (char *) &opcode, sizeof(int));
+  
+  // now send the actual data
+  char *p = (char *) bptr;
+  int sent = writen(fd,p,total);
+
+  // wait for acknowledge... we re-use the opcode variable once more
+  readn (fd, (char *) &opcode, sizeof(int));
+  opcode = ntohl(opcode);
+  if ( opcode != CTRL_REMOTESUCCESS) return -1; // signal error
+  
+  return sent;
+}
+
+// this is sending the monitoring data to a client
 unsigned int daqBuffer::sendData ( int fd, const int max_length)
 {
 

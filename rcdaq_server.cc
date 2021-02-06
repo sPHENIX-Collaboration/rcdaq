@@ -470,6 +470,10 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
   static int currentmaxresultlength = 10*2048;
   static char *resultstring = new char[currentmaxresultlength+1];
 
+  // to avoid a race condition with the asynchronous "end requested" feature,
+  // wait here...
+  daq_wait_for_actual_end();
+
   
   if ( outputstream.str().size() > currentmaxresultlength )
     {
@@ -496,7 +500,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     {
       
     case DAQ_BEGIN:
-      //  cout << "daq_begin " << ab->ipar[0] << endl;
       result.status = daq_begin (  ab->ipar[0], outputstream);
       outputstream.str().copy(resultstring,outputstream.str().size());
       resultstring[outputstream.str().size()] = 0;
@@ -507,8 +510,17 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       break;
 
     case DAQ_END:
-        // cout << "daq_end "  << endl;
       result.status = daq_end(outputstream);
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
+    case DAQ_END_IMMEDIATE:
+      result.status = daq_end_immediate(outputstream);
       outputstream.str().copy(resultstring,outputstream.str().size());
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
@@ -558,7 +570,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       break;
 
     case DAQ_LISTRUNTYPES:
-      // cout << "daq_list_runtypes "  << endl;
       result.status = daq_list_runtypes(ab->ipar[0], outputstream);
       outputstream.str().copy(resultstring,outputstream.str().size());
       resultstring[outputstream.str().size()] = 0;
@@ -580,7 +591,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 
       
     case DAQ_OPEN:
-      // cout << "daq_open " << ab->spar << endl;
       result.status = daq_open(outputstream);
       if (result.status) 
 	{
@@ -593,8 +603,20 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       return &result;
       break;
 
+    case DAQ_OPEN_SERVER:
+      result.status = daq_open_server(ab->spar, ab->ipar[0], outputstream);
+      if (result.status) 
+	{
+	  outputstream.str().copy(resultstring,outputstream.str().size());
+	  resultstring[outputstream.str().size()] = 0;
+	  result.str = resultstring;
+	  result.content = 1;
+	}
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
     case DAQ_CLOSE:
-      // cout << "daq_close "  << endl;
       result.status = daq_close(outputstream);
       if (result.status) 
 	{
@@ -608,12 +630,10 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       break;
 
     case DAQ_FAKETRIGGER:
-      // cout << "daq_fake_trigger "  << endl;
       result.status =  daq_fake_trigger (ab->ipar[0], ab->ipar[1]);
       break;
 
     case DAQ_LISTREADLIST:
-      // cout << "daq_list_readlist "  << endl;
       result.status = daq_list_readlist(outputstream);
       outputstream.str().copy(resultstring,outputstream.str().size());
       resultstring[outputstream.str().size()] = 0;
@@ -624,7 +644,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       break;
 
     case DAQ_CLEARREADLIST:
-      // cout << "daq_clear_readlist "  << endl;
       result.status = daq_clear_readlist(outputstream);
       outputstream.str().copy(resultstring,outputstream.str().size());
       resultstring[outputstream.str().size()] = 0;
@@ -635,8 +654,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       break;
 
     case DAQ_STATUS:
-
-      //      cout << "daq_status "  << endl;
       result.status = daq_status(ab->ipar[0], outputstream);
       outputstream.str().copy(resultstring,outputstream.str().size());
       resultstring[outputstream.str().size()] = 0;
@@ -647,7 +664,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       break;
 
     case DAQ_SETMAXEVENTS:
-      //  cout << "daq_setmaxevents " << ab->ipar[0] << endl;
       result.status = daq_setmaxevents (  ab->ipar[0], outputstream);
       if (result.status) 
 	{
@@ -661,7 +677,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       break;
 
     case DAQ_SETMAXVOLUME:
-      //  cout << "daq_setmaxvolume " << ab->ipar[0] << endl;
       result.status = daq_setmaxvolume (  ab->ipar[0], outputstream);
       if (result.status) 
 	{
@@ -675,7 +690,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       break;
 
     case DAQ_SETMAXBUFFERSIZE:
-      //  cout << "daq_setmaxvolume " << ab->ipar[0] << endl;
       result.status = daq_setmaxbuffersize (  ab->ipar[0], outputstream);
       if (result.status) 
 	{
@@ -689,7 +703,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       break;
 
     case DAQ_SETADAPTIVEBUFFER:
-      //  cout << "daq_setmaxevents " << ab->ipar[0] << endl;
       result.status = daq_setadaptivebuffering (  ab->ipar[0], outputstream);
       if (result.status) 
 	{
@@ -704,12 +717,10 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 
 
     case DAQ_ELOG:
-      // cout << "daq_elog " << ab->spar << "  " << ab->ipar[0] << endl;
       daq_set_eloghandler( ab->spar,  ab->ipar[0], ab->spar2);
       break;
 
     case DAQ_LOAD:
-      // 
       result.status = daq_load_plugin( ab->spar, outputstream );
       if (result.status) 
 	{
@@ -723,7 +734,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       break;
 
     case DAQ_WEBCONTROL:
-      //  cout << "daq_begin " << ab->ipar[0] << endl;
       result.status = daq_webcontrol (  ab->ipar[0], outputstream);
       outputstream.str().copy(resultstring,outputstream.str().size());
       resultstring[outputstream.str().size()] = 0;

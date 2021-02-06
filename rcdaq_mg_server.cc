@@ -32,7 +32,6 @@ pthread_mutex_t M_ws_send;
 
 int error_flag = 0;
 std::string error_string = "";
-int initial_update_flag = 0;
 
 int mg_end()
 {
@@ -68,7 +67,7 @@ std::string get_statusstring()
 std::string get_loggingstring()
 {
   stringstream out;
-  if ( get_openflag() )
+  if ( get_openflag())
     {
       if ( daq_running() )
 	{
@@ -80,6 +79,18 @@ std::string get_loggingstring()
 	  return "Logging enabled";
 	}
     }
+  else if ( get_serverflag() )
+    {
+      if ( daq_running() )
+	{
+	  out << "File on server: " << get_current_filename();
+	  return out.str();
+	}
+      else
+	{
+	  return "Logging enabled (Server)";
+	}
+    }
 
   return "Logging disabled";
 }
@@ -89,6 +100,9 @@ void initial_ws_update (struct mg_connection *nc)
 {
   char str[2048];
   int len;
+  
+  int openvalue = get_openflag() | get_serverflag();
+  
   len = sprintf(str, "{ \"RunFlag\":%d, \"Status\":\"%s\" , \"RunNr\":%d , \"Events\":%d , \"Volume\":\"%f\", \"Duration\":%d, \"Logging\":\"%s\" ,\"Filename\":\"%s \" , \"OpenFlag\":%d , \"Name\":\"%s\"  } "
 		, daq_running()
 		, get_statusstring().c_str()
@@ -98,12 +112,13 @@ void initial_ws_update (struct mg_connection *nc)
 		, get_runduration()
 		, get_loggingstring().c_str()
 		, get_current_filename().c_str()
-		, get_openflag()
+		, openvalue
 		, daq_get_myname().c_str()
 		);
   //  cout << __FILE__ << " " << __LINE__ << " " << str << endl;
-  
-  broadcast(nc, str, len);
+
+  mg_send_websocket_frame(nc, WEBSOCKET_OP_TEXT, str, len);
+//  broadcast(nc, str, len);
   
 }
 
@@ -270,7 +285,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
     case MG_EV_WEBSOCKET_FRAME:
       {
 	struct mg_str msg = {(char *) wm->data, wm->size};
-//	cout << __FILE__ << " " << __LINE__ << " ws message " << wm->data << endl;
+	//cout << __FILE__ << " " << __LINE__ << " ws message " << wm->data << endl;
 	 
 	if ( mg_vcmp ( &msg, "daq_begin") == 0)
 	  {
@@ -318,7 +333,8 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 
 	else if ( mg_vcmp ( &msg, "initial_update") == 0)
 	  {
-	    initial_update_flag= 1;
+	    //cout << __FILE__ << " " << __LINE__ << "sending initial update" << endl;
+	    initial_ws_update(nc);
 	    return;
 	  }
 
@@ -402,6 +418,7 @@ static int  last_eventnumber;
 static double  last_runvolume;
 static int  last_runduration;
 static int  last_openflag;
+static int  last_serverflag;
 static int  last_current_filename; 
 
 
@@ -429,6 +446,12 @@ int trigger_updates(struct mg_connection *nc)
       last_openflag = get_openflag();
       update(nc, "Logging", get_loggingstring().c_str());
       update(nc, "OpenFlag", get_openflag());
+    }
+  if  ( last_serverflag != get_serverflag() )
+    {
+      last_serverflag = get_serverflag();
+      update(nc, "Logging", get_loggingstring().c_str());
+      update(nc, "ServerFlag", get_serverflag());
     }
   
   return 0;
@@ -458,6 +481,7 @@ void * mg_server (void *arg)
   last_runvolume   = get_runvolume();
   last_runduration = get_runduration();
   last_openflag    = get_openflag();
+  last_serverflag  = get_serverflag();
   //  last_current_filename; 
 
 
@@ -481,20 +505,12 @@ void * mg_server (void *arg)
   while(!end_web_thread) 
     {
       mg_mgr_poll(&mgr, 1000);
-      //       printf ("time %d\n", (int) time(0) );
-      if (initial_update_flag)
+
+      trigger_updates(nc);
+      if ( time(0) - last_time > 1)
 	{
-	  initial_update_flag = 0;
-	  initial_ws_update (nc);
-	}
-      else
-	{
-	  trigger_updates(nc);
-	  if ( time(0) - last_time > 1)
-	    {
-	      send_ws_updates(nc);
-	      last_time = time(0);
-	    }
+	  send_ws_updates(nc);
+	  last_time = time(0);
 	}
     }
   //   cout  << __FILE__ << " " << __LINE__ <<  " web server is ending"  << endl;

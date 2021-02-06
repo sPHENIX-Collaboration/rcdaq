@@ -14,7 +14,7 @@ void set_eventsizes();
 void *writebuffers ( void * arg);
 void *EventLoop( void *arg);
 
-int daq_end();
+//int daq_end();
 int Command( const int command);
 
 
@@ -27,7 +27,10 @@ int rcdaq_init(pthread_mutex_t &M );
 int add_readoutdevice( daq_device *d);
 
 int daq_begin(const int irun,std::ostream& os = std::cout );
+
+int daq_end_immediate(std::ostream& os = std::cout);
 int daq_end(std::ostream& os = std::cout);
+
 int daq_fake_trigger (const int n, const int waitinterval);
 
 int daq_write_runnumberfile(const int run);
@@ -46,15 +49,20 @@ std::string& daq_get_filerule();
 int daq_open(std::ostream& os = std::cout);
 int daq_shutdown(const unsigned long servernumber, const unsigned long versionnumber,
 		 std::ostream& os = std::cout);
-
+std::string& get_current_filename();
+int daq_close (std::ostream& os = std::cout);
 int is_open();
+
+int daq_open_server (const char *hostname, const int port, std::ostream& os = std::cout);
+int is_server_open();
+int daq_server_close (std::ostream& os = std::cout);
+int get_serverflag();
+
 
 int daq_set_name(const char *name);
 int daq_get_name(std::ostream& os = std::cout);
 std::string daq_get_myname();
 
-std::string& get_current_filename();
-int daq_close (std::ostream& os = std::cout);
 
 int daq_list_readlist(std::ostream& os = std::cout );
 int daq_clear_readlist(std::ostream& os = std::cout);
@@ -76,6 +84,7 @@ int daq_set_eloghandler( const char *host, const int port, const char *logname);
 
 int daq_load_plugin( const char *sharedlib, std::ostream& os);
 
+int daq_wait_for_actual_end();
 
 // functions for the webserver
 
