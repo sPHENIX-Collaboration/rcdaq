@@ -151,7 +151,8 @@ void exitmsg()
 //		    "CTRL_DATA",
 //		    "CTRL_CLOSE",
 //		    "CTRL_SENDFILENAME"};
-		    
+
+std::string listen_interface;
 
 int main( int argc, char* argv[])
 {
@@ -194,6 +195,7 @@ int main( int argc, char* argv[])
 
 	case 'b':   // bind to this interface
 	  listen_address = find_address_from_interface(optarg);
+	  listen_interface = optarg;
 	  break;
 
 	case 'd':   // no database
@@ -207,7 +209,7 @@ int main( int argc, char* argv[])
 
 
 
-  if (argc >= optind)
+  if (argc > optind)
     {
       sscanf (argv[optind],"%d", &the_port);
     }
@@ -239,13 +241,19 @@ int main( int argc, char* argv[])
       cleanup(1);
     }
 
-  if ( ( i =  listen(sockfd, 25) ) )
+  if ( ( i =  listen(sockfd, 100) ) )
     {
       perror(" listen ");
       cleanup(1);
     }
-    
 
+  if (verbose)
+    {
+      cout << " listening on port " << the_port;
+      if (! listen_interface.empty() ) cout << " on interface " << listen_interface;
+      cout << endl; 
+    }
+  
   signal(SIGCHLD, SIG_IGN); 
 
   pid_t pid;
@@ -399,6 +407,10 @@ int handle_this_child( pid_t pid)
 	      writen (dd_fd, (char *)&i, 4);
 	      break;
 	    }
+	  if (verbose)
+	    {
+	      cout << " opened new file " << filename << endl; 
+	    }
     
 	  bf_being_received = &B0;
 	  bf_being_written = &B1;
@@ -419,6 +431,11 @@ int handle_this_child( pid_t pid)
 	  
 	  pthread_mutex_lock(&M_done);
 	  close (output_fd);
+	  if (verbose)
+	    {
+	      cout << " closed file "  << filename << endl; 
+	    }
+
 	  i = htonl(CTRL_REMOTESUCCESS);
 	  writen (dd_fd, (char *)&i, 4);
 	  pthread_mutex_unlock(&M_done);
