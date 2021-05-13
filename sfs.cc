@@ -136,10 +136,16 @@ using namespace std;
 
 void exitmsg()
 {
-  cout << "** This is the Advanced Multithreaded Server. No gimmicks. Pure Power." << endl;
-  cout << "** usage: sfs  port-number" << endl;
-  cout << "   -d enable database logging" << endl;
-  cout << "   -b interface    bind to this interface" << endl;
+  cout << "** This is the Super Fast Server :-)." << endl;
+  cout << "** usage: sfs " << endl;
+  cout << "   -d disable database logging [ db not yet implemented ]" << endl;
+  cout << "   -b interface    bind only to this interface" << endl;
+  cout << "   -p number       use this port (default 5001)" << endl;
+  cout << "   -v increase verbosity" << endl;
+  cout << "  Examples:" << endl;
+  cout << "    sfs -b ens801f0      -- listen only on that interface" << endl;
+  cout << "    sfs -p 5002          -- listen on port 5002" << endl;
+  
   exit(0);
 }
 
@@ -184,7 +190,7 @@ int main( int argc, char* argv[])
 
   char c;
   
-  while ((c = getopt(argc, argv, "vdb:")) != EOF)
+  while ((c = getopt(argc, argv, "hvdb:p:")) != EOF)
     {
       switch (c) 
 	{
@@ -193,9 +199,17 @@ int main( int argc, char* argv[])
 	  verbose += 1;
 	  break;
 
+	case 'h':   // verbose
+	  exitmsg();
+	  break;
+
 	case 'b':   // bind to this interface
 	  listen_address = find_address_from_interface(optarg);
 	  listen_interface = optarg;
+	  break;
+
+	case 'p':   // port number
+	  if ( !sscanf(optarg, "%d", &the_port) ) exitmsg();
 	  break;
 
 	case 'd':   // no database
