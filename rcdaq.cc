@@ -1,4 +1,3 @@
-
 //#define WRITEPRDF
 
 #include <pthread.h>
@@ -1430,15 +1429,23 @@ int daq_open_server (const char *hostname, const int port, std::ostream& os)
   persistentErrorCondition = 0;
 
   int theport = port;
-  if ( ! theport) theport = 5000;
+  if ( ! theport) theport = 5001;
   
   TheServerFD = open_serverSocket(hostname, theport);
   if ( TheServerFD < 0)
     {
+      if ( TheServerFD == -1) 
+	{
+	  os << " error connecting to server " << hostname << " on port " << theport << endl;
+	}
+      else
+	{
+	  os << " error connecting to server " << hostname << " on port " << theport << "  " << gai_strerror(TheServerFD) << endl;
+	}
+
       TheServerFD = 0;
       daq_server_flag = 0;
       persistentErrorCondition = 1;
-      os << " error connecting to server " << hostname << " on port " << theport << endl;
       return -1;
     }
   
@@ -1951,36 +1958,62 @@ int daq_running()
 int open_serverSocket(const char * hostname, const int port)
 {
 
+  //  extern int h_errno;
   int sockfd;
   struct sockaddr_in server_addr;
-  struct hostent *p_host;
-  p_host = gethostbyname(hostname);
-  std::cout << p_host->h_name << std::endl;
 
-  memset( (char*) &server_addr, 0, sizeof(server_addr) );
-  server_addr.sin_family = AF_INET;
-  memcpy( &(server_addr.sin_addr.s_addr), p_host->h_addr, p_host->h_length);
-  server_addr.sin_port = htons(port);
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(struct addrinfo));
+  
+  hints.ai_family = AF_INET;
+  struct addrinfo *result, *rp;
 
-  if ( (sockfd = socket(AF_INET, SOCK_STREAM, 0) ) < 0 )
+  char port_str[512];
+  sprintf(port_str, "%d", port);
+
+  
+  int status = getaddrinfo(hostname, port_str,
+                       &hints,
+                       &result);
+
+  if ( status < 0)
     {
-      std::cout << __FILE__ << " " << __LINE__ << " error in socket" << std::endl;
-      perror("socket");
-      return -1;
+      cout << __FILE__<< " " << __LINE__ << " " << hostname << ": " << gai_strerror(status) << endl;
+      return status;
+    }
+  
+  for (rp = result; rp != NULL; rp = rp->ai_next)
+    {
+
+      if ( (sockfd = socket(result->ai_family, result->ai_socktype,
+                            result->ai_protocol) ) > 0 )
+	{
+	  break;
+	}
     }
 
-  int xs = 512*1024;
+  if ( sockfd < 0)
+      {
+	std::cout << __FILE__ << " " << __LINE__ << " error in socket" << std::endl;
+	perror("socket");
+	freeaddrinfo(result);
+	return -1;
+      }
   
-  int s = setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &xs, sizeof(int));
-  if (s) std::cout << "setsockopt status = " << s << std::endl;
+      int xs = 512*1024;
+  
+      int s = setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &xs, sizeof(int));
+      if (s) std::cout << "setsockopt status = " << s << std::endl;
 
-  if ( connect(sockfd, (struct sockaddr*) &server_addr, sizeof(server_addr)) < 0 ) 
+  if ( connect(sockfd, rp->ai_addr, rp->ai_addrlen) < 0 ) 
     {
       std::cout << __FILE__ << " " << __LINE__ << " error in connect" << std::endl;
       perror("connect");
+      freeaddrinfo(result);
       return -1;
     }
 
+  freeaddrinfo(result);
   return sockfd;
 }
 
@@ -2074,7 +2107,6 @@ int server_send_close_sequence(int fd)
       perror("read_ack");
       return -1;
     }
-  std::cout << "ok " << std::endl ;
 
   return 0;
 }
