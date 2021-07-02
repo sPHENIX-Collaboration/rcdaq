@@ -100,5 +100,9 @@ double get_runvolume();
 int get_runduration();
 int get_openflag();
 
+#define MG_REQUEST_NAME 1
+// more defs to come in the future
+
+
 
 #endif
