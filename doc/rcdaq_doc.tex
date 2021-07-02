@@ -13,7 +13,6 @@
 \addtolength{\textheight}{1cm}
 \usepackage{graphicx}
 \usepackage{hyperref}
-\usepackage{wrapfig}
 \usepackage{color}
 \usepackage{pifont}
 
@@ -665,6 +664,7 @@ alias daq_get_runtype='rcdaq_client  daq_get_runtype'
 alias daq_list_runtypes='rcdaq_client  daq_list_runtypes'
 alias daq_setfilerule='rcdaq_client  daq_setfilerule'
 alias daq_open='rcdaq_client  daq_open'
+alias daq_open_server='rcdaq_client  daq_open_server'
 alias daq_close='rcdaq_client  daq_close'
 alias daq_fake_trigger='rcdaq_client  daq_fake_trigger'
 alias daq_list_readlist='rcdaq_client  daq_list_readlist'
@@ -1214,18 +1214,6 @@ as a template.
 The command \verb|rcdaq_client help| lists all available rcdaq commands:
 
 \begin{verbatim}
-   help                                 show this help text
-   daq_status [-s] [-l]                 display status [short] [long]
-   daq_open                             enable logging
-   daq_begin [run-number]             	start taking data for run-number, or auto-increment
-   daq_end                              end the run
-   daq_close                            disable logging
-   daq_setfilerule file-rule            set the file rule default rcdaq-%08d-%04d.evt
-
-   daq_list_readlist                    display the current readout list
-   daq_clear_readlist                   clear the current readout list
-
-   daq_define_runtype type file-rule    define a run type, such as "calibration"
    daq_set_runtype type                 activate a predefined run type
    daq_get_runtype [-l]                 list the active runtype (if any)
    daq_list_runtypes [-s]               list defined run types
@@ -1277,15 +1265,23 @@ Let's go through the commands:
   files taken with ever-changing settings. Also keep in mind that you
   can still get at the events through your online monitoring.
  
+\item[daq\_open\_server] This enables the writing out of data to a
+  dedicated server named \verb|sfs|. This is used in the sPHENIX
+  eperiment to log the data to a dedicated file server, and is
+  something to consider if you would be logging the data to a
+  NFS-mounted volume through the network. The \verb|sfs| has much less
+  overhead than the NFS protocol, and allows you to log your data
+  faster.
+ 
 \item[daq\_begin] Start taking data. If you supply a run number,
   this run number will be used.  Without a run number, the last run
   number will be incremented. Also see the \verb|daq_setrunnumberfile|
   command which allows you to make run numbers persistent between
   restarts of the rcdaq\_server.
 
-\item[daq\_end] Ends the run.
-
 \item[daq\_close] Disables logging.
+
+\item[daq\_end] Ends the run.
 
 \item[daq\_setfilerule file-rule] Set the file rule. You should always
   set a specific rule because with the default rule,
@@ -1704,6 +1700,43 @@ browser on my Android phone. In the same way, it is now possible to
 run the controls on iPads and basically any platform with a modern web
 browser.
 
+\subsection{Sending information to an operator via the GUIs}
+
+Let me mention an application of the \verb|daq_setname| facility that
+we use a lot when we are making position scans of a detector, for
+example in a test beam. The ``name'' of an RCDAQ instance defaults to
+the hostname of the machine that the server is running on. Often you
+run multiple RCDAQ instances on different machines, and this helps you
+keep the GUIs apart.
+
+However, you can change the name to whatever you like (you have space
+for about 30 characters in the GUIs). When you are running an
+automated script to make a position (or any other) scan, you can
+change the name to give some information about the progress on the GUI.
+
+Consider this script snippet:
+
+\begin{verbatim}
+ for ypos in {0..9} ; do
+    for xpos in {0..9} ; do
+       # some commands to move your detector to $xpos, $ypos
+       rcdaq_client daq_setname "running at position $xpos,$ypos"
+       rcdaq_client daq_begin
+       wait_for_run_end.sh
+    done
+ done
+\end{verbatim}
+
+
+\begin{figure}[htb]
+  \begin{center}
+    \includegraphics[width=0.45\columnwidth]{GUI_name.png} 
+  \end{center}
+  \caption{\label{GUIname}A GUI that displays information about the
+    current status of a position scan.}
+\end{figure}
+
+Fig.~\ref{GUIname} shows the effect of the above script.
 
 \section{Installation}
 \label{installation}
