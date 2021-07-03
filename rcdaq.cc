@@ -54,7 +54,7 @@ int server_send_close_sequence(int fd);
 void * daq_triggerloop (void * arg);
 void * mg_server (void *arg);
 int mg_end();
-
+int request_mg_update(const int what);
 
 
 pthread_mutex_t WriteSem;
@@ -737,7 +737,8 @@ int daq_set_filerule(const char *rule)
 
 int daq_set_name(const char *name)
 {
-  MyName = name; 
+  MyName = name;
+  request_mg_update (MG_REQUEST_NAME);
   return 0;
 }
 

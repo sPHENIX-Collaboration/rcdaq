@@ -33,10 +33,37 @@ pthread_mutex_t M_ws_send;
 int error_flag = 0;
 std::string error_string = "";
 
+static int  last_runstate;
+static int  last_runnumber;
+static int  last_eventnumber;
+static double  last_runvolume;
+static int  last_runduration;
+static int  last_openflag;
+static int  last_serverflag;
+static int  last_current_filename; 
+static int  rcdaqname_request_flag; 
+
+
+
 int mg_end()
 {
   end_web_thread = 1;
   return 0;
+}
+
+int request_mg_update (const int what)
+{
+  switch (what)
+    {
+    case MG_REQUEST_NAME:
+      rcdaqname_request_flag = 1;
+      return 0;
+      break;
+      
+    default:
+      break;
+    }
+  return -1;
 }
 
 
@@ -130,7 +157,7 @@ static void broadcast(struct mg_connection *nc, char *str, const int len)
     {
       if ( c != nc)
 	{
-	  //	   cout << __FILE__ << " " << __LINE__ << " sending " << str << " to " << c << endl;
+	  // cout << __FILE__ << " " << __LINE__ << " sending " << str << " to " << c << endl;
 
 	  //	   pthread_mutex_lock(&M_ws_send); 
 	  mg_send_websocket_frame(c, WEBSOCKET_OP_TEXT, str, len);
@@ -161,7 +188,7 @@ int update(struct mg_connection *nc, const char *key, const int value)
 int update(struct mg_connection *nc, const char *key, const char *value)
 {
   char str[512];
-  int len = sprintf(str, "{ \"%s\":\"%s \" }", key, value);
+  int len = sprintf(str, "{ \"%s\":\"%s\" }", key, value);
 
   broadcast(nc, str, len);
   return 0;
@@ -412,14 +439,6 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 
 }
 
-static int  last_runstate;
-static int  last_runnumber;
-static int  last_eventnumber;
-static double  last_runvolume;
-static int  last_runduration;
-static int  last_openflag;
-static int  last_serverflag;
-static int  last_current_filename; 
 
 
 
@@ -453,6 +472,12 @@ int trigger_updates(struct mg_connection *nc)
       update(nc, "Logging", get_loggingstring().c_str());
       update(nc, "ServerFlag", get_serverflag());
     }
+
+  if  ( rcdaqname_request_flag )
+    {
+      rcdaqname_request_flag = 0;
+      update(nc, "Name", daq_get_myname().c_str());
+    }
   
   return 0;
 }
@@ -482,6 +507,8 @@ void * mg_server (void *arg)
   last_runduration = get_runduration();
   last_openflag    = get_openflag();
   last_serverflag  = get_serverflag();
+  rcdaqname_request_flag  = 0;
+  
   //  last_current_filename; 
 
 
