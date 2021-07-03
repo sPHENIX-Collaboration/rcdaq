@@ -1211,9 +1211,22 @@ as a template.
 \section{Command overview}
 \label{CommandOverview}
 
-The command \verb|rcdaq_client help| lists all available rcdaq commands:
+The command \verb|rcdaq_client| without parameters lists all available rcdaq commands:
 
 \begin{verbatim}
+   help                                 show this help text
+   daq_status [-s] [-l]                 display status [short] [long]
+   daq_open                             enable logging
+   daq_open_server hostname [port]      enable logging to server
+   daq_begin [run-number]              start taking data for run-number, or auto-increment
+   daq_end                              end the run
+   daq_close                            disable logging
+   daq_setfilerule file-rule            set the file rule default rcdaq-%08d-%04d.evt
+
+   daq_list_readlist                    display the current readout list
+   daq_clear_readlist                   clear the current readout list
+
+   daq_define_runtype type file-rule    define a run type, such as "calibration"
    daq_set_runtype type                 activate a predefined run type
    daq_get_runtype [-l]                 list the active runtype (if any)
    daq_list_runtypes [-s]               list defined run types
