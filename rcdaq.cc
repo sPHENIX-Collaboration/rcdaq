@@ -46,6 +46,8 @@
 #include "rcdaq_rpc.h"
 
 
+int open_file_on_server(const int run_number);
+int server_open_Connection();
 int open_serverSocket(const char * host_name, const int port);
 int server_send_beginrun_sequence(const char * filename, const int runnumber, int fd);
 int server_send_endrun_sequence(int fd);
@@ -106,6 +108,8 @@ static std::string MyName = "";
 
 static int daq_open_flag = 0;  //no files written unless asked for
 static int daq_server_flag = 0;  //no server access
+static int daq_server_port = 0;  // invalid port
+static std::string daq_server_name = "";  // our server, if any
 
 static int file_is_open = 0;
 static int server_is_open = 0;
@@ -460,6 +464,34 @@ int open_file(const int run_number, int *fd)
   return 0;
 }
 
+int open_file_on_server(const int run_number)
+{
+  
+  if ( file_is_open) return -1;
+
+  int status = server_open_Connection();
+  if (status) return -1;
+
+  static char d[1024];
+  sprintf( d, TheFileRule.c_str(),
+	   run_number, current_filesequence);
+
+  status = server_send_beginrun_sequence(d, run_number, TheServerFD);
+  if ( status)
+    {
+      return -1;
+    }
+
+  CurrentFilename = d;
+  PreviousFilename = CurrentFilename;
+
+  file_is_open =1;
+
+  return 0;
+}
+
+
+
 void *shutdown_thread (void *arg)
 {
 
@@ -804,7 +836,7 @@ int daq_define_runtype(const char *type, const char *rule)
 
 int daq_status_runtypes (std::ostream& os )
 {
-  os << " -- defined Run Types: ";
+  os << "  -- defined Run Types: ";
   return daq_list_runtypes(2, os);
 }
 
@@ -813,7 +845,7 @@ int daq_list_runtypes(const int flag, std::ostream& os)
 
   if ( flag && RunTypes.size() == 0 )
     {
-      os << " (none)" <<endl;
+      os << "  (none)" <<endl;
       return 0;
     }
   if (flag ==2) os << endl;
@@ -890,51 +922,46 @@ int daq_begin(const int irun, std::ostream& os)
 
   if ( daq_open_flag)
     {
-      int status = open_file ( TheRun, &outfile_fd);
-      if ( !status)
+      if ( daq_server_flag)
 	{
-	  if (ElogH) ElogH->BegrunLog( TheRun,"RCDAQ",  
-				       get_current_filename());
-
-	  daq_write_runnumberfile(TheRun);
-	  last_bufferwritetime  = time(0);  // initialize this at begin-run
-
-	}
-      else
-	{
-	  os << "Could not open output file - Run " << TheRun << " not started" << endl;;
-	  Daq_Status ^= DAQ_RUNNING;
-	  return -1;
-	}
-    }
-
-  if ( daq_server_flag)
-    {
       
-      static char d[1024];
-      sprintf( d, TheFileRule.c_str(),
-	       TheRun, current_filesequence);
+	  int status = open_file_on_server(TheRun);
+	  if ( !status)
+	    {
 
-      
-      int status = server_send_beginrun_sequence(d, TheRun, TheServerFD);
-      if ( !status)
-	{
+	      if (ElogH) ElogH->BegrunLog( TheRun,"RCDAQ",  
+					   get_current_filename());
 
-	  CurrentFilename = d;
-	  PreviousFilename = CurrentFilename;
-
-	  if (ElogH) ElogH->BegrunLog( TheRun,"RCDAQ",  
-				       get_current_filename());
-
-	  daq_write_runnumberfile(TheRun);
-	  last_bufferwritetime  = time(0);  // initialize this at begin-run
-
+	      daq_write_runnumberfile(TheRun);
+	      last_bufferwritetime  = time(0);  // initialize this at begin-run
+	      
+	    }
+	  else
+	    {
+	      os << "Could not open remote output file - Run " << TheRun << " not started" << endl;;
+	      Daq_Status ^= DAQ_RUNNING;
+	      return -1;
+	    }
 	}
-      else
+
+      else  // we log to a standard local file
 	{
-	  os << "Could not open remote output file - Run " << TheRun << " not started" << endl;;
-	  Daq_Status ^= DAQ_RUNNING;
-	  return -1;
+	  int status = open_file ( TheRun, &outfile_fd);
+	  if ( !status)
+	    {
+	      if (ElogH) ElogH->BegrunLog( TheRun,"RCDAQ",  
+					   get_current_filename());
+
+	      daq_write_runnumberfile(TheRun);
+	      last_bufferwritetime  = time(0);  // initialize this at begin-run
+
+	    }
+	  else
+	    {
+	      os << "Could not open output file - Run " << TheRun << " not started" << endl;;
+	      Daq_Status ^= DAQ_RUNNING;
+	      return -1;
+	    }
 	}
     }
 
@@ -1050,34 +1077,33 @@ int daq_end(std::ostream& os)
 		
   if ( file_is_open  )
     {
+
       pthread_mutex_lock(&WriteProtectSem);
       pthread_mutex_unlock(&WriteProtectSem);
 
       double v = run_volume;
       v /= (1024*1024);
-
-      if (ElogH) ElogH->EndrunLog( TheRun,"RCDAQ", Event_number, v, StartTime); 
-      close (outfile_fd);
-      outfile_fd = 0;
+      
+      if (ElogH) ElogH->EndrunLog( TheRun,"RCDAQ", Event_number, v, StartTime);
+      
+      if ( daq_server_flag)
+	{
+	  server_send_endrun_sequence(TheServerFD);
+	  if ( server_send_close_sequence(TheServerFD) )
+	    {
+	      std::cout << __FILE__ << " " << __LINE__ << " error in closing connection...   " << std::endl;
+	    }
+	  close(TheServerFD);
+	  TheServerFD = 0;
+	}
+      else
+	{
+	  close (outfile_fd);
+	  outfile_fd = 0;
+	}
       file_is_open = 0;
-    }
 
-  if ( daq_server_flag )
-    {
-      pthread_mutex_lock(&WriteProtectSem);
-      pthread_mutex_unlock(&WriteProtectSem);
-
-      double v = run_volume;
-      v /= (1024*1024);
-
-      if (ElogH) ElogH->EndrunLog( TheRun,"RCDAQ", Event_number, v, StartTime); 
-
-      server_send_endrun_sequence(TheServerFD);
-      
-      
-    }
-
- 
+    } 
 
   if ( Daq_Status & DAQ_ENDREQUESTED) Daq_Status ^= DAQ_ENDREQUESTED;
 
@@ -1393,11 +1419,11 @@ int daq_open (std::ostream& os)
       return -1;
     }
 
-  if ( daq_server_flag)
-    {
-      os << "Server logging is enabled" << endl;;
-      return -1;
-    }
+  // if ( daq_server_flag)
+  //   {
+  //     os << "Server logging is enabled" << endl;;
+  //     return -1;
+  //   }
       
   persistentErrorCondition = 0;
 
@@ -1406,7 +1432,7 @@ int daq_open (std::ostream& os)
 }
 
 
-int daq_open_server (const char *hostname, const int port, std::ostream& os)
+int daq_set_server (const char *hostname, const int port, std::ostream& os)
 {
 
   if ( Daq_Status & DAQ_RUNNING ) 
@@ -1415,42 +1441,54 @@ int daq_open_server (const char *hostname, const int port, std::ostream& os)
       return -1;
     }
 
-  if ( daq_server_flag)
+  daq_server_name = hostname;
+  if ( daq_server_name == "None")
     {
-      os << "Server logging already enabled" << endl;;
-      return -1;
+      daq_server_flag = 0;
+      daq_server_name = "";      
+      daq_server_port = 0;
+      return 0;
     }
+  
+  daq_server_flag = 1;
+  daq_server_port = port;
+  if ( ! daq_server_port) daq_server_port = 5001;
 
-  if ( daq_open_flag)
+  return 0;
+}
+
+  
+
+int server_open_Connection()
+{
+    
+  if ( !daq_server_flag)
     {
-      os << "Standard logging already enabled" << endl;;
       return -1;
     }
 
   persistentErrorCondition = 0;
 
-  int theport = port;
+  int theport = daq_server_port;
   if ( ! theport) theport = 5001;
   
-  TheServerFD = open_serverSocket(hostname, theport);
+  TheServerFD = open_serverSocket(daq_server_name.c_str(), theport);
   if ( TheServerFD < 0)
     {
       if ( TheServerFD == -1) 
 	{
-	  os << " error connecting to server " << hostname << " on port " << theport << endl;
+	  cout << __FILE__<< " " << __LINE__  << " error connecting to server " << daq_server_name << " on port " << theport << endl;
 	}
       else
 	{
-	  os << " error connecting to server " << hostname << " on port " << theport << "  " << gai_strerror(TheServerFD) << endl;
+	   cout << __FILE__<< " " << __LINE__ << " error connecting to server " << daq_server_name << " on port " << theport << "  " << gai_strerror(TheServerFD) << endl;
 	}
 
       TheServerFD = 0;
-      daq_server_flag = 0;
       persistentErrorCondition = 1;
       return -1;
     }
   
-  daq_server_flag =2;
   return 0;
 }
 
@@ -1513,15 +1551,6 @@ int daq_close (std::ostream& os)
   daq_open_flag =0;
   persistentErrorCondition = 0;
 
-  if ( daq_server_flag)
-    {
-      server_send_close_sequence(TheServerFD);
-      close(TheServerFD);
-      TheServerFD = 0;
-      daq_server_flag = 0;
-    }
-
-  
   return 0;
 }
 
@@ -1740,8 +1769,8 @@ int get_serverflag()
 int daq_status( const int flag, std::ostream& os)
 {
 
-  double v = run_volume;
-  v /= (1024*1024);
+  double volume = run_volume;
+  volume /= (1024*1024);
 
   switch (flag)
     {
@@ -1751,20 +1780,18 @@ int daq_status( const int flag, std::ostream& os)
       if ( Daq_Status & DAQ_RUNNING ) 
 	{
 	  os << TheRun  << " " <<  Event_number -1 << " " 
-	     << v << " ";
-	  if (daq_open_flag) os  << daq_open_flag;
-	  else if (daq_server_flag) os  << 2;
-	  else os << 0;
-	  os << " " << get_current_filename() << " "
+	     << volume << " ";
+	  os  << daq_open_flag << " ";
+	  os  << daq_server_flag << " ";
+	  os << get_current_filename() << " "
 	     << time(0) - StartTime
 	     << " \"" << MyName << "\"" << endl;
 	}
       else
 	{
 	  os << "-1 0 0 ";
-	  if (daq_open_flag) os  << daq_open_flag;
-	  else if (daq_server_flag) os  << 2;
-	  else os << 0;
+	  os  << daq_open_flag << " ";
+	  os  << daq_server_flag << " ";
 	  os << " 0 0"
 	     << " \"" << MyName << "\"" << endl;
 
@@ -1777,14 +1804,17 @@ int daq_status( const int flag, std::ostream& os)
 	{
 	  os << "Run " << TheRun  
 	     << " Event: " << Event_number 
-	     << " Volume: " << v;
+	     << " Volume: " << volume;
 	  if ( daq_open_flag )
 	    {
-	      os << "  Logging enabled";
-	    }
-	  else if ( daq_server_flag )
-	    {
-	      os << "  Logging enabled via remote server";
+	      if ( daq_server_flag )
+		{
+		  os << "  Logging enabled via remote server " << daq_server_name << " Port " << daq_server_port;
+		}
+	      else
+		{
+		  os << "  Logging enabled";
+		}
 	    }
 	  else
 	    {
@@ -1792,20 +1822,30 @@ int daq_status( const int flag, std::ostream& os)
 	    }	      
 	  os<< endl;
 	}
-      else
+      else   // not running
 	{
 	  os << "Stopped";
 	  if ( daq_open_flag )
 	    {
-	      os << "  Logging enabled";
-	    }
-	  else if ( daq_server_flag )
-	    {
-	      os << "  Logging enabled via remote server";
+	      if ( daq_server_flag )
+		{
+		  os << "  Logging enabled via remote server " << daq_server_name << " Port " << daq_server_port;
+		}
+	      else
+		{
+		  os << "  Logging enabled";
+		}
 	    }
 	  else
 	    {
-	      os << "  Logging disabled";
+	      if ( daq_server_flag )
+		{
+		  os << "  Logging disabled, remote server set " << daq_server_name << " Port " << daq_server_port;
+		}
+	      else
+		{
+		  os << "  Logging disabled";
+		}
 	    }	      
 	  os<< endl;
 	}
@@ -1815,49 +1855,72 @@ int daq_status( const int flag, std::ostream& os)
       
       if ( Daq_Status & DAQ_RUNNING ) 
 	{
-	  os << "Running" << endl;
-	  os << "Run Number:   " << TheRun  << endl;
-	  os << "Event:        " << Event_number << endl;;
-	  os << "Run Volume:   " << v << " MB"<< endl;
-	  os << "Filename:     " << get_current_filename() << endl; 	  
-	  os << "Duration:     " <<  time(0) - StartTime << " s" <<endl;
+	  os << "  Running" << endl;
+	  os << "  Run Number:   " << TheRun  << endl;
+	  os << "  Event:        " << Event_number << endl;;
+	  os << "  Run Volume:   " << volume << " MB"<< endl;
+	  os << "  Filerule:     " <<  daq_get_filerule() << endl;
+
+	  if ( daq_open_flag )
+	    {
+	      if ( daq_server_flag )
+		{
+		  os << "  Filename on server: " << get_current_filename() << endl;
+		}
+	      else
+		{
+		  os << "  Filename:     " << get_current_filename() << endl; 	  
+		}
+	    }
+
+	  os << "  Duration:     " <<  time(0) - StartTime << " s" <<endl;
+
 	  if (max_volume)
 	    {
-	      os << "Volume Limit: " <<  max_volume /(1024 *1024) << " Mb" << endl;
+	      os << "  Volume Limit: " <<  max_volume /(1024 *1024) << " Mb" << endl;
 	    }
 	  if (max_events)
 	    {
-	      os << "Event Limit:  " <<  max_events << endl;
+	      os << "  Event Limit:  " <<  max_events << endl;
 	    }
 	}
       else
 	{
-	  os << "Stopped"  << endl;
+	  os << "  Stopped"  << endl;
 	  if ( daq_open_flag )
 	    {
-	      os << "  Logging enabled"  << endl;
-	    }
-	  else if ( daq_server_flag )
-	    {
-	      os << "  Logging enabled via remote server" << endl;
+	      if ( daq_server_flag )
+		{
+		  os << "  Logging enabled via remote server " << daq_server_name << " Port " << daq_server_port << endl;
+		}
+	      else
+		{
+		  os << "  Logging enabled" << endl;
+		}
 	    }
 	  else
 	    {
-	      os << "  Logging disabled" << endl;
+	      if ( daq_server_flag )
+		{
+		  os << "  Logging disabled, remote server set " << daq_server_name << " Port " << daq_server_port << endl;
+		}
+	      else
+		{
+		  os << "  Logging disabled" << endl;
+		}
 	    }	      
 	  
 	  if (max_volume)
 	    {
-	      os << "Volume Limit: " <<  max_volume /(1024 *1024) << " Mb" << endl;
+	      os << "  Volume Limit: " <<  max_volume /(1024 *1024) << " Mb" << endl;
 	    }
 	  if (max_events)
 	    {
-	      os << "Event Limit:  " <<  max_events << endl;
+	      os << "  Event Limit:  " <<  max_events << endl;
 	    }
-	  if ( TriggerH ) os << "have a trigger object" << endl;
+	  if ( TriggerH ) os << "  have a trigger object" << endl;
 	}
-      os << "Filerule:     " <<  daq_get_filerule() << endl;
-      os << "Buffer Sizes:     " <<  Buffer1.getMaxSize()/1024 << " KB";
+      os << "  Buffer Sizes:     " <<  Buffer1.getMaxSize()/1024 << " KB";
       if ( adaptivebuffering) 
 	{
 	  os << " adaptive buffering: " << adaptivebuffering << " s"; 
@@ -1866,21 +1929,21 @@ int daq_status( const int flag, std::ostream& os)
 
       if ( ThePort)
       	{
-      	  os << "Web control Port:  " << ThePort <<  endl;
+      	  os << "  Web control Port:  " << ThePort <<  endl;
       	}
       else
       	{
-      	  os << "No Web control defined" << endl;
+      	  os << "  No Web control defined" << endl;
       	}
 
 
       if ( ElogH)
       	{
-      	  os << "Elog:  " << ElogH->getHost() << " " << ElogH->getLogbookName() << " Port " << ElogH->getPort() <<  endl;
+      	  os << "  Elog:  " << ElogH->getHost() << " " << ElogH->getLogbookName() << " Port " << ElogH->getPort() <<  endl;
       	}
       else
       	{
-      	  os << "Elog: not defined" << endl;
+      	  os << "  Elog: not defined" << endl;
       	}
 
       daq_status_runtypes ( os);
@@ -1947,7 +2010,7 @@ int daq_running()
 }
 
 
-// the routines to deal with the remoe server if we are loggin this way.
+// the routines to deal with the remote server if we are logging this way.
 
 // 1) we open a socket with            open_serverSocket
 // 2) make the server open a file with server_send_beginrun_sequence
@@ -2068,7 +2131,7 @@ int server_send_beginrun_sequence(const char * filename, const int runnumber, in
     {
       return -1;
     }
-  
+
   return 0;
 }
 
@@ -2102,13 +2165,6 @@ int server_send_close_sequence(int fd)
   status = writen (fd, (char *)&opcode, sizeof(int) );
   if ( status != sizeof(int)) return -1;
   
-  status = readn (fd, (char *) &opcode, sizeof(int) );
-  if ( status != sizeof(int)  || ntohl(opcode) != CTRL_REMOTESUCCESS )
-    {
-      perror("read_ack");
-      return -1;
-    }
-
   return 0;
 }
 

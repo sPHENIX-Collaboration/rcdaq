@@ -508,10 +508,12 @@ int handle_this_child( pid_t pid)
 	  break;
 
 	case CTRL_CLOSE:
-	  i = htonl(CTRL_REMOTESUCCESS);
-	  writen (dd_fd, (char *)&i, sizeof(int));
 	  close ( dd_fd);
 	  go_on = 0;
+	  if (verbose)
+	    {
+	      cout << " closed connection" << endl; 
+	    }
 	  break;
 	  
 	}

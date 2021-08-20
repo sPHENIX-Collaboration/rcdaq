@@ -6,25 +6,25 @@ use Tk;
 sub daq_begin 
 {
 
-  $result = `rcdaq_client daq_begin`;
+    $result = `rcdaq_client daq_begin`;
 }
 
 sub daq_end
 {
 
-  $result = `rcdaq_client daq_end`;
+    $result = `rcdaq_client daq_end`;
 }
 
 sub daq_open
 {
 
-  $result = `rcdaq_client daq_open`;
+    $result = `rcdaq_client daq_open`;
 }
 
 sub daq_close
 {
 
-  $result = `rcdaq_client daq_close`;
+    $result = `rcdaq_client daq_close`;
 }
 
 sub dummy
@@ -113,33 +113,33 @@ $outerlabel = $framename->Label(-bg => $color1)->pack(-side =>'top', -fill=> 'x'
 
 
 $runstatuslabel = $outerlabel->
-      Label(-text=> "Status", -font => $bigfont, -fg =>'red', -bg => $neutralcolor,  -relief=> 'raised')->
-      pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
+    Label(-text=> "Status", -font => $bigfont, -fg =>'red', -bg => $neutralcolor,  -relief=> 'raised')->
+    pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
 
 $runnumberlabel = $outerlabel->
-      Label(-text => "runnumber", -font => $normalfont, -bg => $okcolor, -relief=> 'raised')->
-      pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
+    Label(-text => "runnumber", -font => $normalfont, -bg => $okcolor, -relief=> 'raised')->
+    pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
 
 $eventcountlabel = $outerlabel->
-      Label(-text => "eventcount", -font => $normalfont, -bg => $okcolor, -relief=> 'raised')->
-      pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
+    Label(-text => "eventcount", -font => $normalfont, -bg => $okcolor, -relief=> 'raised')->
+    pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
 
 $volumelabel = $outerlabel->
-      Label(-text => "volume", -font => $normalfont, -bg => $okcolor, -relief=> 'raised')->
-      pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
+    Label(-text => "volume", -font => $normalfont, -bg => $okcolor, -relief=> 'raised')->
+    pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
 
 $filenamelabel = $outerlabel->
-      Label(-text => "", -font => $normalfont, -bg => $okcolor, -relief=> 'raised')->
-      pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
+    Label(-text => "", -font => $normalfont, -bg => $okcolor, -relief=> 'raised')->
+    pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
 
 
 $button_open = $outerlabel->
-	Button( -bg => $buttonbgcolor, -text => "Open", -command => [\&daq_open,$b],  -relief =>'raised',  -font=> $normalfont)->
-	pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
+    Button( -bg => $buttonbgcolor, -text => "Open", -command => [\&daq_open,$b],  -relief =>'raised',  -font=> $normalfont)->
+    pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
 
 $button_begin = $outerlabel->
-	Button(-bg => $buttonbgcolor, -text => "Begin", -command => [\&daq_begin, $b],  -relief =>'raised',  -font=> $normalfont)->
-	pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
+    Button(-bg => $buttonbgcolor, -text => "Begin", -command => [\&daq_begin, $b],  -relief =>'raised',  -font=> $normalfont)->
+    pack(-side =>'top', -fill=> 'x', -ipadx=> '1m',  -ipady=> '1m');
 
 
 
@@ -176,7 +176,8 @@ sub update()
     }
     else
     {
-	($run, $evt, $v, $openflag, $fn, $duration )= split (/\s/ ,$res);
+	# 7 292 0.125664 1 2  rcdaq-00000007-0000.evt 6 "mlpvm2"
+	($run, $evt, $v, $openflag, $serverflag, $fn, $duration )= split (/\s+/ ,$res);
 	($junk, $name )= split (/\"/ ,$res);
 	#print " run $run  evt $evt  vol $v open  $openflag file  $fn $name \n";
 	
@@ -210,18 +211,22 @@ sub update()
 	    
 	    if ( $openflag == 1)
 	    {		
-		$filenamelabel->configure(-text =>"Logging enabled");
+		if ( $serverflag == 1 )
+		{
+		    $filenamelabel->configure(-text =>"Logging enabled (Server)");
+		}
+		else
+		{
+		    $filenamelabel->configure(-text =>"Logging enabled");
+		}
 	    }
-	    elsif ( $openflag == 2)
-	    {		
-		$filenamelabel->configure(-text =>"Logging enabled (Server)");
-	    }
+
 	    else
 	    {
 		$filenamelabel->configure(-text =>"Logging Disabled");
 	    }
 	}
-	else
+	else  # we are running 
 	{
 	    $old_run = $run;
 	    
@@ -234,18 +239,21 @@ sub update()
 	    
 	    if ( $openflag == 1 )
 	    {
-		$filenamelabel->configure(-text =>"File: $fn");
-	    }
-	    elsif ( $openflag ==2 )
-	    {
-		$filenamelabel->configure(-text =>"File on server: $fn");
+		if ( $serverflag == 1 )
+		{
+		    $filenamelabel->configure(-text =>"File on Server: $fn");
+		}
+		else
+		{
+		    $filenamelabel->configure(-text =>"File: $fn");
+		}
 	    }
 	    else
 	    {
 		$filenamelabel->configure(-text =>"Logging Disabled");
 	    }
 	}
-    
+	    
     }
 
     $label{'sline2'}->configure( -text =>  $name);

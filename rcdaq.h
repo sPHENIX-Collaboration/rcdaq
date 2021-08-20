@@ -53,7 +53,7 @@ std::string& get_current_filename();
 int daq_close (std::ostream& os = std::cout);
 int is_open();
 
-int daq_open_server (const char *hostname, const int port, std::ostream& os = std::cout);
+int daq_set_server (const char *hostname, const int port, std::ostream& os = std::cout);
 int is_server_open();
 int daq_server_close (std::ostream& os = std::cout);
 int get_serverflag();

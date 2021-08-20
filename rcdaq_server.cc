@@ -103,11 +103,11 @@ int daq_status_plugin (const int flag, std::ostream& os )
   // if not, we just say "no plugins loded"
   if (   pluginlist.size() )
     {
-      os << "List of loaded Plugins:" << endl;
+      os << "  List of loaded Plugins:" << endl;
     }
   else
     {
-      os << "No Plugins loaded" << endl;
+      os << "   No Plugins loaded" << endl;
     }
 
 
@@ -115,6 +115,7 @@ int daq_status_plugin (const int flag, std::ostream& os )
 
   for ( it=pluginlist.begin(); it != pluginlist.end(); ++it)
     {
+      os << "  ";
       (*it)->identify(os, flag);
     }
   return 0;
@@ -603,8 +604,8 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       return &result;
       break;
 
-    case DAQ_OPEN_SERVER:
-      result.status = daq_open_server(ab->spar, ab->ipar[0], outputstream);
+    case DAQ_SET_SERVER:
+      result.status = daq_set_server(ab->spar, ab->ipar[0], outputstream);
       if (result.status) 
 	{
 	  outputstream.str().copy(resultstring,outputstream.str().size());

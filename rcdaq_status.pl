@@ -184,7 +184,7 @@ sub update()
     }
     else
     {
-	($run, $evt, $v, $openflag, $fn, $duration)= split (/\s/ ,$res);
+	($run, $evt, $v, $openflag, $serverflag, $fn, $duration )= split (/\s+/ ,$res);
 	($junk, $name )= split (/\"/ ,$res);
 #    print " run $run  evt $evt  vol $v open  $openflag file  $fn \n";
 	
@@ -201,16 +201,21 @@ sub update()
 		
 	    if ( $openflag == 1)
 	    {		
-		$filenamelabel->configure(-text =>"Logging enabled");
+		if ( $serverflag == 1 )
+		{
+		    $filenamelabel->configure(-text =>"Logging enabled (Server)");
+		}
+		else
+		{
+		    $filenamelabel->configure(-text =>"Logging enabled");
+		}
 	    }
-	    elsif ( $openflag == 2)
-	    {		
-		$filenamelabel->configure(-text =>"Logging enabled (Server)");
-	    }
+
 	    else
 	    {
 		$filenamelabel->configure(-text =>"Logging Disabled");
 	    }
+
 	}
 	else
 	{
@@ -218,18 +223,22 @@ sub update()
 	    
 	    $runstatuslabel->configure(-text =>"Running for $duration s");
 	    
- 	    if ( $openflag == 1 )
+	    if ( $openflag == 1 )
 	    {
-		$filenamelabel->configure(-text =>"File: $fn");
-	    }
-	    elsif ( $openflag ==2 )
-	    {
-		$filenamelabel->configure(-text =>"File on server: $fn");
+		if ( $serverflag == 1 )
+		{
+		    $filenamelabel->configure(-text =>"File on Server: $fn");
+		}
+		else
+		{
+		    $filenamelabel->configure(-text =>"File: $fn");
+		}
 	    }
 	    else
 	    {
 		$filenamelabel->configure(-text =>"Logging Disabled");
 	    }
+
 	}
     
     }

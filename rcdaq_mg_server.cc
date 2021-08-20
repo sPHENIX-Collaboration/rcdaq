@@ -98,27 +98,29 @@ std::string get_loggingstring()
     {
       if ( daq_running() )
 	{
-	  out << "File: " << get_current_filename();
-	  return out.str();
+	  if ( get_serverflag() )
+	    {
+	      out << "File on server: " << get_current_filename();
+	      return out.str();
+	    }
+	  else
+	    {
+	      out << "File: " << get_current_filename();
+	      return out.str();
+	    }
 	}
       else
 	{
-	  return "Logging enabled";
+	  if ( get_serverflag() )
+	    {
+	      return "Logging enabled (Server)";
+	    }
+	  else
+	    {
+	      return "Logging enabled";
+	    }
 	}
     }
-  else if ( get_serverflag() )
-    {
-      if ( daq_running() )
-	{
-	  out << "File on server: " << get_current_filename();
-	  return out.str();
-	}
-      else
-	{
-	  return "Logging enabled (Server)";
-	}
-    }
-
   return "Logging disabled";
 }
 
