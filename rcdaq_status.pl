@@ -146,7 +146,7 @@ $volumelabel = $outerlabel->
       pack(-side =>'top', -fill=> 'x', -ipadx=> $padx,  -ipady=> $pady);
 
 $filenamelabel = $outerlabel->
-      Label(-text => "filename", -font => $smallfont, -bg => $okcolor, -relief=> 'raised')->
+      Label(-text => "filename", -font => $normalfont, -bg => $okcolor, -relief=> 'raised')->
       pack(-side =>'top', -fill=> 'x', -ipadx=> $padx,  -ipady=> $pady);
 
 
@@ -184,7 +184,7 @@ sub update()
     }
     else
     {
-	($run, $evt, $v, $openflag, $serverflag, $fn, $duration )= split (/\s+/ ,$res);
+	($run, $evt, $v, $openflag, $serverflag, $fn, $duration )= split (/\s/ ,$res);
 	($junk, $name )= split (/\"/ ,$res);
 #    print " run $run  evt $evt  vol $v open  $openflag file  $fn \n";
 	

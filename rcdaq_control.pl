@@ -177,7 +177,7 @@ sub update()
     else
     {
 	# 7 292 0.125664 1 2  rcdaq-00000007-0000.evt 6 "mlpvm2"
-	($run, $evt, $v, $openflag, $serverflag, $fn, $duration )= split (/\s+/ ,$res);
+	($run, $evt, $v, $openflag, $serverflag, $fn, $duration )= split (/\s/ ,$res);
 	($junk, $name )= split (/\"/ ,$res);
 	#print " run $run  evt $evt  vol $v open  $openflag file  $fn $name \n";
 	
