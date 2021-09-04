@@ -777,11 +777,11 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 shortResult * r_shutdown_1_svc(void *x, struct svc_req *rqstp)
 {
 
-  
   static shortResult  result;
   
   static std::ostringstream outputstream;
   
+  static char resultstring[256];
 
   pthread_mutex_lock(&M_output);
 
@@ -793,13 +793,16 @@ shortResult * r_shutdown_1_svc(void *x, struct svc_req *rqstp)
   int status;
 
   outputstream.str("");
+
   result.str = (char *) outputstream.str().c_str();
 
   result.status = daq_shutdown ( my_servernumber, RCDAQ_VERS, outputstream);
   cout << "daq_shutdown status = " << result.status  << endl;
   if (result.status) 
     {
-      result.str = (char *) outputstream.str().c_str();
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
       result.content = 1;
     }
   pthread_mutex_unlock(&M_output);
