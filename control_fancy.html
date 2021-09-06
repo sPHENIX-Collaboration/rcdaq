@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+  <title>RCDAQ Controls</title>
+
+  <!-- <script type="text/javascript" src="assets/prettify.js"></script> -->
+  <!-- <script type="text/javascript" src="assets/jscolor.js"></script> -->
+  <script type="text/javascript" src="gauge.min.js"></script>
+
+<style>
+    body {
+	font-family: sans-serif;
+    }
+
+table {
+    border-spacing: 0px;
+    border-collapse: collapse;
+}
+   
+table.floatleft {
+    width: 50%;
+    float: left;
+    height: 30px;
+    cellpadding: 8;
+}
+
+td {
+       width: 100%;
+       height: 30px;
+       border: 2px solid #bbbbbb;
+       text-align:center;
+       vertical-align:middle;
+   }
+
+input {
+    width: 99%;
+    height: 30px;
+    background-color: #33CCCC;
+    font-size: 100%;
+
+}
+
+.bold {
+    font-weight: bold;
+}
+
+
+.RunActiveStatus {
+    color: red;
+    background-color: #F5D88B;
+    font-weight: bold;
+}
+
+.RunInActiveStatus {
+    color: blue;
+    background-color: #CCCCCC;
+}
+
+.ServerDeadStatus {
+    color: white;
+    background-color:  #F93D5C;
+}
+
+
+
+.LoggingActive {
+    color: black;
+    background-color: #F5D88B;
+}
+.LoggingInActive {
+    color: black;
+    background-color: #CCCCCC;
+}
+
+.ButtonActive {
+    color: black;
+    background-color: #33CCCC;
+}
+.ButtonInActive {
+    color: black;
+    background-color: #666666;
+}
+
+    div.gaugecontainer {
+	position: relative;
+	float: left;
+	width: 149px;
+	height: 149px;
+	border: 1px solid #73AD21;
+    	background-color: #F5F5DC;
+    } 
+
+    .gaugecanvas {
+	//position: relative;
+	align: center;
+	width:  100%;
+	height: 100%;
+	//border: 1px solid red;
+    } 
+
+    div.gaugetext {
+	position: absolute; top: 30%;
+	text-align: center;
+	font-size: 0.9em;
+	font-weight: bold;
+	width: 100%;
+	//height: 20px;
+	//border: 1px solid blue;
+    } 
+
+    div.unittext {
+	position: absolute; top: 70%;
+	text-align: center;
+	font-size: 0.9em;
+	font-weight: bold;
+	width: 100%;
+	//height: 20px;
+	//border: 1px solid blue;
+    } 
+
+
+</style>
+
+
+<script>
+
+var debug = true;
+var webSocket; 
+
+// global flags 
+var ServerWasDeadFlag = false;
+var OpenDisabledFlag = false;
+
+// color definitions
+
+var StandardColor        = "#cccc00";
+var StatusColor          = "#bbbb00";
+var StandardColor2       = "#00CC99";
+var BorderColor          = "#CCCC99";
+var ButtonBgColor        = "#33CCCC";
+
+
+var RunInactiveColor     = "#CCCCCC";
+var RunActiveColor       = "#F5D88B"; // orange-ish
+
+var LoggingDisabledColor     = "#CCCCCC";
+var LoggingEnabledColor      = RunActiveColor;
+
+var ServerDeadColor      = "#F93D5C";
+var ButtonInactiveColor  = "#666666";
+
+var RunCommand = "daq_begin";
+var OpenCommand = "daq_open";
+
+function init()
+{
+    if ( debug) {console.log('starting init');}
+    // we are recursively calling this function.
+    // This stopMe tells this round not to proceed. 
+    var stopMe = false;
+
+    webSocket = new WebSocket("ws://"+location.host);
+
+    webSocket.onerror = function(e) {
+	e.preventDefault();
+    }
+
+
+    webSocket.onopen = function(e) {
+	if ( debug) {console.log('Websocket opened - sending initial update request');}
+	webSocket.send("initial_update");
+    }
+    
+
+    webSocket.onclose = function(event) {
+	if ( debug) { console.log('Websocket closed'); };
+	delete  webSocket;
+	stopMe = true;
+
+	ServerWasDeadFlag = true;
+
+	document.getElementById("Status").className = "ServerDeadStatus";
+	document.getElementById("Status").textContent="RCDAQ not running";
+	document.getElementById("Logging").className='LoggingInActive';
+	document.getElementById("OpenButton").className='ButtonInActive';
+	document.getElementById("BeginButton").className='ButtonInActive';
+	
+	document.getElementById("RunNr").textContent="n/a";
+	document.getElementById("Events").textContent="n/a";
+	document.getElementById("Volume").textContent="n/a";
+	document.getElementById("Logging").textContent=" ";
+	mbpsGauge.set(0);
+	mbpsGauge.maxValue=1;
+
+	retryTimer = setTimeout(init, 2500);
+    }
+    if ( stopMe) return;
+
+    webSocket.onmessage = wsReceive;
+
+    
+}
+
+function wsReceive(e)
+{
+    if ( debug) { console.log('Websocket received ' + e.data); }
+    full_parse(e.data);
+    
+}
+
+function full_parse(j)
+{
+
+    if ( j.length == 0)
+    {
+	return;
+    }
+    
+
+    var o  = JSON.parse(j);
+
+    list = Object.keys(o);
+    var i;
+    for ( i = 0; i < list.length; i++)
+    {
+	if ( list[i] == "OpenFlag")
+	{
+	    if ( o[list[i]] > 0  ) 
+	    {
+		document.getElementById("OpenButton").value = "Close";
+		document.getElementById("Logging").className='LoggingActive';
+		OpenCommand = "daq_close";
+	    }
+	    else
+	    {
+		document.getElementById("OpenButton").value = "Open";
+		document.getElementById("Logging").className='LoggingInActive';
+		OpenCommand = "daq_open";
+	    }
+	}
+	else if ( list[i] == "RunFlag")
+	{
+	    document.getElementById("BeginButton").className='ButtonActive';
+
+	    if ( o[list[i]] == 1 ) 
+	    {
+		// we dim the open/close button since it's going inactive
+		document.getElementById("OpenButton").className='ButtonInActive';
+		// we re-color the status field
+		document.getElementById("Status").className='RunActiveStatus';
+
+		// and we change the text to "end"
+		document.getElementById("BeginButton").value = "End";
+		RunCommand = "daq_end";
+	    }
+	    else
+	    {
+		// we un-dim the open/close button since it's active again
+		document.getElementById("OpenButton").className='ButtonActive';
+		// we re-color the status field
+		document.getElementById("Status").className='RunInActiveStatus';
+		// and we change the text to "Begin"
+		document.getElementById("BeginButton").value = "Begin";
+		RunCommand = "daq_begin";
+	    }
+	}
+	else if ( list[i] == "MBps")
+	{
+	    if ( o[list[i]] > mbpsGauge_max)
+	    {
+		mbpsGauge_max = o[list[i]];
+		mbpsGauge.maxValue = mbpsGauge_max *1.1;
+	    }
+	    mbpsGauge.set(o [list[i]] );
+	}
+
+	else if ( list[i] == "Evtps")
+	{
+	    if ( o[list[i]] > evtsGauge_max)
+	    {
+		evtsGauge_max = o[list[i]];
+		evtsGauge.maxValue = evtsGauge_max *1.1;
+	    }
+	    evtsGauge.set(o [list[i]] );
+	}
+		
+	if ( document.getElementById(list[i]) )
+        {
+		document.getElementById(list[i]).textContent=o[list[i]];
+	}
+    }
+}
+
+function initial_update()
+{
+    var uri = "initial_update";
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function()
+    {
+     	if (xhttp.readyState == 4 && xhttp.status == 200)
+     	{
+	    //console.log(" response " + xhttp.responseText);
+     	    full_parse(xhttp.responseText);
+     	}
+      };
+
+
+    xhttp.open("get", uri, true);
+    xhttp.send();
+}
+
+
+
+function OpenHandler()
+{
+    
+    webSocket.send(OpenCommand);
+}
+
+function RunHandler()
+{
+
+    webSocket.send(RunCommand);
+
+}
+
+// document.addEventListener("DOMContentLoaded", function() {
+//     init();
+// });
+
+
+</script>
+
+</head>
+
+<body>
+
+
+<TABLE class="floatleft">
+
+<tr>
+<td colspan="2" style="background-color: #cccc00; height:45px;font-size:140%;">RCDAQ Control</td>
+</tr>
+<tr>
+<td id="Name" colspan="2" style="background-color: #bbbb00; height:18px;font-size:80%;">  </td>
+</tr>
+
+<tr>
+<td id="Status" colspan="2" class="RunInActiveStatus"> </td>
+</tr>
+
+<tr>
+<td colspan="1" style="background-color: #00cc99; width:50%">Run:
+<td id="RunNr" style="background-color: #00cc99;" ></td>
+</tr>
+
+<tr>
+<td colspan="1" style="background-color: #00cc99; width:50%">Events:
+<td id="Events" style="background-color: #00cc99;" ></td>
+</tr>
+
+<tr>
+<td colspan="1" style="background-color:#00cc99; width:50%">Volume:
+<td id="Volume" style="background-color: #00cc99;" >0 MB</td>
+</tr>
+
+<tr>
+<td id="Logging" colspan="2" class="LoggingInActive" ></td>
+</tr>
+
+
+<tr>
+    <td colspan="2" style="background-color:#33bbbb";>  <input type="button" value="Open" onClick="OpenHandler()" class="ButtonActive" id="OpenButton"></td>
+</tr>
+
+<tr>
+    <td colspan="2" style="background-color:#33bbbb";>  <input type="button" value="Begin" onClick="RunHandler()" class="ButtonActive" id="BeginButton"></td>
+</tr>
+
+
+</table>
+
+<table>
+  <tr>
+    <td>
+      <div id="evtssgauge" class="gaugecontainer"> 
+	<canvas class="gaugecanvas" id="evtscanvas"></canvas>
+	<div id="evts_unittext"  class="unittext">Evt/s</div>
+	<div id="evtstext"  class="gaugetext"></div>
+      </div>
+    </td>
+  </tr>
+
+  <tr>
+    <td>
+      <div id="mbpsgauge" class="gaugecontainer"> 
+	<canvas class="gaugecanvas" id="mbpscanvas"></canvas>
+	<div id="unittext"  class="unittext">MB/s</div>
+	<div id="mbpstext"  class="gaugetext"></div>
+      </div>
+    </td>
+  </tr>
+</table>
+      
+
+
+<script>
+
+  var opts = {
+      angle: -0.25,
+      lineWidth: 0.15,
+      radiusScale:0.9,
+      percentColors: [[0.0, "00FF00" ], [0.50, "#f9c802"], [1.0, "#ff0000"]],
+      generateGradient: true,
+      pointer: {
+          length: 0.6,
+          strokeWidth: 0.03,
+          color: '#000099'
+      },
+      highDpiSupport: true
+  };
+
+  var mbpsGauge_max = 0;
+  mbpsGauge = new Gauge(document.getElementById("mbpscanvas"));
+  mbpsGauge.setOptions(opts);
+  mbpsGauge.setTextField(document.getElementById("mbpstext"));
+  mbpsGauge.animationSpeed=10;
+  mbpsGauge.strokeWidth=0.2;
+  mbpsGauge.maxValue = 1;
+  mbpsGauge.set(0);
+
+  var evtsGauge_max = 0;
+  evtsGauge = new Gauge(document.getElementById("evtscanvas"));
+  evtsGauge.setOptions(opts);
+  evtsGauge.setTextField(document.getElementById("evtstext"));
+  evtsGauge.animationSpeed=10;
+  evtsGauge.strokeWidth=0.2;
+  evtsGauge.maxValue = 1;
+  evtsGauge.set(0);
+</script>
+
+
+<script>
+  window.onload = init;
+</script>
+
+
+</body>

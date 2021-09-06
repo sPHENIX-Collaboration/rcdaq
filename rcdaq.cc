@@ -146,6 +146,8 @@ time_t StartTime = 0;
 int Buffer_number;
 int Event_number;
 
+int update_delta;
+
 static int TriggerControl = 0;
 static int TriggerStatus =0;
 
@@ -182,10 +184,11 @@ unsigned long long BytesInThisRun = 0;
 unsigned long long run_volume, max_volume;
 unsigned int max_events;
 
+time_t last_speed_time = 0;
+int last_event_nr = 0;
 
-time_t old_time; // to measure MB/s
-double old_volume = 0;
-double mb_per_second = 0; 
+static time_t last_volume_time = 0;
+double last_volume = 0;
 
 int EvtId = 0;
 
@@ -892,6 +895,30 @@ std::string& get_previous_filename()
   return PreviousFilename;
 }
 
+double daq_get_mb_per_second()
+{
+
+  time_t now_time = time(0);
+  if ( now_time == last_volume_time) return 0;
+  double time_delta = now_time - last_volume_time;
+  double mb_per_second = ( run_volume - last_volume) / time_delta / 1024. /1204.;
+  last_volume = run_volume;
+  last_volume_time = now_time;
+  return mb_per_second;
+}
+
+double daq_get_events_per_second()
+{
+  time_t now_time = time(0);
+  if ( now_time == last_speed_time) return 0;
+  double time_delta = now_time - last_speed_time;
+  double events_per_second = ( Event_number - last_event_nr) / time_delta;
+  last_event_nr = Event_number;
+  last_speed_time = now_time;
+  return events_per_second;
+}
+
+
 int daq_begin(const int irun, std::ostream& os)
 {
   if ( Daq_Status & DAQ_RUNNING ) 
@@ -970,7 +997,6 @@ int daq_begin(const int irun, std::ostream& os)
   //initialize the Buffer and event number
   Buffer_number = 1;
   Event_number  = 1;
-  
 
   // just to be safe, clear the "end requested" bit
   if ( Daq_Status & DAQ_ENDREQUESTED ) Daq_Status ^= DAQ_ENDREQUESTED;
@@ -1006,8 +1032,9 @@ int daq_begin(const int irun, std::ostream& os)
       
     }
 
-  old_time =  StartTime = time(0);
-  old_volume = 0;
+  last_volume_time = last_speed_time =  StartTime = time(0);
+  last_event_nr = 0;
+  last_volume = 0;
 
       
   // here we sucessfully start a run. So now we set the env. variables
@@ -1122,6 +1149,13 @@ int daq_end(std::ostream& os)
   CurrentFilename = "";
   StartTime = 0;
   Daq_Status ^= DAQ_RUNNING;
+
+  last_volume_time = last_speed_time = time(0);
+  last_event_nr = 0;
+  last_volume = 0;
+
+  request_mg_update (MG_REQUEST_SPEED);
+
   return 0;
 }
 
@@ -1326,18 +1360,6 @@ int readout(const int etype)
     }
 
   run_volume += 4*len;
-
-  time_t now_time = time(0);
-    
-  if ( now_time - old_time > 10) // calculate avg speed
-    {
-      mb_per_second = ( run_volume - old_volume) / ( now_time - old_time) / 1024 /1204;
-      //      cout << " mb/s: " << run_volume << " " << old_volume << "  " << now_time << "  " << old_time << "  " << mb_per_second << endl;
-      old_volume = run_volume;
-      old_time = now_time;
-    }
-  
-  //  cout << "len, run_volume = " << len << "  " << run_volume << endl;
 
   int returncode = 0;
 

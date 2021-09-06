@@ -63,6 +63,8 @@ int daq_set_name(const char *name);
 int daq_get_name(std::ostream& os = std::cout);
 std::string daq_get_myname();
 
+double daq_get_mb_per_second();
+double daq_get_events_per_second();
 
 int daq_list_readlist(std::ostream& os = std::cout );
 int daq_clear_readlist(std::ostream& os = std::cout);
@@ -101,6 +103,7 @@ int get_runduration();
 int get_openflag();
 
 #define MG_REQUEST_NAME 1
+#define MG_REQUEST_SPEED 2
 // more defs to come in the future
 
 

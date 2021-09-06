@@ -42,6 +42,7 @@ static int  last_openflag;
 static int  last_serverflag;
 static int  last_current_filename; 
 static int  rcdaqname_request_flag; 
+static int  speed_request_flag; 
 
 
 
@@ -57,6 +58,11 @@ int request_mg_update (const int what)
     {
     case MG_REQUEST_NAME:
       rcdaqname_request_flag = 1;
+      return 0;
+      break;
+
+    case MG_REQUEST_SPEED:
+      speed_request_flag = 1;
       return 0;
       break;
       
@@ -481,6 +487,13 @@ int trigger_updates(struct mg_connection *nc)
       update(nc, "Name", daq_get_myname().c_str());
     }
   
+  if  ( speed_request_flag )
+    {
+      speed_request_flag = 0;
+      update(nc, "MBps", daq_get_mb_per_second());
+      update(nc, "Evtps", daq_get_events_per_second());
+    }
+  
   return 0;
 }
 
@@ -510,6 +523,7 @@ void * mg_server (void *arg)
   last_openflag    = get_openflag();
   last_serverflag  = get_serverflag();
   rcdaqname_request_flag  = 0;
+  speed_request_flag  = 0;
   
   //  last_current_filename; 
 
@@ -530,12 +544,20 @@ void * mg_server (void *arg)
    
 
   time_t last_time = time(0);
+  time_t last_time_for_speed = last_time;
    
   while(!end_web_thread) 
     {
       mg_mgr_poll(&mgr, 1000);
 
+      if ( time(0) - last_time_for_speed > 9)
+	{
+	  if (daq_running() ) speed_request_flag  = 1;
+	  last_time_for_speed = time(0);
+	}
+      
       trigger_updates(nc);
+      
       if ( time(0) - last_time > 1)
 	{
 	  send_ws_updates(nc);

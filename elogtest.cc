@@ -2,7 +2,7 @@
 #include <iostream>
 #include <eloghandler.h>
 
-main()
+int main()
 {
 
   ElogHandler *x = new ElogHandler("localhost", 666, "RCDAQLog");
