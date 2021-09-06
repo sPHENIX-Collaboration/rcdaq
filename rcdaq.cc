@@ -1064,6 +1064,7 @@ int daq_begin(const int irun, std::ostream& os)
   //now enable the interrupts and reset the deadtime
   enable_trigger();
 
+  request_mg_update (MG_REQUEST_SPEED);
 
   os << "Run " << TheRun << " started" << endl;
 

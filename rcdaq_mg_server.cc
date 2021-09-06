@@ -42,7 +42,9 @@ static int  last_openflag;
 static int  last_serverflag;
 static int  last_current_filename; 
 static int  rcdaqname_request_flag; 
-static int  speed_request_flag; 
+static int  speed_request_flag = 0; 
+
+static int speed_update_interval =9;
 
 
 
@@ -507,7 +509,7 @@ void * mg_server (void *arg)
   int oldkey = 0;
   char str[512];
   int i;
-
+  
   int port = (int) *(int *)arg;
   stringstream portstring;
   portstring << port << ends;
@@ -550,7 +552,7 @@ void * mg_server (void *arg)
     {
       mg_mgr_poll(&mgr, 1000);
 
-      if ( time(0) - last_time_for_speed > 9)
+      if ( time(0) - last_time_for_speed > speed_update_interval)
 	{
 	  if (daq_running() ) speed_request_flag  = 1;
 	  last_time_for_speed = time(0);

@@ -4,8 +4,6 @@
 
   <title>RCDAQ Controls</title>
 
-  <!-- <script type="text/javascript" src="assets/prettify.js"></script> -->
-  <!-- <script type="text/javascript" src="assets/jscolor.js"></script> -->
   <script type="text/javascript" src="gauge.min.js"></script>
 
 <style>
@@ -87,16 +85,14 @@ input {
 	float: left;
 	width: 149px;
 	height: 149px;
-	border: 1px solid #73AD21;
+	border: none;
     	background-color: #F5F5DC;
     } 
 
     .gaugecanvas {
-	//position: relative;
 	align: center;
 	width:  100%;
 	height: 100%;
-	//border: 1px solid red;
     } 
 
     div.gaugetext {
@@ -105,8 +101,7 @@ input {
 	font-size: 0.9em;
 	font-weight: bold;
 	width: 100%;
-	//height: 20px;
-	//border: 1px solid blue;
+
     } 
 
     div.unittext {
@@ -115,8 +110,6 @@ input {
 	font-size: 0.9em;
 	font-weight: bold;
 	width: 100%;
-	//height: 20px;
-	//border: 1px solid blue;
     } 
 
 
@@ -125,7 +118,7 @@ input {
 
 <script>
 
-var debug = true;
+var debug = false;
 var webSocket; 
 
 // global flags 
@@ -270,7 +263,7 @@ function full_parse(j)
 	    if ( o[list[i]] > mbpsGauge_max)
 	    {
 		mbpsGauge_max = o[list[i]];
-		mbpsGauge.maxValue = mbpsGauge_max *1.1;
+		mbpsGauge.maxValue = mbpsGauge_max *1.2;
 	    }
 	    mbpsGauge.set(o [list[i]] );
 	}
@@ -280,7 +273,7 @@ function full_parse(j)
 	    if ( o[list[i]] > evtsGauge_max)
 	    {
 		evtsGauge_max = o[list[i]];
-		evtsGauge.maxValue = evtsGauge_max *1.1;
+		evtsGauge.maxValue = evtsGauge_max *1.2;
 	    }
 	    evtsGauge.set(o [list[i]] );
 	}
@@ -411,7 +404,7 @@ function RunHandler()
       angle: -0.25,
       lineWidth: 0.15,
       radiusScale:0.9,
-      percentColors: [[0.0, "00FF00" ], [0.50, "#f9c802"], [1.0, "#ff0000"]],
+      percentColors: [[0.0, "00AA00" ], [1.0, "#00DD00"]],
       generateGradient: true,
       pointer: {
           length: 0.6,
