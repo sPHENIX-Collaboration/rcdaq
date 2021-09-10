@@ -19,7 +19,7 @@ daq_device_gauss::daq_device_gauss(const int eventtype
   
   if (trigger_enabled) 
     {
-      th = new pulserTriggerHandler();
+      th = new pulserTriggerHandler(m_eventType);
       registerTriggerHandler(th);
     }
   else
