@@ -899,7 +899,7 @@ int daq_begin(const int irun, std::ostream& os)
       return -1;
     }
     
-  pthread_join(ThreadEvt, NULL);
+  if (ThreadEvt) pthread_join(ThreadEvt, NULL);
 
   
   // set the status to "running"
@@ -1063,7 +1063,9 @@ int daq_end_interactive(std::ostream& os)
   // and wait for it to be done.
 
   disable_trigger();
-  pthread_join(ThreadEvt, NULL);
+
+  // it is possible that we call daq_end before we ever started a run
+  if (ThreadEvt)   pthread_join(ThreadEvt, NULL);
 
   return daq_end(os);
 }
@@ -1594,7 +1596,8 @@ int rcdaq_init( pthread_mutex_t &M)
   pthread_mutex_lock( &WriteSem);
   pthread_mutex_lock( &SendSem);
 
-   
+  ThreadEvt = 0;
+
   outfile_fd = 0;
 
   fillBuffer = &Buffer1;
