@@ -29,6 +29,7 @@ int add_readoutdevice( daq_device *d);
 int daq_begin(const int irun,std::ostream& os = std::cout );
 
 int daq_end_immediate(std::ostream& os = std::cout);
+int daq_end_interactive(std::ostream& os);
 int daq_end(std::ostream& os = std::cout);
 
 int daq_fake_trigger (const int n, const int waitinterval);

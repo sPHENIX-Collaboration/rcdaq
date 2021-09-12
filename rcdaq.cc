@@ -53,7 +53,6 @@ int server_send_beginrun_sequence(const char * filename, const int runnumber, in
 int server_send_endrun_sequence(int fd);
 int server_send_close_sequence(int fd);
 
-void * daq_triggerloop (void * arg);
 void * mg_server (void *arg);
 int mg_end();
 int request_mg_update(const int what);
@@ -67,10 +66,6 @@ pthread_mutex_t SendSem;
 pthread_mutex_t SendProtectSem;
 
 pthread_mutex_t FdManagementSem;
-
-
-pthread_mutex_t TriggerSem;
-pthread_mutex_t TriggerDone;
 
 
 // those are the "todo" definitions. DAQ can be woken up by a trigger
@@ -149,7 +144,6 @@ int Event_number;
 int update_delta;
 
 static int TriggerControl = 0;
-static int TriggerStatus =0;
 
 int ThePort=8899;
 
@@ -160,7 +154,6 @@ daqBuffer  *fillBuffer, *transportBuffer;
 pthread_t ThreadId;
 pthread_t ThreadMon;
 pthread_t ThreadEvt;
-pthread_t ThreadTrigger;
 pthread_t ThreadWeb = 0;
 
 int *thread_arg;
@@ -182,7 +175,7 @@ devicevector DeviceList;
 int NumberWritten = 0; 
 unsigned long long BytesInThisRun = 0;
 unsigned long long run_volume, max_volume;
-unsigned int max_events;
+int max_events;
 
 time_t last_speed_time = 0;
 int last_event_nr = 0;
@@ -198,7 +191,6 @@ int verbose = 0;
 int runnumber=1;
 int packetid = 1001;
 int max_buffers=0;
-int go_on =1;
 
 int adaptivebuffering = 15;
 int last_bufferwritetime  = 0;
@@ -230,14 +222,13 @@ void sig_handler(int i)
 	pthread_mutex_unlock(&M_cout);
     }
 
-  go_on = 0;
+  TriggerControl = 0;
 }
 
 
 int reset_deadtime() 
 {
   if ( TriggerH) TriggerH->rearm();
-  pthread_mutex_unlock ( &TriggerDone );
   return 0;
 }
 
@@ -245,28 +236,23 @@ int enable_trigger()
 {
 
   TriggerControl=1;
-  TriggerStatus = 0;
   if ( TriggerH) TriggerH->enable();
 
-  int status = pthread_create(&ThreadTrigger, NULL, 
-  			  daq_triggerloop, 
-  			  (void *) 0);
-
+  int status = pthread_create(&ThreadEvt, NULL, 
+			  EventLoop, 
+			  (void *) 0);
+   
   if (status ) 
     {
-      pthread_mutex_lock(&M_cout);
-      cout << "error in thread create " << status << endl;
-      pthread_mutex_unlock(&M_cout);
-
-      ThreadTrigger = 0;
+      cout << "error in event thread create " << status << endl;
+      exit(0);
     }
   else
     {
-      // pthread_mutex_lock(&M_cout);
-      // cout << "trigger loop created for run " << TheRun<< endl;
-      // pthread_mutex_unlock(&M_cout);
+      pthread_mutex_lock(&M_cout); 
+      cout << "event thread created" << endl;
+      pthread_mutex_unlock(&M_cout);
       if ( TriggerH) TriggerH->rearm();
-
     }
 
   return 0;
@@ -278,21 +264,6 @@ int disable_trigger()
   TriggerControl=0;  // this makes the trigger process terminate
   if ( TriggerH) TriggerH->disable();
   
-  // cout << __FILE__ << " " << __LINE__ << " waiting for trigger loop to exit " << endl;
-  // while ( !TriggerStatus)
-  //   {
-  //     cout << __FILE__ << " " << __LINE__ << " triggerstatus " << TriggerStatus << endl;
-  //     usleep(10000);
-  //   }
-  
-  //  cout << __FILE__ << " " << __LINE__ << " done " << endl;
-
-  //  sleep (1);
-
-  //  pthread_cancel(ThreadTrigger);
-  //pthread_join(ThreadTrigger, NULL);
-
-
   return 0;
 }
 
@@ -503,6 +474,7 @@ void *shutdown_thread (void *arg)
   
   pthread_mutex_lock(&M_cout);
   cout << "shutting down... " <<  t_args[0] << "  " <<  t_args[1] << endl;
+  TriggerControl = 0;
   if ( TriggerH) delete TriggerH;
   pthread_mutex_unlock(&M_cout);
   // unregister out service 
@@ -549,8 +521,6 @@ void *monitorRequestwatcher_thread (void *arg)
   pthread_mutex_unlock(&M_cout);
 
   listen(sockfd, 16);
-
-  int connection = 0;
 
   int dd_fd;
   struct sockaddr_in out;
@@ -673,7 +643,6 @@ void *sendMonitorData( void *arg)
 
 void *writebuffers ( void * arg)
 {
-  int i;
 
 
   while(1)
@@ -933,6 +902,7 @@ int daq_begin(const int irun, std::ostream& os)
       return -1;
     }
     
+  pthread_join(ThreadEvt, NULL);
 
   
   // set the status to "running"
@@ -1003,8 +973,8 @@ int daq_begin(const int irun, std::ostream& os)
   
   set_eventsizes();
   // initialize Buffer1 to be the fill buffer
-  fillBuffer      = &Buffer1;
-  transportBuffer = &Buffer2;
+  //fillBuffer      = &Buffer1;
+  //transportBuffer = &Buffer2;
 
   // a safety check: see that the buffers haven't been adjusted 
   // to a smaller value than the event size
@@ -1090,13 +1060,28 @@ int daq_wait_for_actual_end()
     return 0;
 }
 
+int daq_end_interactive(std::ostream& os)
+{
+  // with an operator-induced daq_end, we make the event loop terminate
+  // and wait for it to be done.
+
+  disable_trigger();
+  pthread_join(ThreadEvt, NULL);
+
+  return daq_end(os);
+}
+
+  
+
 int daq_end(std::ostream& os)
 {
+  
   if ( ! (Daq_Status & DAQ_RUNNING) ) 
     {
       os << "Run is not active" << endl;;
       return -1;
     }
+  
   disable_trigger();
   device_endrun();
 
@@ -1160,62 +1145,6 @@ int daq_end(std::ostream& os)
   return 0;
 }
 
-
-void * daq_triggerloop (void * arg)
-{
-  int evttype;
-
-  //  pthread_detach(pthread_self());
-  
-  while (TriggerControl)
-    {
-      // let's see if we have a TriggerHelper object
-      if (TriggerH)
-	{
-	  evttype = TriggerH->wait_for_trigger();
-	  
-	  if (evttype) 
-	    {
-	      Trigger_Todo=DAQ_READ;
-	      CurrentEventType = evttype;
-	      pthread_mutex_unlock ( &TriggerSem );
-
-	       // pthread_mutex_lock(&M_cout);
-	       // cout << __LINE__ << "  " << __FILE__ << " triggercontrol = " << TriggerControl  << endl;
-	       //  pthread_mutex_unlock(&M_cout);
-	      
-	      pthread_mutex_lock ( &TriggerDone );
-
-	      if ( !TriggerControl) continue;
-
-	      // pthread_mutex_lock(&M_cout);
-	      // cout << __LINE__ << "  " << __FILE__ << " after lock triggercontrol = " << TriggerControl  << endl;
-	      //  pthread_mutex_unlock(&M_cout);
-	      
-	    }
-
-	}
-      else
-      	{
-	  Trigger_Todo=DAQ_READ;
-	  CurrentEventType = 1;
-	  pthread_mutex_unlock ( &TriggerSem );
-
-	  pthread_mutex_lock ( &TriggerDone );
-	  if ( !TriggerControl) continue;
-
-      	  usleep (100000);
-      	}
-    }
-   pthread_mutex_lock(&M_cout);
-   //cout << "trigger loop ended for run " << TheRun<< endl;
-   pthread_mutex_unlock(&M_cout);
-   TriggerStatus =1;
-   return 0;
-}
-
-
-
 int daq_fake_trigger (const int n, const int waitinterval)
 {
   int i;
@@ -1223,8 +1152,6 @@ int daq_fake_trigger (const int n, const int waitinterval)
     {
       
       Trigger_Todo=DAQ_READ;
-      pthread_mutex_unlock ( &TriggerSem );
-      pthread_mutex_lock ( &TriggerDone );
 	  
 //       pthread_mutex_lock(&M_cout);
 //       cout << "trigger" << endl;
@@ -1239,18 +1166,34 @@ int daq_fake_trigger (const int n, const int waitinterval)
 
 void * EventLoop( void *arg)
 {
-  int size;
 
-  int go_on = 1;
-  while (go_on)
+  // pthread_mutex_lock(&M_cout);
+  // std::cout << __FILE__ << " " << __LINE__ << " event loop starting...   " << std::endl;
+  // pthread_mutex_unlock(&M_cout);
+
+
+  while (TriggerControl)
     {
 
-      pthread_mutex_lock ( &TriggerSem );
+      //pthread_mutex_lock ( &TriggerSem );
       //cout << __LINE__ << "  " << __FILE__ << " unlocked by TriggerSem"  << endl;
-
-      if ( Daq_Status & DAQ_RUNNING ) 
+      
+      // let's see if we have a TriggerHelper object
+      if (TriggerH)
 	{
-	  if  (Trigger_Todo == DAQ_READ)
+	  CurrentEventType = TriggerH->wait_for_trigger();
+	}
+      else // we auto-generate a few triggers
+	{
+	  CurrentEventType = 1;
+      	  usleep (100000);
+      	}
+
+
+      if (CurrentEventType) 
+	{
+	  
+	  if ( Daq_Status & DAQ_RUNNING ) 
 	    {
 	      Daq_Status |= DAQ_READING;
 	      
@@ -1259,37 +1202,34 @@ void * EventLoop( void *arg)
 
 	      Daq_Status ^= DAQ_READING;
 
-
-	      rearm(DATAEVENT);
-	      
-	      // reset todo, and the DAQ_TRIGGER bit. 
-	      Trigger_Todo = 0;
-			  
 	      if (  rstatus)    // we got an endrun signal
 		{
 		  TriggerControl = 0;
-		  reset_deadtime();
-
+		  //reset_deadtime();
 		  daq_end ( std::cout);
-		  //go_on = 0;
 		}
 	      else
 		{
+		  rearm(DATAEVENT);
 		  reset_deadtime();
 		}
+	    
+	    }
+	  else  // no, we are not running
+	    {
+	      cout << "Run not active" << endl;
+	      // reset todo, and the DAQ_TRIGGER bit. 
+	      TriggerControl = 0;
 	    }
 	}
-      else
-	// no, we are not running
-	{
-	  cout << "Run not active" << endl;
-	  // reset todo, and the DAQ_TRIGGER bit. 
-	  Trigger_Todo = 0;
-	  reset_deadtime();
-	}
     }
-  
+
+  // pthread_mutex_lock(&M_cout);
+  // std::cout << __FILE__ << " " << __LINE__ << " event loop ends...   " << std::endl;
+  // pthread_mutex_unlock(&M_cout);
+
   return 0;
+  
 }
 
 
@@ -1652,22 +1592,11 @@ int rcdaq_init( pthread_mutex_t &M)
   pthread_mutex_init( &SendProtectSem, 0);
   pthread_mutex_init( &FdManagementSem,0);
 
-  pthread_mutex_init( &TriggerSem, 0);
-  pthread_mutex_init( &TriggerDone, 0);
-
   // pre-lock them except the "protect" ones
   pthread_mutex_lock( &MonitoringRequestSem);
   pthread_mutex_lock( &WriteSem);
   pthread_mutex_lock( &SendSem);
 
-  pthread_mutex_lock( &TriggerDone);
-  pthread_mutex_lock( &TriggerSem);
-
-
-
-  //  signal(SIGKILL, sig_handler);
-  //signal(SIGTERM, sig_handler);
-  //signal(SIGINT,  sig_handler);
    
   outfile_fd = 0;
 
@@ -1726,21 +1655,6 @@ int rcdaq_init( pthread_mutex_t &M)
       pthread_mutex_unlock(&M_cout);
     }
    
-  status = pthread_create(&ThreadEvt, NULL, 
-			  EventLoop, 
-			  (void *) 0);
-   
-  if (status ) 
-    {
-      cout << "error in event thread create " << status << endl;
-      exit(0);
-    }
-  else
-    {
-      pthread_mutex_lock(&M_cout); 
-      cout << "event thread created" << endl;
-      pthread_mutex_unlock(&M_cout);
-    }
    
   //  std::ostringstream outputstream;
   //  daq_webcontrol ( ThePort, outputstream);
@@ -1998,21 +1912,21 @@ int daq_webcontrol(const int port, std::ostream& os)
       ThreadWeb = 0;
     }
   
-  int status = pthread_create(&ThreadWeb, NULL, 
-			  mg_server, 
-			  (void *) &ThePort);
+  // int status = pthread_create(&ThreadWeb, NULL, 
+  // 			  mg_server, 
+  // 			  (void *) &ThePort);
    
-  if (status ) 
-    {
-      os << "error in web service creation " << status << endl;
-      ThePort=0;
-      return -1;
-    }
-  else
-    {
-      os << "web service created" << endl;
-      return 0;
-    }
+  // if (status ) 
+  //   {
+  //     os << "error in web service creation " << status << endl;
+  //     ThePort=0;
+  //     return -1;
+  //   }
+  // else
+  //   {
+  //     os << "web service created" << endl;
+  //     return 0;
+  //   }
   return 0;
 
 }
@@ -2046,8 +1960,7 @@ int open_serverSocket(const char * hostname, const int port)
 {
 
   //  extern int h_errno;
-  int sockfd;
-  struct sockaddr_in server_addr;
+  int sockfd = 0;
 
   struct addrinfo hints;
   memset(&hints, 0, sizeof(struct addrinfo));

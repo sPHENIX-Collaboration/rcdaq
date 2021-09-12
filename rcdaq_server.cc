@@ -155,9 +155,6 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
   int eventtype;
   int subid;
 
-  int ipar[16];
-  int i;
-
 
   if ( db->npar < 3)
     {
@@ -468,7 +465,7 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
   static shortResult  result;
 
   static std::ostringstream outputstream;
-  static int currentmaxresultlength = 10*2048;
+  static unsigned int currentmaxresultlength = 10*2048;
   static char *resultstring = new char[currentmaxresultlength+1];
 
   // to avoid a race condition with the asynchronous "end requested" feature,
@@ -493,8 +490,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
   result.what = 0;
   result.status = 0;
 
-  int status;
-
   outputstream.str("");
 
   switch ( ab->action)
@@ -511,7 +506,7 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       break;
 
     case DAQ_END:
-      result.status = daq_end(outputstream);
+      result.status = daq_end_interactive(outputstream);
       outputstream.str().copy(resultstring,outputstream.str().size());
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
@@ -790,8 +785,6 @@ shortResult * r_shutdown_1_svc(void *x, struct svc_req *rqstp)
   result.what = 0;
   result.status = 0;
 
-  int status;
-
   outputstream.str("");
 
   result.str = (char *) outputstream.str().c_str();
@@ -851,8 +844,8 @@ main (int argc, char **argv)
   }
 
   char hostname[1024];
-  i = gethostname(hostname, 1024);
-  i = daq_set_name(hostname);
+  gethostname(hostname, 1024);
+  daq_set_name(hostname);
 
   svc_run ();
   fprintf (stderr, "%s", "svc_run returned");

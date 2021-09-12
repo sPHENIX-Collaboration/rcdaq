@@ -40,7 +40,6 @@ static double  last_runvolume;
 static int  last_runduration;
 static int  last_openflag;
 static int  last_serverflag;
-static int  last_current_filename; 
 static int  rcdaqname_request_flag; 
 static int  speed_request_flag = 0; 
 
@@ -75,10 +74,10 @@ int request_mg_update (const int what)
 }
 
 
-static int is_websocket(const struct mg_connection *nc)
-{
-  return nc->flags & MG_F_IS_WEBSOCKET;
-}
+// static int is_websocket(const struct mg_connection *nc)
+// {
+//   return nc->flags & MG_F_IS_WEBSOCKET;
+// }
 
 std::string get_statusstring()
 {
@@ -206,8 +205,6 @@ int update(struct mg_connection *nc, const char *key, const char *value)
   
 void send_ws_updates (struct mg_connection *nc)
 {
-  char str[512];
-  int len;
   if ( daq_running() )
     {
       //      cout << __FILE__ << " " << __LINE__ << " in send_ws_updates" << endl;
@@ -302,8 +299,6 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
   struct http_message *hm = (struct http_message *) ev_data;
   struct websocket_message *wm = (struct websocket_message *)ev_data;
-  char str[256];
-  int i;
   int status;
    
   std::ostringstream out;
@@ -505,10 +500,6 @@ void * mg_server (void *arg)
   end_web_thread = 0;
   struct mg_mgr mgr;
   struct mg_connection *nc;
-  int key = 0;
-  int oldkey = 0;
-  char str[512];
-  int i;
   
   int port = (int) *(int *)arg;
   stringstream portstring;

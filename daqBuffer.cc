@@ -50,6 +50,11 @@ daqBuffer::~daqBuffer ()
 int daqBuffer::prepare_next( const int iseq
 			  , const int irun)
 {
+
+  //  cout << __FILE__ << " " << __LINE__ << " bptr: " << bptr << endl;
+  
+  if ( current_event) delete current_event;
+  current_event = 0;
   
   // re-initialize the event header length
   bptr->Length =  BUFFERHEADERLENGTH*4;
@@ -118,6 +123,8 @@ int daqBuffer::addEoB()
   bptr->Length  += 2*4;
 
   has_end = 1;
+  if ( current_event) delete current_event;
+  current_event = 0;
   return 0;
 }
 
