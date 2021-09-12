@@ -163,8 +163,6 @@ std::string listen_interface;
 int main( int argc, char* argv[])
 {
 
-  int status;
-
 
 #if defined(SunOS) || defined(Linux) 
   struct sockaddr client_addr;
@@ -239,8 +237,12 @@ int main( int argc, char* argv[])
   int xs = 1024*1024;
 
   int s = setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF,
-		     &xs, 4);
+		       &xs, 4);
 
+  if (s)
+    {
+      perror("Setsockopt:");
+    }
 
   memset( &server_addr, 0, sizeof(server_addr));
   server_addr.sin_family = AF_INET;
@@ -310,7 +312,6 @@ int handle_this_child( pid_t pid)
 
 
   int controlword;
-  int len;
   int local_runnr = 0;
 
   bufferstructure B0;

@@ -122,7 +122,7 @@ int daq_device_rtclock::max_length(const int etype) const
 
 int  daq_device_rtclock::init()
 {
-  int s = clock_gettime(CLOCK_MONOTONIC_RAW, &previous_clk);
+  clock_gettime(CLOCK_MONOTONIC_RAW, &previous_clk);
 
   return 0;
 }

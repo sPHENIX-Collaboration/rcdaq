@@ -52,7 +52,7 @@ simpleRandom::xMD5Update(struct xMD5Context *ctx, byte const *buf, int len)
                 ctx->bytes[1]++;        /* Carry from low to high */
 
         t = 64 - (t & 0x3f);    /* Space available in ctx->in (at least 1) */
-        if ((unsigned)t > len) {
+        if (t > len) {
                 bcopy(buf, (byte *)ctx->in + 64 - (unsigned)t, len);
                 return;
         }
@@ -109,7 +109,7 @@ simpleRandom::xMD5Final(byte bdigest[16], struct xMD5Context *ctx)
 
         byteSwap(ctx->buf, 4);
         bcopy(ctx->buf, bdigest, 16);
-        bzero(ctx,sizeof(ctx));
+        bzero(ctx,sizeof(*ctx));
 }
 
 
