@@ -249,9 +249,6 @@ int enable_trigger()
     }
   else
     {
-      pthread_mutex_lock(&M_cout); 
-      cout << "event thread created" << endl;
-      pthread_mutex_unlock(&M_cout);
       if ( TriggerH) TriggerH->rearm();
     }
 
@@ -1912,21 +1909,21 @@ int daq_webcontrol(const int port, std::ostream& os)
       ThreadWeb = 0;
     }
   
-  // int status = pthread_create(&ThreadWeb, NULL, 
-  // 			  mg_server, 
-  // 			  (void *) &ThePort);
+  int status = pthread_create(&ThreadWeb, NULL, 
+  			  mg_server, 
+  			  (void *) &ThePort);
    
-  // if (status ) 
-  //   {
-  //     os << "error in web service creation " << status << endl;
-  //     ThePort=0;
-  //     return -1;
-  //   }
-  // else
-  //   {
-  //     os << "web service created" << endl;
-  //     return 0;
-  //   }
+  if (status ) 
+    {
+      os << "error in web service creation " << status << endl;
+      ThePort=0;
+      return -1;
+    }
+  else
+    {
+      os << "web service created" << endl;
+      return 0;
+    }
   return 0;
 
 }
