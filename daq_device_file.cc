@@ -134,8 +134,6 @@ int daq_device_file::put_data(const int etype, int * adr, const int length )
       sevt->reserved[0] = 0;
       sevt->reserved[1] = 0;
   
-      unsigned int data;
-      
       char  *d = (char *) &sevt->data;
 
       int c = read( my_fd, d, nbytes);

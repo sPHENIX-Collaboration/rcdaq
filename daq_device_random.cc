@@ -22,7 +22,7 @@ daq_device_random::daq_device_random(const int eventtype
   rfp = fopen("/dev/urandom","r");
   if (trigger_enabled) 
     {
-      th = new pulserTriggerHandler();
+      th = new pulserTriggerHandler(m_eventType);
       registerTriggerHandler(th);
     }
   else

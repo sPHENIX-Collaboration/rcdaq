@@ -33,17 +33,51 @@ pthread_mutex_t M_ws_send;
 int error_flag = 0;
 std::string error_string = "";
 
+static int  last_runstate;
+static int  last_runnumber;
+static int  last_eventnumber;
+static double  last_runvolume;
+static int  last_runduration;
+static int  last_openflag;
+static int  last_serverflag;
+static int  rcdaqname_request_flag; 
+static int  speed_request_flag = 0; 
+
+static int speed_update_interval =9;
+
+
+
 int mg_end()
 {
   end_web_thread = 1;
   return 0;
 }
 
-
-static int is_websocket(const struct mg_connection *nc)
+int request_mg_update (const int what)
 {
-  return nc->flags & MG_F_IS_WEBSOCKET;
+  switch (what)
+    {
+    case MG_REQUEST_NAME:
+      rcdaqname_request_flag = 1;
+      return 0;
+      break;
+
+    case MG_REQUEST_SPEED:
+      speed_request_flag = 1;
+      return 0;
+      break;
+      
+    default:
+      break;
+    }
+  return -1;
 }
+
+
+// static int is_websocket(const struct mg_connection *nc)
+// {
+//   return nc->flags & MG_F_IS_WEBSOCKET;
+// }
 
 std::string get_statusstring()
 {
@@ -71,27 +105,29 @@ std::string get_loggingstring()
     {
       if ( daq_running() )
 	{
-	  out << "File: " << get_current_filename();
-	  return out.str();
+	  if ( get_serverflag() )
+	    {
+	      out << "File on server: " << get_current_filename();
+	      return out.str();
+	    }
+	  else
+	    {
+	      out << "File: " << get_current_filename();
+	      return out.str();
+	    }
 	}
       else
 	{
-	  return "Logging enabled";
+	  if ( get_serverflag() )
+	    {
+	      return "Logging enabled (Server)";
+	    }
+	  else
+	    {
+	      return "Logging enabled";
+	    }
 	}
     }
-  else if ( get_serverflag() )
-    {
-      if ( daq_running() )
-	{
-	  out << "File on server: " << get_current_filename();
-	  return out.str();
-	}
-      else
-	{
-	  return "Logging enabled (Server)";
-	}
-    }
-
   return "Logging disabled";
 }
 
@@ -130,7 +166,7 @@ static void broadcast(struct mg_connection *nc, char *str, const int len)
     {
       if ( c != nc)
 	{
-	  //	   cout << __FILE__ << " " << __LINE__ << " sending " << str << " to " << c << endl;
+	  // cout << __FILE__ << " " << __LINE__ << " sending " << str << " to " << c << endl;
 
 	  //	   pthread_mutex_lock(&M_ws_send); 
 	  mg_send_websocket_frame(c, WEBSOCKET_OP_TEXT, str, len);
@@ -161,7 +197,7 @@ int update(struct mg_connection *nc, const char *key, const int value)
 int update(struct mg_connection *nc, const char *key, const char *value)
 {
   char str[512];
-  int len = sprintf(str, "{ \"%s\":\"%s \" }", key, value);
+  int len = sprintf(str, "{ \"%s\":\"%s\" }", key, value);
 
   broadcast(nc, str, len);
   return 0;
@@ -169,8 +205,6 @@ int update(struct mg_connection *nc, const char *key, const char *value)
   
 void send_ws_updates (struct mg_connection *nc)
 {
-  char str[512];
-  int len;
   if ( daq_running() )
     {
       //      cout << __FILE__ << " " << __LINE__ << " in send_ws_updates" << endl;
@@ -265,8 +299,6 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
   struct http_message *hm = (struct http_message *) ev_data;
   struct websocket_message *wm = (struct websocket_message *)ev_data;
-  char str[256];
-  int i;
   int status;
    
   std::ostringstream out;
@@ -412,14 +444,6 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 
 }
 
-static int  last_runstate;
-static int  last_runnumber;
-static int  last_eventnumber;
-static double  last_runvolume;
-static int  last_runduration;
-static int  last_openflag;
-static int  last_serverflag;
-static int  last_current_filename; 
 
 
 
@@ -453,6 +477,19 @@ int trigger_updates(struct mg_connection *nc)
       update(nc, "Logging", get_loggingstring().c_str());
       update(nc, "ServerFlag", get_serverflag());
     }
+
+  if  ( rcdaqname_request_flag )
+    {
+      rcdaqname_request_flag = 0;
+      update(nc, "Name", daq_get_myname().c_str());
+    }
+  
+  if  ( speed_request_flag )
+    {
+      speed_request_flag = 0;
+      update(nc, "MBps", daq_get_mb_per_second());
+      update(nc, "Evtps", daq_get_events_per_second());
+    }
   
   return 0;
 }
@@ -463,11 +500,7 @@ void * mg_server (void *arg)
   end_web_thread = 0;
   struct mg_mgr mgr;
   struct mg_connection *nc;
-  int key = 0;
-  int oldkey = 0;
-  char str[512];
-  int i;
-
+  
   int port = (int) *(int *)arg;
   stringstream portstring;
   portstring << port << ends;
@@ -482,6 +515,9 @@ void * mg_server (void *arg)
   last_runduration = get_runduration();
   last_openflag    = get_openflag();
   last_serverflag  = get_serverflag();
+  rcdaqname_request_flag  = 0;
+  speed_request_flag  = 0;
+  
   //  last_current_filename; 
 
 
@@ -501,12 +537,20 @@ void * mg_server (void *arg)
    
 
   time_t last_time = time(0);
+  time_t last_time_for_speed = last_time;
    
   while(!end_web_thread) 
     {
       mg_mgr_poll(&mgr, 1000);
 
+      if ( time(0) - last_time_for_speed > speed_update_interval)
+	{
+	  if (daq_running() ) speed_request_flag  = 1;
+	  last_time_for_speed = time(0);
+	}
+      
       trigger_updates(nc);
+      
       if ( time(0) - last_time > 1)
 	{
 	  send_ws_updates(nc);

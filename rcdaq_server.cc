@@ -103,11 +103,11 @@ int daq_status_plugin (const int flag, std::ostream& os )
   // if not, we just say "no plugins loded"
   if (   pluginlist.size() )
     {
-      os << "List of loaded Plugins:" << endl;
+      os << "  List of loaded Plugins:" << endl;
     }
   else
     {
-      os << "No Plugins loaded" << endl;
+      os << "   No Plugins loaded" << endl;
     }
 
 
@@ -115,6 +115,7 @@ int daq_status_plugin (const int flag, std::ostream& os )
 
   for ( it=pluginlist.begin(); it != pluginlist.end(); ++it)
     {
+      os << "  ";
       (*it)->identify(os, flag);
     }
   return 0;
@@ -153,9 +154,6 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 
   int eventtype;
   int subid;
-
-  int ipar[16];
-  int i;
 
 
   if ( db->npar < 3)
@@ -467,7 +465,7 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
   static shortResult  result;
 
   static std::ostringstream outputstream;
-  static int currentmaxresultlength = 10*2048;
+  static unsigned int currentmaxresultlength = 10*2048;
   static char *resultstring = new char[currentmaxresultlength+1];
 
   // to avoid a race condition with the asynchronous "end requested" feature,
@@ -492,8 +490,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
   result.what = 0;
   result.status = 0;
 
-  int status;
-
   outputstream.str("");
 
   switch ( ab->action)
@@ -510,7 +506,7 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       break;
 
     case DAQ_END:
-      result.status = daq_end(outputstream);
+      result.status = daq_end_interactive(outputstream);
       outputstream.str().copy(resultstring,outputstream.str().size());
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
@@ -603,8 +599,8 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       return &result;
       break;
 
-    case DAQ_OPEN_SERVER:
-      result.status = daq_open_server(ab->spar, ab->ipar[0], outputstream);
+    case DAQ_SET_SERVER:
+      result.status = daq_set_server(ab->spar, ab->ipar[0], outputstream);
       if (result.status) 
 	{
 	  outputstream.str().copy(resultstring,outputstream.str().size());
@@ -776,11 +772,11 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 shortResult * r_shutdown_1_svc(void *x, struct svc_req *rqstp)
 {
 
-  
   static shortResult  result;
   
   static std::ostringstream outputstream;
   
+  static char resultstring[256];
 
   pthread_mutex_lock(&M_output);
 
@@ -789,16 +785,17 @@ shortResult * r_shutdown_1_svc(void *x, struct svc_req *rqstp)
   result.what = 0;
   result.status = 0;
 
-  int status;
-
   outputstream.str("");
+
   result.str = (char *) outputstream.str().c_str();
 
   result.status = daq_shutdown ( my_servernumber, RCDAQ_VERS, outputstream);
   cout << "daq_shutdown status = " << result.status  << endl;
   if (result.status) 
     {
-      result.str = (char *) outputstream.str().c_str();
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
       result.content = 1;
     }
   pthread_mutex_unlock(&M_output);
@@ -847,8 +844,8 @@ main (int argc, char **argv)
   }
 
   char hostname[1024];
-  i = gethostname(hostname, 1024);
-  i = daq_set_name(hostname);
+  gethostname(hostname, 1024);
+  daq_set_name(hostname);
 
   svc_run ();
   fprintf (stderr, "%s", "svc_run returned");

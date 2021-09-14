@@ -9571,7 +9571,7 @@ _XOPEN_SOURCE >= 600
       
       /* Lazily initialize dns server */
       if (nameserver == NULL && mg_dns_server[0] == '\0' &&
-          mg_get_ip_address_of_nameserver(mg_dns_server, sizeof(mg_dns_server)) ==
+          mg_get_ip_address_of_nameserver(mg_dns_server, sizeof(mg_dns_server)-10) ==
           -1) {
          strncpy(mg_dns_server, mg_default_dns_server, sizeof(mg_dns_server));
       }

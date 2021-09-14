@@ -29,6 +29,7 @@ int add_readoutdevice( daq_device *d);
 int daq_begin(const int irun,std::ostream& os = std::cout );
 
 int daq_end_immediate(std::ostream& os = std::cout);
+int daq_end_interactive(std::ostream& os);
 int daq_end(std::ostream& os = std::cout);
 
 int daq_fake_trigger (const int n, const int waitinterval);
@@ -53,7 +54,7 @@ std::string& get_current_filename();
 int daq_close (std::ostream& os = std::cout);
 int is_open();
 
-int daq_open_server (const char *hostname, const int port, std::ostream& os = std::cout);
+int daq_set_server (const char *hostname, const int port, std::ostream& os = std::cout);
 int is_server_open();
 int daq_server_close (std::ostream& os = std::cout);
 int get_serverflag();
@@ -63,6 +64,8 @@ int daq_set_name(const char *name);
 int daq_get_name(std::ostream& os = std::cout);
 std::string daq_get_myname();
 
+double daq_get_mb_per_second();
+double daq_get_events_per_second();
 
 int daq_list_readlist(std::ostream& os = std::cout );
 int daq_clear_readlist(std::ostream& os = std::cout);
@@ -99,6 +102,11 @@ int get_eventnumber();
 double get_runvolume();
 int get_runduration();
 int get_openflag();
+
+#define MG_REQUEST_NAME 1
+#define MG_REQUEST_SPEED 2
+// more defs to come in the future
+
 
 
 #endif

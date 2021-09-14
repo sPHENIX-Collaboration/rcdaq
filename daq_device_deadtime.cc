@@ -19,7 +19,7 @@ daq_device_deadtime::daq_device_deadtime(const int eventtype
   number_of_words = n_words;
   if (trigger_enabled) 
     {
-      th = new pulserTriggerHandler(0);
+      th = new pulserTriggerHandler(m_eventType);
       registerTriggerHandler(th);
     }
   else

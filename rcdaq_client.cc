@@ -43,7 +43,7 @@ void showHelp()
   std::cout << "   help                                 show this help text"  << std::endl; 
   std::cout << "   daq_status [-s] [-l]                 display status [short] [long]" << std::endl;
   std::cout << "   daq_open                             enable logging" << std::endl;
-  std::cout << "   daq_open_server hostname [port]      enable logging to server" << std::endl;
+  std::cout << "   daq_set_server hostname [port]       choose logging to a SFS server, or \"None\" to choose local file" << std::endl;
   std::cout << "   daq_begin [run-number]             	start taking data for run-number, or auto-increment" << std::endl;
   std::cout << "   daq_end                              end the run " << std::endl;
   std::cout << "   daq_close                            disable logging" << std::endl;
@@ -424,12 +424,12 @@ int command_execute( int argc, char **argv)
  
     }
 
-  else if ( strcasecmp(command,"daq_open_server") == 0)
+  else if ( strcasecmp(command,"daq_set_server") == 0)
     {
       
       if ( argc <  optind + 2) return -1;
 
-      ab.action = DAQ_OPEN_SERVER;
+      ab.action = DAQ_SET_SERVER;
       ab.spar = argv[optind + 1];
       if ( argc == optind + 3)
 	{

@@ -57,11 +57,10 @@ int daq_device_pluginexample::put_data(const int etype, int * adr, const int len
   sevt->reserved[0] = 0;
   sevt->reserved[1] = 0;
 
-  unsigned int data;
 
   int  *d = (int *) &sevt->data;
 
-  int ia;
+  unsigned int ia;
  
   for ( ia = 0; ia < number_of_words; ia++)
     {

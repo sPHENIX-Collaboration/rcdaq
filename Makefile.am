@@ -56,7 +56,7 @@ include_HEADERS =  \
   parseargument.h
 
 htmldir = $(datadir)/html
-html_DATA = control.html  favicon.ico
+html_DATA = control.html control_fancy.html gauge.min.js favicon.ico
 html_INDEX = control.html
 
 RPCGEN = rpcgen

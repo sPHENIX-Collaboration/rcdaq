@@ -19,7 +19,7 @@ daq_device_gauss::daq_device_gauss(const int eventtype
   
   if (trigger_enabled) 
     {
-      th = new pulserTriggerHandler();
+      th = new pulserTriggerHandler(m_eventType);
       registerTriggerHandler(th);
     }
   else
@@ -62,7 +62,6 @@ int daq_device_gauss::put_data(const int etype, int * adr, const int length )
   sevt->reserved[0] = 0;
   sevt->reserved[1] = 0;
 
-  unsigned int data;
 
   int  *d = (int *) &sevt->data;
 

@@ -7,9 +7,9 @@ class pulserTriggerHandler : public TriggerHandler {
 
 public:
 
-  pulserTriggerHandler(const int sleeptime = 0)
+  pulserTriggerHandler(const int evttype = 1)
     {
-      _sleeptime = sleeptime;
+      _evttype = evttype;
       _count = 0;
     }
 
@@ -20,17 +20,13 @@ public:
   // this is the virtual worker routine
   int wait_for_trigger( const int moreinfo=0)
   {
-    int sleeptime = _sleeptime;
-    if ( moreinfo) sleeptime = moreinfo;
     //std::cout << "trigger " << _count++ << std::endl; 
-    if ( sleeptime) usleep ( sleeptime);
-    return 1;
+    return _evttype;
   }
  protected:
-  
-  int _sleeptime;
-  int _count;
 
+  int _count;
+  int _evttype;
 };
 
 #endif

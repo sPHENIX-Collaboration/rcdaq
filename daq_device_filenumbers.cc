@@ -53,7 +53,6 @@ int daq_device_filenumbers::put_data(const int etype, int * adr, const int lengt
 
   if ( !sarg.is_open()) return 0;
 
-  int value;
   string line;
 
   if ( daq_getEventFormat() ) // we are writing PRDF
@@ -67,8 +66,6 @@ int daq_device_filenumbers::put_data(const int etype, int * adr, const int lengt
       sevt->sub_id =  m_subeventid;
       sevt->sub_type=4;
       sevt->sub_decoding = 30000 + ID4EVT;
-      
-      unsigned int data;
       
       int  *d = (int *) &sevt->data;
       int i = 0;
@@ -115,7 +112,6 @@ int daq_device_filenumbers::put_data(const int etype, int * adr, const int lengt
       sevt->reserved[0] = 0;
       sevt->reserved[1] = 0;
       
-      unsigned int data;
       
       int  *d = (int *) &sevt->data;
       int i = 0;
