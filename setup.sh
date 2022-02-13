@@ -20,9 +20,7 @@
 # --LC It can serve as a template to develop your own setups.
 
 # we need the $0 as absolute path b/c we pass it on to a "file" device further down
-D=`dirname "$0"`
-B=`basename "$0"`
-MYSELF="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
+MYSELF=$(readlink -f $0)
 
 # we figure out if a server is already running
 if ! rcdaq_client daq_status > /dev/null 2>&1 ; then

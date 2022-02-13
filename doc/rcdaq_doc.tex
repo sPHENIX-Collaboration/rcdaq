@@ -75,6 +75,27 @@
 
 \section{Changelog}
 
+\subsection{February 2022}
+\begin{itemize}
+\item I cleaned up some of the documentation that was still mentioning
+the \verb|daq_open_server| command (this was short-lived and was replaced
+with \verb|daq_set_server|).
+\item I replaced the somewhat klunky "convert the setup file name to a
+full path" commands with \verb|readlink|. Updated here and in the
+\verb|setup.sh| example (see pg.~\pageref{setupexample}). Much easier. 
+
+\end{itemize}
+
+\subsection{August 2021}
+\begin{itemize}
+\item I resurrected the remote logging capability to a server (called
+  the \emph{Super Fast Server}, SFS) for RCDAQ running in large
+  eperiments (such as sPHENIX). Most of the changes are invisible to
+  you, and there is no change in operations if you are not using this
+  way of logging.
+
+\end{itemize}
+
 \subsection{February 20, 2020}
 \begin{itemize}
 \item I added a command \verb|daq_get_lastfilename| (see
@@ -140,14 +161,15 @@
 
 \subsection{August 27, 2015}
 \begin{itemize}
-\item  added two new devices device\_file\_delete and device\_filenumbers\_delete, which
+\item  added two new devices \verb|device_file_delete| and
+  \verb|device_filenumbers_delete|, which
   delete the file after it has been read. See page~\pageref{delete} for a description and application.
 \end{itemize}
 
 \subsection{August 15, 2015}
 \begin{itemize}
-\item the rcdaq\_server process now defines a number of environmental
-  variables, principally for the benefit of  device\_command. The
+\item the \verb|rcdaq_server| process now defines a number of environmental
+  variables, principally for the benefit of  \verb|device_command|. The
   resulting process, usually a script, can use the variables to obtain important
   information it might need. See page~\pageref{environment}.
 \end{itemize}
@@ -549,18 +571,17 @@ $ rcdaq_client daq_open
 $ rcdaq_client daq_begin
 Run 3 started
 $ daq_status -l
-Running
-Run Number:   3
-Event:        2
-Run Volume:   3.05176e-05 MB
-Filename:     rcdaq-00000003-0000.evt
-Duration:     34 s
-Filerule:     rcdaq-%08d-%04d.evt
-Buffer Sizes:     32832 KB adaptive buffering: 15 s
-Web control Port:  8899
-Elog: not defined
- -- defined Run Types:  (none)
-No Plugins loaded
+  Running
+  Run Number:   3
+  Event:        836
+  Run Volume:   0.357658 MB
+  Filerule:     rcdaq-%08d-%04d.evt
+  Duration:     18 s
+  Buffer Sizes:     32832 KB adaptive buffering: 15 s
+  Web control Port:  8899
+  Elog: not defined
+  -- defined Run Types:   (none)
+   No Plugins loaded
 \end{verbatim}
 
 We see that in addition to the file rule, we now also see the actual
@@ -577,7 +598,7 @@ event:
 \begin{verbatim}
 $ dlist -i rcdaq-00000003-0000.evt 
  -- Event     2 Run:     3 length:    44 type:  1 (Data Event)  1363583279
-Packet  1001    36 -1 (ONCS Packet)  6 (ID4EVT)
+Packet  1001    68 -1 (sPHENIX Packet)   6 (ID4EVT)
 $
 \end{verbatim}
 
@@ -588,7 +609,7 @@ inspect the data in a myriad of ways. Here is one:
 \begin{verbatim}
 $ ddump -i rcdaq-00000003-0000.evt
  -- Event     2 Run:     3 length:    44 type:  1 (Data Event)  1363583279
-Packet  1001    36 -1 (ONCS Packet)  6 (ID4EVT)
+Packet  1001    68 -1 (sPHENIX Packet)   6 (ID4EVT)
 
     0 |       5dd      512      403      152 
     4 |       160      51d      380      399 
@@ -606,7 +627,7 @@ This says it is event number 2. We can look at event 3 with the ``-e 3'' switch:
 \begin{verbatim}
 $ ddump  -i -e 3 rcdaq-00000003-0000.evt
  -- Event     3 Run:     3 length:    44 type:  1 (Data Event)  1363583279
-Packet  1001    36 -1 (ONCS Packet)  6 (ID4EVT)
+Packet  1001    68 -1 (sPHENIX Packet)   6 (ID4EVT)
 
     0 |        b0      529       22      306 
     4 |       77e      4e1      3a0       bd 
@@ -663,8 +684,8 @@ alias daq_set_runtype='rcdaq_client  daq_set_runtype'
 alias daq_get_runtype='rcdaq_client  daq_get_runtype'
 alias daq_list_runtypes='rcdaq_client  daq_list_runtypes'
 alias daq_setfilerule='rcdaq_client  daq_setfilerule'
+alias daq_set_server='rcdaq_client  daq_set_server'
 alias daq_open='rcdaq_client  daq_open'
-alias daq_open_server='rcdaq_client  daq_open_server'
 alias daq_close='rcdaq_client  daq_close'
 alias daq_fake_trigger='rcdaq_client  daq_fake_trigger'
 alias daq_list_readlist='rcdaq_client  daq_list_readlist'
@@ -1028,18 +1049,17 @@ Now we start and end a run:
 $ rcdaq_client daq_begin
 Run 4 started
 $ daq_status -l
-Running
-Run Number:   4
-Event:        1324
-Run Volume:   0.5662 MB
-Filename:     rcdaq-00000004-0000.evt
-Duration:     28 s
-Filerule:     rcdaq-%08d-%04d.evt
-Buffer Sizes:     32832 KB adaptive buffering: 15 s
-Web control Port:  8899
-Elog: not defined
- -- defined Run Types:  (none)
-No Plugins loaded
+  Running
+  Run Number:   4
+  Event:        381
+  Run Volume:   0.163261 MB
+  Filerule:     rcdaq-%08d-%04d.evt
+  Duration:     8 s
+  Buffer Sizes:     32832 KB adaptive buffering: 15 s
+  Web control Port:  8899
+  Elog: not defined
+  -- defined Run Types:   (none)
+   No Plugins loaded
 $ rcdaq_client daq_end
 Run 4 ended
 $ 
@@ -1050,8 +1070,8 @@ If we now look what the begin-run event has, we see
 \begin{verbatim}
 $ dlist -i -t 9 rcdaq-00000004-0000.evt
  -- Event     1 Run:     4 length:   324 type:  9 (Begin Run Event)  1363614653
-Packet   910   296 -1 (ONCS Packet)  4 (IDCSTR)
-Packet   911    20 -1 (ONCS Packet)  6 (ID4EVT)
+Packet   910   296 -1 (sPHENIX Packet)  4 (IDCSTR)
+Packet   911    20 -1 (sPHENIX Packet)  6 (ID4EVT)
 $
 \end{verbatim}
 
@@ -1081,7 +1101,7 @@ HV_BB_N-6                  1461   -2220.2 -2221.1 -2754.8  1     1    13
 HV_BB_N-7                  1461   -1998.8 -1999.2 -3192.7  1     1    13
 HV_BB_N-8                  1461   -1752.2 -1753.5 -2485.3  1     1    13
 $ ddump -t 9 -p 911 -g -d rcdaq-00000004-0000.evt
-Packet   911    20 -1 (ONCS Packet)  6 (ID4EVT)
+Packet   911    20 -1 (sPHENIX Packet)  6 (ID4EVT)
 
     0 |     -172570    -205900    -181150    -222760    -217120    -156370 
     6 |     -173880    -208180    -164180    -249450    -178130    -195790 
@@ -1191,13 +1211,11 @@ resides, it will not be able to find the script.
 You could either be disciplined enough to \emph{always} invoke the
 script by its full pathname (not very likely to succeed), or you could
 rewrite it as follows:
-
+\label{setupexample}
 \begin{verbatim} 
 #! /bin/sh
 
-D=`dirname "$0"`
-B=`basename "$0"`
-MYSELF="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
+MYSELF=$(readlink -f $0)
 
 rcdaq_client create_device device_file 9 900 "$MYSELF"
 rcdaq_client create_device device_file 9 910 hv_readback.txt 
@@ -1217,14 +1235,14 @@ The command \verb|rcdaq_client| without parameters lists all available rcdaq com
    help                                 show this help text
    daq_status [-s] [-l]                 display status [short] [long]
    daq_open                             enable logging
-   daq_open_server hostname [port]      enable logging to server
-   daq_begin [run-number]              start taking data for run-number, or auto-increment
-   daq_end                              end the run
+   daq_set_server hostname [port]       choose logging to a SFS server, or "None" to choose local file
+   daq_begin [run-number]             	start taking data for run-number, or auto-increment
+   daq_end                              end the run 
    daq_close                            disable logging
    daq_setfilerule file-rule            set the file rule default rcdaq-%08d-%04d.evt
 
    daq_list_readlist                    display the current readout list
-   daq_clear_readlist                   clear the current readout list
+   daq_clear_readlist                   clear the current readout list 
 
    daq_define_runtype type file-rule    define a run type, such as "calibration"
    daq_set_runtype type                 activate a predefined run type
@@ -1236,7 +1254,7 @@ The command \verb|rcdaq_client| without parameters lists all available rcdaq com
    daq_set_maxvolume n_MB               set automatic end at n_MB MegaByte
 
    load  shared_library_name            load a "plugin" shared library
-   create_device [device-specific parameters]
+   create_device [device-specific parameters] 
 
    daq_setname <string>                 define an identifying string for this RCDAQ instance
    daq_setrunnumberfile file            define a file to maintain the current run number
@@ -1252,8 +1270,8 @@ The command \verb|rcdaq_client| without parameters lists all available rcdaq com
 
 The ``short'' versions of the commands (with the \verb|-s| flag, which
 at some point actually stood for ``script'') are generally there for
-the benefit of scripts (typically the GUIs, which are all written in
-Perl/Tk). The output is  usually easy to parse by a script, but less easy
+the benefit of scripts (typically the GUIs, which are written in
+Python or Perl/Tk). The output is  usually easy to parse by a script, but less easy
 to digest by humans, such as
 
 \begin{verbatim}
@@ -1265,7 +1283,6 @@ Let's go through the commands:
 
 \begin{description}
 
-%\item[\verb|daq_status [-s] [-l]|] This displays the status of RCDAQ.
 
 \item[daq\_status] This displays the status of RCDAQ.
   The \verb|-l| flags accumulate and increase the detail of the status
@@ -1278,7 +1295,7 @@ Let's go through the commands:
   files taken with ever-changing settings. Also keep in mind that you
   can still get at the events through your online monitoring.
  
-\item[daq\_open\_server] This enables the writing out of data to a
+\item[daq\_set\_server] This enables the writing out of data to a
   dedicated server named \verb|sfs|. This is used in the sPHENIX
   eperiment to log the data to a dedicated file server, and is
   something to consider if you would be logging the data to a
@@ -2172,11 +2189,11 @@ And here is the composition of the begin-run event:
 \begin{verbatim} 
 $ dlist -i -t 9 beam_0000000451-0000.evt
  -- Event     1 Run:   451 length: 17431 type:  9 (Begin Run Event)  1392306649
-Packet   900   614 -1 (ONCS Packet)  4 (IDCSTR)
-Packet   910   142 -1 (ONCS Packet)  4 (IDCSTR)
-Packet   940     7 -1 (ONCS Packet)  4 (IDCSTR)
-Packet   941  3643 -1 (ONCS Packet)  4 (IDCSTR)
-Packet   942 13017 -1 (ONCS Packet)  4 (IDCSTR)
+Packet   900   614 -1 (sPHENIX Packet)  4 (IDCSTR)
+Packet   910   142 -1 (sPHENIX Packet)  4 (IDCSTR)
+Packet   940     7 -1 (sPHENIX Packet)  4 (IDCSTR)
+Packet   941  3643 -1 (sPHENIX Packet)  4 (IDCSTR)
+Packet   942 13017 -1 (sPHENIX Packet)  4 (IDCSTR)
 \end{verbatim} 
 
 If we now want to find out the position of the turntable, we can have  a
