@@ -5,6 +5,7 @@ allheaders = \
   EvtStructures.h \
   TriggerHandler.h \
   rcdaq_plugin.h \
+  rcdaq_actions.h \
   pulserTriggerHandler.h \
   oBuffer.h \
   oEvent.h \
@@ -51,6 +52,7 @@ include_HEADERS =  \
   SubevtConstants.h \
   daq_device.h \
   rcdaq_rpc.h \
+  rcdaq_actions.h \
   TriggerHandler.h \
   rcdaq_plugin.h \
   parseargument.h
@@ -90,7 +92,7 @@ librcdaq_la_SOURCES = rcdaq.cc \
 
 librcdaq_la_CPPFLAGS = -DHTMLFILE=\"$(html_INDEX)\" -DHTMLDIR=\"$(htmldir)\"
 
-librcdaqutils_la_SOURCES =  parseargument.cc
+librcdaqutils_la_SOURCES = rcdaq_rpc_clnt.cc rcdaq_rpc_xdr.cc parseargument.cc
 
 librcdaqplugin_example_la_SOURCES = daq_device_pluginexample.cc example_plugin.cc
 
@@ -105,7 +107,7 @@ elogtest_LDADD = eloghandler.lo
 
 
 rcdaq_client_SOURCES = rcdaq_client.cc  rcdaq_rpc.h
-rcdaq_client_LDADD = rcdaq_rpc_clnt.lo rcdaq_rpc_xdr.lo parseargument.lo $(RPC_LDD)
+rcdaq_client_LDADD = librcdaqutils.la  $(RPC_LDD)
 
 
 rcdaq_server_SOURCES = rcdaq_server.cc 

@@ -13,6 +13,8 @@ struct shortResult {
   int status;
 };
 
+const NIPAR = 16;
+
 struct actionblock {
 	int action;
 	int ipar[16];

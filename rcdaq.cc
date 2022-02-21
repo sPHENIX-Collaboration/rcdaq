@@ -702,7 +702,7 @@ int daq_set_runnumberfile(const char *file)
   RunnumberfileIsSet = 1;
   FILE *fp = fopen(TheRunnumberfile.c_str(), "r");
   int r = 0;
-  if (fp > 0)
+  if (fp)
     {
       int status = fscanf(fp, "%d", &r);
       if ( status != 1) r = 0; 
@@ -721,7 +721,7 @@ int daq_write_runnumberfile(const int run)
   if ( !RunnumberfileIsSet ) return 1;
 
   FILE *fp = fopen(TheRunnumberfile.c_str(), "w");
-  if (fp > 0)
+  if (fp )
     {
       fprintf(fp, "%d\n", run);
       fclose(fp);

@@ -230,7 +230,7 @@ int command_execute( int argc, char **argv)
   ab.spare = 0;
   
   int i;
-  for ( i = 0; i< 16; i++)
+  for ( i = 0; i< NIPAR; i++)
     {
       ab.ipar[i] = 0;
     }
