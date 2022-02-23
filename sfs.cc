@@ -106,6 +106,8 @@ int output_fd = -1;
 
 int the_port = 5001;
 
+int do_not_write = 0;
+
 int RunIsActive = 0; 
 int NumberWritten = 0; 
 int file_open = 0;
@@ -142,6 +144,7 @@ void exitmsg()
   cout << "   -b interface    bind only to this interface" << endl;
   cout << "   -p number       use this port (default 5001)" << endl;
   cout << "   -v increase verbosity" << endl;
+  cout << "   -x do not write data to disk (testing)" << endl;
   cout << "  Examples:" << endl;
   cout << "    sfs -b ens801f0      -- listen only on that interface" << endl;
   cout << "    sfs -p 5002          -- listen on port 5002" << endl;
@@ -188,7 +191,7 @@ int main( int argc, char* argv[])
 
   char c;
   
-  while ((c = getopt(argc, argv, "hvdb:p:")) != EOF)
+  while ((c = getopt(argc, argv, "hvdxb:p:")) != EOF)
     {
       switch (c) 
 	{
@@ -213,6 +216,10 @@ int main( int argc, char* argv[])
 	case 'd':   // no database
 	  // databaseflag=1;
 	  // cout << "database access enabled" << endl;
+	  break;
+
+	case 'x':   // no writing
+	  do_not_write = 1;
 	  break;
 
 
@@ -335,7 +342,7 @@ int handle_this_child( pid_t pid)
 		      
   int i;
   
-  // we make a thread tht will write out our buffers
+  // we make a thread that will write out our buffers
   i = pthread_create(&ThreadId, NULL, 
 		     writebuffers, 
 		     (void *) 0);
@@ -413,20 +420,23 @@ int handle_this_child( pid_t pid)
 	  local_runnr = ntohl(local_runnr);
 	  //cout  << " runnumber = " << local_runnr << endl;
 
-	  output_fd =  open(filename,  O_WRONLY | O_CREAT | O_TRUNC | O_EXCL | O_LARGEFILE , 
-			    S_IRWXU | S_IROTH | S_IRGRP );
-	  if (output_fd < 0) 
+	  if (! do_not_write)
 	    {
-	      cerr << "file " << filename << " exists, I will not overwrite " << endl;
-	      i = htonl(CTRL_REMOTEFAIL);
-	      writen (dd_fd, (char *)&i, 4);
-	      break;
+	      output_fd =  open(filename,  O_WRONLY | O_CREAT | O_TRUNC | O_EXCL | O_LARGEFILE , 
+				S_IRWXU | S_IROTH | S_IRGRP );
+	      if (output_fd < 0) 
+		{
+		  cerr << "file " << filename << " exists, I will not overwrite " << endl;
+		  i = htonl(CTRL_REMOTEFAIL);
+		  writen (dd_fd, (char *)&i, 4);
+		  break;
+		}
+	      if (verbose)
+		{
+		  cout << " opened new file " << filename << endl; 
+		}
 	    }
-	  if (verbose)
-	    {
-	      cout << " opened new file " << filename << endl; 
-	    }
-    
+
 	  bf_being_received = &B0;
 	  bf_being_written = &B1;
 	    
@@ -445,10 +455,13 @@ int handle_this_child( pid_t pid)
 	  //cout  << " endrun signal " << endl;
 	  
 	  pthread_mutex_lock(&M_done);
-	  close (output_fd);
-	  if (verbose)
+	  if (! do_not_write)
 	    {
-	      cout << " closed file "  << filename << endl; 
+	      close (output_fd);
+	      if (verbose)
+		{
+		  cout << " closed file "  << filename << endl; 
+		}
 	    }
 
 	  i = htonl(CTRL_REMOTESUCCESS);
@@ -534,31 +547,37 @@ void *writebuffers ( void * arg)
 
       pthread_mutex_lock(&M_write);
 
-      pthread_mutex_lock(&M_cout);
-      //cout << __LINE__ << "  " << __FILE__ << " write thread unlocked  " <<  endl;
-      pthread_mutex_unlock(&M_cout);
-
-      int blockcount = ( bf_being_written->bytecount + BUFFERBLOCKSIZE -1)/BUFFERBLOCKSIZE;
-      int bytecount = blockcount*BUFFERBLOCKSIZE;
-      
-      pthread_mutex_lock(&M_cout);
-      //cout << __LINE__ << "  " << __FILE__ << " write thread unlocked, block count " << blockcount <<  endl;
-      pthread_mutex_unlock(&M_cout);
-
-      int bytes = writen ( output_fd, (char *) bf_being_written->bf , bytecount );
-      if ( bytes != bytecount)
+      if (! do_not_write)
 	{
 	  pthread_mutex_lock(&M_cout);
-	  cout << __LINE__ << "  " << __FILE__ << " write error " << bytes << "  " << bytecount <<  endl;
+	  //cout << __LINE__ << "  " << __FILE__ << " write thread unlocked  " <<  endl;
 	  pthread_mutex_unlock(&M_cout);
-	  bf_being_written->dirty = -1;  // mark as "error"
+	  
+	  int blockcount = ( bf_being_written->bytecount + BUFFERBLOCKSIZE -1)/BUFFERBLOCKSIZE;
+	  int bytecount = blockcount*BUFFERBLOCKSIZE;
+	  
+	  pthread_mutex_lock(&M_cout);
+	  //cout << __LINE__ << "  " << __FILE__ << " write thread unlocked, block count " << blockcount <<  endl;
+	  pthread_mutex_unlock(&M_cout);
+	  
+	  int bytes = writen ( output_fd, (char *) bf_being_written->bf , bytecount );
+	  if ( bytes != bytecount)
+	    {
+	      pthread_mutex_lock(&M_cout);
+	      cout << __LINE__ << "  " << __FILE__ << " write error " << bytes << "  " << bytecount <<  endl;
+	      pthread_mutex_unlock(&M_cout);
+	      bf_being_written->dirty = -1;  // mark as "error"
+	    }
+	  else
+	    {
+	      //      usleep(1000000);
+	      bf_being_written->dirty = 0;
+	    }
 	}
       else
-	{
-	  //      usleep(1000000);
+	{ 
 	  bf_being_written->dirty = 0;
 	}
-      //      bytes = writen ( fd, (char *) buffers[i].bf , bytecount );
       pthread_mutex_unlock(&M_done);
       
     }
