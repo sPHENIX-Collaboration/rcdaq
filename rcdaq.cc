@@ -1846,6 +1846,7 @@ int daq_status( const int flag, std::ostream& os)
 		  os << "  Logging disabled" << endl;
 		}
 	    }	      
+	  os << "  Filerule:     " <<  daq_get_filerule() << endl;
 	  
 	  if (max_volume)
 	    {
