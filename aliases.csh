@@ -20,4 +20,5 @@ alias daq_setname                rcdaq_client  daq_setname
 alias daq_set_adaptivebuffering  rcdaq_client  daq_set_adaptivebuffering
 alias daq_shutdown               rcdaq_client  daq_shutdown
 alias daq_webcontrol             rcdaq_client  daq_webcontrol
-alias daq_get_lastfilename        rcdaq_client  daq_get_lastfilename
+alias daq_get_lastfilename       rcdaq_client  daq_get_lastfilename
+alias daq_sync                   rcdaq_client  daq_sync

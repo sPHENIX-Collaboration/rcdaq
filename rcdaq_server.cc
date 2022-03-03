@@ -39,7 +39,7 @@ std::vector<RCDAQPlugin *> pluginlist;
 
 static unsigned long  my_servernumber = 0;
 
-void rcdaq_1(struct svc_req *rqstp, register SVCXPRT *transp);
+void rcdaq_1(struct svc_req *rqstp, SVCXPRT *transp);
 
 
 //-------------------------------------------------------------
@@ -468,8 +468,9 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
   static unsigned int currentmaxresultlength = 10*2048;
   static char *resultstring = new char[currentmaxresultlength+1];
 
-  // to avoid a race condition with the asynchronous "end requested" feature,
-  // wait here...
+  // to avoid a race condition with the asynchronous
+  // begin or "end requested" feature, wait here...
+  daq_wait_for_begin_done();
   daq_wait_for_actual_end();
 
   
@@ -495,8 +496,24 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
   switch ( ab->action)
     {
       
+    case DAQ_SYNC:
+      pthread_mutex_unlock(&M_output);
+
+      return &result;
+      break;
+
     case DAQ_BEGIN:
       result.status = daq_begin (  ab->ipar[0], outputstream);
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
+    case DAQ_BEGIN_IMMEDIATE:
+      result.status = daq_begin_immediate (  ab->ipar[0], outputstream);
       outputstream.str().copy(resultstring,outputstream.str().size());
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
@@ -829,7 +846,7 @@ main (int argc, char **argv)
 
   my_servernumber = RCDAQ+servernumber;  // remember who we are for later
 
-  register SVCXPRT *transp;
+  SVCXPRT *transp;
   
   pmap_unset (my_servernumber, RCDAQ_VERS);
 

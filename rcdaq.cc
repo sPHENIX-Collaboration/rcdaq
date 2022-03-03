@@ -129,6 +129,7 @@ int Daq_Status;
 #define DAQ_READING  0x02
 #define DAQ_ENDREQUESTED  0x04
 #define DAQ_PROTOCOL 0x10
+#define DAQ_BEGININPROGRESS  0x20
 
 static daqBuffer Buffer1;
 static daqBuffer Buffer2;
@@ -885,6 +886,50 @@ double daq_get_events_per_second()
 }
 
 
+void * daq_begin_thread( void *arg)
+{
+  int irun = *(int*)arg;
+  int status = daq_begin( irun, std::cout);
+  if (status)
+    {
+      // not sure what to do exactly
+      cout << __FILE__ << " " << __LINE__ << " asynchronous begin run failed" << endl;
+    }
+  //  if ( Daq_Status & DAQ_BEGININPROGRESS) Daq_Status ^= DAQ_BEGININPROGRESS;
+  Daq_Status &= ~DAQ_BEGININPROGRESS;
+
+  return 0;
+}
+
+int daq_begin_immediate(const int irun, std::ostream& os)
+{
+  static unsigned int  b_arg;
+  b_arg = irun;
+
+  if ( (Daq_Status & DAQ_RUNNING) ) 
+    {
+      os << "Run is active" << endl;;
+      return -1;
+    }
+  os << "Run " << TheRun << " begin requested" << endl;
+  Daq_Status |= DAQ_BEGININPROGRESS;
+
+ pthread_t t;
+ 
+ int status = pthread_create(&t, NULL,
+                          daq_begin_thread,
+                          (void *) &b_arg);
+  if (status ) 
+    {
+
+      cout << "begin_run failed " << status << endl;
+      os << "begin_run failed " << status << endl;
+      return -1;
+    }
+  return 0;
+}
+
+
 int daq_begin(const int irun, std::ostream& os)
 {
   if ( Daq_Status & DAQ_RUNNING ) 
@@ -933,7 +978,7 @@ int daq_begin(const int irun, std::ostream& os)
 	  else
 	    {
 	      os << "Could not open remote output file - Run " << TheRun << " not started" << endl;;
-	      Daq_Status ^= DAQ_RUNNING;
+	      Daq_Status &= ~DAQ_RUNNING;
 	      return -1;
 	    }
 	}
@@ -953,7 +998,7 @@ int daq_begin(const int irun, std::ostream& os)
 	  else
 	    {
 	      os << "Could not open output file - Run " << TheRun << " not started" << endl;;
-	      Daq_Status ^= DAQ_RUNNING;
+	      Daq_Status &= ~DAQ_RUNNING;
 	      return -1;
 	    }
 	}
@@ -966,7 +1011,7 @@ int daq_begin(const int irun, std::ostream& os)
   Event_number  = 1;
 
   // just to be safe, clear the "end requested" bit
-  if ( Daq_Status & DAQ_ENDREQUESTED ) Daq_Status ^= DAQ_ENDREQUESTED;
+  Daq_Status &= ~DAQ_ENDREQUESTED;
   
   set_eventsizes();
   // initialize Buffer1 to be the fill buffer
@@ -992,7 +1037,7 @@ int daq_begin(const int irun, std::ostream& os)
 	  os << "Cannot start run - event sizes larger than buffer, size " 
 	     <<  wantedmaxsize/1024 << " Buffer size " 
 	     << transportBuffer->getMaxSize()/1024 << endl;
-	  Daq_Status ^= DAQ_RUNNING;
+	  Daq_Status &=  ~DAQ_RUNNING;
 	  return -1;
 	}
       //      os << " Buffer size increased to " << transportBuffer->getMaxSize()/1024 << " KB"<< endl;
@@ -1048,6 +1093,13 @@ int daq_end_immediate(std::ostream& os)
   os << "Run " << TheRun << " end requested" << endl;
   Daq_Status |= DAQ_ENDREQUESTED;
   return 0;
+}
+
+// this function is to hold further interactions until a asynchronous begin-run is over 
+int daq_wait_for_begin_done()
+{
+    while ( Daq_Status & DAQ_BEGININPROGRESS ) usleep(1000);
+    return 0;
 }
 
 // this function is to avoid a race condition with the asynchronous "end requested" feature
@@ -1117,7 +1169,6 @@ int daq_end(std::ostream& os)
 
     } 
 
-  if ( Daq_Status & DAQ_ENDREQUESTED) Daq_Status ^= DAQ_ENDREQUESTED;
 
   
   os << "Run " << TheRun << " ended" << endl;
@@ -1133,7 +1184,7 @@ int daq_end(std::ostream& os)
   PreviousFilename = CurrentFilename;
   CurrentFilename = "";
   StartTime = 0;
-  Daq_Status ^= DAQ_RUNNING;
+  Daq_Status &= ~DAQ_RUNNING;
 
   last_volume_time = last_speed_time = time(0);
   last_event_nr = 0;
@@ -1141,6 +1192,9 @@ int daq_end(std::ostream& os)
 
   request_mg_update (MG_REQUEST_SPEED);
 
+  Daq_Status &= ~DAQ_ENDREQUESTED;
+  
+  
   return 0;
 }
 
@@ -1199,7 +1253,7 @@ void * EventLoop( void *arg)
 	      int rstatus = readout(CurrentEventType);
 	      // cout << __LINE__ << "  " << __FILE__ << " readout status: " << rstatus << endl;
 
-	      Daq_Status ^= DAQ_READING;
+	      Daq_Status &= ~DAQ_READING;
 
 	      if (  rstatus)    // we got an endrun signal
 		{
@@ -1276,7 +1330,7 @@ int readout(const int etype)
 
   //  pthread_mutex_lock(&M_cout);
   // cout << " readout etype = " << etype << endl;
-  //pthread_mutex_unlock(&M_cout);
+  // pthread_mutex_unlock(&M_cout);
 
   int len = EVTHEADERLENGTH;
 

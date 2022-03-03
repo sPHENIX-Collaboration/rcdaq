@@ -248,10 +248,33 @@ int command_execute( int argc, char **argv)
       showHelp();
     }
 
+  else if ( strcasecmp(command,"daq_sync") == 0)
+    {
+
+      ab.action = DAQ_SYNC;
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
   else if ( strcasecmp(command,"daq_begin") == 0)
     {
 
-      ab.action = DAQ_BEGIN;
+      if (immediate_flag)
+	{
+	  ab.action = DAQ_BEGIN_IMMEDIATE;
+	}
+      else
+	{
+	  ab.action = DAQ_BEGIN;
+
+	}
+
       if ( argc == optind + 2)
 	{
 	  ab.ipar[0] = get_value(argv[optind + 1]);
