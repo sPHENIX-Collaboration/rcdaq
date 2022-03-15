@@ -309,7 +309,7 @@ int main( int argc, char* argv[])
       
       if ( (pid = fork()) == 0 ) 
 	{
-	  handle_this_child( pid);
+	  return handle_this_child( pid);
 	}
     }
 }
@@ -533,6 +533,7 @@ int handle_this_child( pid_t pid)
 	}
 		  
     }
+  if (verbose) cout << " ending thread " << endl; 
   
   return 0;
 }
