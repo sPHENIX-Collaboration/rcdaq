@@ -316,6 +316,10 @@ int main( int argc, char* argv[])
 	  close(sockfd);
 	  return handle_this_child( pid, host);
 	}
+      else
+	{
+	  close (dd_fd);
+	}
     }
 }
 
