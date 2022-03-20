@@ -309,6 +309,7 @@ int main( int argc, char* argv[])
       
       if ( (pid = fork()) == 0 ) 
 	{
+	  close(sockfd);
 	  return handle_this_child( pid);
 	}
     }
@@ -376,7 +377,6 @@ int handle_this_child( pid_t pid)
 	  cout  << "error in read from socket" << endl;
 	  perror ("read " );
 	  cleanup(1);
-	  exit(1);
 	}
 	
       controlword = ntohl(xx);
@@ -416,7 +416,7 @@ int handle_this_child( pid_t pid)
 	  
 	case  CTRL_BEGINRUN:
 	  
-	  readn (dd_fd, (char *) &local_runnr, 4);
+	  readn (dd_fd, (char *) &local_runnr, sizeof(local_runnr) );
 	  local_runnr = ntohl(local_runnr);
 	  //cout  << " runnumber = " << local_runnr << endl;
 
@@ -449,25 +449,6 @@ int handle_this_child( pid_t pid)
 	  i = htonl(CTRL_REMOTESUCCESS);
 	  writen (dd_fd, (char *)&i, 4);
 	  
-	  break;
-	  
-	case  CTRL_ENDRUN:
-	  //cout  << " endrun signal " << endl;
-	  
-	  pthread_mutex_lock(&M_done);
-	  if (! do_not_write)
-	    {
-	      close (output_fd);
-	      if (verbose)
-		{
-		  cout << " closed file "  << filename << endl; 
-		}
-	    }
-
-	  i = htonl(CTRL_REMOTESUCCESS);
-	  writen (dd_fd, (char *)&i, 4);
-	  pthread_mutex_unlock(&M_done);
-
 	  break;
 	  
 	case  CTRL_DATA:
@@ -521,8 +502,29 @@ int handle_this_child( pid_t pid)
 	  
 	  break;
 
+	case  CTRL_ENDRUN:
+	  //cout  << " endrun signal " << endl;
+	  
+	  pthread_mutex_lock(&M_done);
+	  if (! do_not_write)
+	    {
+	      close (output_fd);
+	      if (verbose)
+		{
+		  cout << " closed file "  << filename << endl; 
+		}
+	    }
+
+	  i = htonl(CTRL_REMOTESUCCESS);
+	  writen (dd_fd, (char *)&i, 4);
+	  pthread_mutex_unlock(&M_done);
+
+	  break;
+	  
 	case CTRL_CLOSE:
 	  close ( dd_fd);
+	  
+	  // we set go_on to 0 so our loop stops and we return 
 	  go_on = 0;
 	  if (verbose)
 	    {
@@ -673,7 +675,6 @@ in_addr_t find_address_from_interface(const char *interface)
 
 void cleanup( const int exitstatus)
 {
-  close (sockfd);
   close (dd_fd);
 
   exit(exitstatus);
