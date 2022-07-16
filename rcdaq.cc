@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <limits.h>
 
 
 #include <stdio.h>
@@ -198,6 +199,7 @@ int last_bufferwritetime  = 0;
 
 int persistentErrorCondition = 0;
 
+std::string MyHostName;
 
 int registerTriggerHandler ( TriggerHandler *th)
 {
@@ -908,10 +910,18 @@ int daq_begin_immediate(const int irun, std::ostream& os)
 
   if ( (Daq_Status & DAQ_RUNNING) ) 
     {
-      os << "Run is active" << endl;;
+      os << MyHostName << "Run is active" << endl;;
       return -1;
     }
-  os << "Run " << TheRun << " begin requested" << endl;
+  if ( irun )
+    {
+      os << MyHostName << "Run " << irun  << " begin requested" << endl;
+    }
+  else   // I need to think about this a bit. We let the begin_run update the run number. 
+    {
+      os << MyHostName << "Run " << TheRun+1 << " begin requested" << endl;
+    }
+  
   Daq_Status |= DAQ_BEGININPROGRESS;
 
  pthread_t t;
@@ -934,13 +944,13 @@ int daq_begin(const int irun, std::ostream& os)
 {
   if ( Daq_Status & DAQ_RUNNING ) 
     {
-      os << "Run is already active" << endl;;
+      os << MyHostName << "Run is already active" << endl;;
       return -1;
     }
 
   if ( persistentErrorCondition)
     {
-      os << " *** Previous error with server connection" << endl;;
+      os << MyHostName << "*** Previous error with server connection" << endl;;
       return -1;
     }
     
@@ -977,7 +987,7 @@ int daq_begin(const int irun, std::ostream& os)
 	    }
 	  else
 	    {
-	      os << "Could not open remote output file - Run " << TheRun << " not started" << endl;;
+	      os << MyHostName << "Could not open remote output file - Run " << TheRun << " not started" << endl;;
 	      Daq_Status &= ~DAQ_RUNNING;
 	      return -1;
 	    }
@@ -997,7 +1007,7 @@ int daq_begin(const int irun, std::ostream& os)
 	    }
 	  else
 	    {
-	      os << "Could not open output file - Run " << TheRun << " not started" << endl;;
+	      os << MyHostName << "Could not open output file - Run " << TheRun << " not started" << endl;;
 	      Daq_Status &= ~DAQ_RUNNING;
 	      return -1;
 	    }
@@ -1034,7 +1044,7 @@ int daq_begin(const int irun, std::ostream& os)
     {
       if ( fillBuffer->setMaxSize(wantedmaxsize) || transportBuffer->setMaxSize(wantedmaxsize))
 	{ 
-	  os << "Cannot start run - event sizes larger than buffer, size " 
+	  os << MyHostName << "Cannot start run - event sizes larger than buffer, size " 
 	     <<  wantedmaxsize/1024 << " Buffer size " 
 	     << transportBuffer->getMaxSize()/1024 << endl;
 	  Daq_Status &=  ~DAQ_RUNNING;
@@ -1078,7 +1088,7 @@ int daq_begin(const int irun, std::ostream& os)
 
   request_mg_update (MG_REQUEST_SPEED);
 
-  os << "Run " << TheRun << " started" << endl;
+  os << MyHostName << "Run " << TheRun << " started" << endl;
 
   return 0;
 }
@@ -1087,10 +1097,10 @@ int daq_end_immediate(std::ostream& os)
 {
   if ( ! (Daq_Status & DAQ_RUNNING) ) 
     {
-      os << "Run is not active" << endl;;
+      os << MyHostName << "Run is not active" << endl;;
       return -1;
     }
-  os << "Run " << TheRun << " end requested" << endl;
+  os << MyHostName << "Run " << TheRun << " end requested" << endl;
   Daq_Status |= DAQ_ENDREQUESTED;
   return 0;
 }
@@ -1129,7 +1139,7 @@ int daq_end(std::ostream& os)
   
   if ( ! (Daq_Status & DAQ_RUNNING) ) 
     {
-      os << "Run is not active" << endl;;
+      os << MyHostName << "Run is not active" << endl;;
       return -1;
     }
   
@@ -1171,7 +1181,7 @@ int daq_end(std::ostream& os)
 
 
   
-  os << "Run " << TheRun << " ended" << endl;
+  os << MyHostName <<  "Run " << TheRun << " ended" << endl;
   
   unsetenv ("DAQ_RUNNUMBER");
   unsetenv ("DAQ_FILENAME");
@@ -1431,7 +1441,7 @@ int daq_open (std::ostream& os)
 
   if ( Daq_Status & DAQ_RUNNING ) 
     {
-      os << "Run is active" << endl;;
+      os << MyHostName << "Run is active" << endl;;
       return -1;
     }
 
@@ -1453,7 +1463,7 @@ int daq_set_server (const char *hostname, const int port, std::ostream& os)
 
   if ( Daq_Status & DAQ_RUNNING ) 
     {
-      os << "Run is active" << endl;;
+      os << MyHostName << "Run is active" << endl;;
       return -1;
     }
 
@@ -1515,7 +1525,7 @@ int daq_shutdown(const unsigned long servernumber, const unsigned long versionnu
 
   if ( Daq_Status & DAQ_RUNNING ) 
     {
-      os << "Run is active" << endl;;
+      os << MyHostName << "Run is active" << endl;;
       return -1;
     }
 
@@ -1538,7 +1548,7 @@ int daq_shutdown(const unsigned long servernumber, const unsigned long versionnu
   if (status ) 
     {
       cout << "cannot shut down " << status << endl;
-      os << "cannot shut down " << status << endl;
+      os << MyHostName << "cannot shut down " << status << endl;
       return -1;
     }
   os << " ";
@@ -1560,7 +1570,7 @@ int daq_close (std::ostream& os)
 
   if ( Daq_Status & DAQ_RUNNING ) 
     {
-      os << "Run is active" << endl;;
+      os << MyHostName << "Run is active" << endl;;
       return -1;
     }
 
@@ -1575,7 +1585,7 @@ int daq_server_close (std::ostream& os)
 
   if ( Daq_Status & DAQ_RUNNING ) 
     {
-      os << "Run is active" << endl;;
+      os << MyHostName << "Run is active" << endl;;
       return -1;
     }
   if ( server_send_close_sequence(TheServerFD) )
@@ -1609,7 +1619,7 @@ int daq_clear_readlist(std::ostream& os)
 
   if ( Daq_Status & DAQ_RUNNING ) 
     {
-      os << "Run is active" << endl;;
+      os << MyHostName << "Run is active" << endl;;
       return -1;
     }
 
@@ -1621,7 +1631,7 @@ int daq_clear_readlist(std::ostream& os)
     }
 
   DeviceList.clear();
-  os << "Readlist cleared" << endl;
+  os << MyHostName << "Readlist cleared" << endl;
 
   return 0;
 }
@@ -1631,6 +1641,14 @@ int rcdaq_init( pthread_mutex_t &M)
 {
 
   int status;
+
+  char hostname[HOST_NAME_MAX];
+  status = gethostname(hostname, HOST_NAME_MAX);
+  if (!status)
+    {
+      MyHostName = hostname;
+      MyHostName += ": ";
+    }
 
 
   //  pthread_mutex_init(&M_cout, 0); 
@@ -1793,7 +1811,7 @@ int daq_status( const int flag, std::ostream& os)
     case STATUSFORMAT_NORMAL:
       if ( Daq_Status & DAQ_RUNNING ) 
 	{
-	  os << "Run " << TheRun  
+	  os << MyHostName << "Run " << TheRun  
 	     << " Event: " << Event_number 
 	     << " Volume: " << volume;
 	  if ( daq_open_flag )
@@ -1815,7 +1833,7 @@ int daq_status( const int flag, std::ostream& os)
 	}
       else   // not running
 	{
-	  os << "Stopped";
+	  os << MyHostName << "Stopped";
 	  if ( daq_open_flag )
 	    {
 	      if ( daq_server_flag )
@@ -1846,6 +1864,7 @@ int daq_status( const int flag, std::ostream& os)
       
       if ( Daq_Status & DAQ_RUNNING ) 
 	{
+	  os << " " << MyHostName << ":" << endl;
 	  os << "  Running" << endl;
 	  os << "  Run Number:   " << TheRun  << endl;
 	  os << "  Event:        " << Event_number << endl;;
@@ -1877,7 +1896,7 @@ int daq_status( const int flag, std::ostream& os)
 	}
       else
 	{
-	  os << "  Stopped"  << endl;
+	  os << MyHostName << " Stopped"  << endl;
 	  if ( daq_open_flag )
 	    {
 	      if ( daq_server_flag )
@@ -1973,13 +1992,13 @@ int daq_webcontrol(const int port, std::ostream& os)
    
   if (status ) 
     {
-      os << "error in web service creation " << status << endl;
+      os << MyHostName << "error in web service creation " << status << endl;
       ThePort=0;
       return -1;
     }
   else
     {
-      os << "web service created" << endl;
+      os << MyHostName << "web service created" << endl;
       return 0;
     }
   return 0;
@@ -2033,7 +2052,7 @@ int open_serverSocket(const char * hostname, const int port)
 
   if ( status < 0)
     {
-      cout << __FILE__<< " " << __LINE__ << " " << hostname << ": " << gai_strerror(status) << endl;
+      cout << __FILE__<< " " << __LINE__ << " " << hostname << " " << gai_strerror(status) << endl;
       return status;
     }
   
