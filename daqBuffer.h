@@ -14,6 +14,13 @@
 #define PRDFBUFFERHEADER 0xffffffc0;
 #define ONCSBUFFERHEADER 0xffffc0c0;
 
+#define BUFFERMARKER          0xffffffc0U
+#define ONCSBUFFERMARKER      0xffffc0c0U
+#define GZBUFFERMARKER        0xfffffafeU
+#define LZO1XBUFFERMARKER     0xffffbbfeU
+#define ONCSLZO1XBUFFERMARKER 0xffffbbc0U
+
+
 #define CTRL_BEGINRUN        1
 #define CTRL_ENDRUN          2
 #define CTRL_DATA            3
