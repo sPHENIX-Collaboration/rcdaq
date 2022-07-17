@@ -124,13 +124,20 @@ typedef devicevector::iterator deviceiterator;
 #define MAXEVENTID 32
 static int Eventsize[MAXEVENTID];
 
-int Daq_Status;
+// int Daq_Status;
 
-#define DAQ_RUNNING  0x01
-#define DAQ_READING  0x02
-#define DAQ_ENDREQUESTED  0x04
-#define DAQ_PROTOCOL 0x10
-#define DAQ_BEGININPROGRESS  0x20
+// #define DAQ_RUNNING  0x01
+// #define DAQ_READING  0x02
+// #define DAQ_ENDREQUESTED  0x04
+// #define DAQ_PROTOCOL 0x10
+// #define DAQ_BEGININPROGRESS  0x20
+
+// the original bit-wise status word manipulation wasn't particular thread-safe.
+// upgrading to individual variables (and we ditch "DAQ_READING")
+
+int  DAQ_RUNNING = 0;
+int  DAQ_ENDREQUESTED = 0;
+int  DAQ_BEGININPROGRESS =0;
 
 static daqBuffer Buffer1;
 static daqBuffer Buffer2;
@@ -286,7 +293,7 @@ int daq_setmaxvolume (const int n_mb, std::ostream& os)
 
 int daq_setmaxbuffersize (const int n_kb, std::ostream& os)
 {
-  if ( Daq_Status & DAQ_RUNNING ) 
+  if ( DAQ_RUNNING ) 
     {
       os << "Run is active" << endl;
       return -1;
@@ -897,8 +904,8 @@ void * daq_begin_thread( void *arg)
       // not sure what to do exactly
       cout << __FILE__ << " " << __LINE__ << " asynchronous begin run failed" << endl;
     }
-  //  if ( Daq_Status & DAQ_BEGININPROGRESS) Daq_Status ^= DAQ_BEGININPROGRESS;
-  Daq_Status &= ~DAQ_BEGININPROGRESS;
+
+  DAQ_BEGININPROGRESS = 0;
 
   return 0;
 }
@@ -908,7 +915,7 @@ int daq_begin_immediate(const int irun, std::ostream& os)
   static unsigned int  b_arg;
   b_arg = irun;
 
-  if ( (Daq_Status & DAQ_RUNNING) ) 
+  if ( DAQ_RUNNING ) 
     {
       os << MyHostName << "Run is active" << endl;;
       return -1;
@@ -922,11 +929,11 @@ int daq_begin_immediate(const int irun, std::ostream& os)
       os << MyHostName << "Run " << TheRun+1 << " begin requested" << endl;
     }
   
-  Daq_Status |= DAQ_BEGININPROGRESS;
-
- pthread_t t;
+  DAQ_BEGININPROGRESS = 1;
+  
+  pthread_t t;
  
- int status = pthread_create(&t, NULL,
+  int status = pthread_create(&t, NULL,
                           daq_begin_thread,
                           (void *) &b_arg);
   if (status ) 
@@ -942,7 +949,7 @@ int daq_begin_immediate(const int irun, std::ostream& os)
 
 int daq_begin(const int irun, std::ostream& os)
 {
-  if ( Daq_Status & DAQ_RUNNING ) 
+  if ( DAQ_RUNNING ) 
     {
       os << MyHostName << "Run is already active" << endl;;
       return -1;
@@ -958,7 +965,7 @@ int daq_begin(const int irun, std::ostream& os)
 
   
   // set the status to "running"
-  Daq_Status |= DAQ_RUNNING;
+  DAQ_RUNNING = 1;
 
   if (  irun ==0)
     {
@@ -988,7 +995,7 @@ int daq_begin(const int irun, std::ostream& os)
 	  else
 	    {
 	      os << MyHostName << "Could not open remote output file - Run " << TheRun << " not started" << endl;;
-	      Daq_Status &= ~DAQ_RUNNING;
+	      DAQ_RUNNING = 0;
 	      return -1;
 	    }
 	}
@@ -1008,7 +1015,7 @@ int daq_begin(const int irun, std::ostream& os)
 	  else
 	    {
 	      os << MyHostName << "Could not open output file - Run " << TheRun << " not started" << endl;;
-	      Daq_Status &= ~DAQ_RUNNING;
+	      DAQ_RUNNING = 0;
 	      return -1;
 	    }
 	}
@@ -1021,8 +1028,8 @@ int daq_begin(const int irun, std::ostream& os)
   Event_number  = 1;
 
   // just to be safe, clear the "end requested" bit
-  Daq_Status &= ~DAQ_ENDREQUESTED;
-  
+  DAQ_ENDREQUESTED = 0;
+
   set_eventsizes();
   // initialize Buffer1 to be the fill buffer
   //fillBuffer      = &Buffer1;
@@ -1047,7 +1054,7 @@ int daq_begin(const int irun, std::ostream& os)
 	  os << MyHostName << "Cannot start run - event sizes larger than buffer, size " 
 	     <<  wantedmaxsize/1024 << " Buffer size " 
 	     << transportBuffer->getMaxSize()/1024 << endl;
-	  Daq_Status &=  ~DAQ_RUNNING;
+	  DAQ_RUNNING = 0;
 	  return -1;
 	}
       //      os << " Buffer size increased to " << transportBuffer->getMaxSize()/1024 << " KB"<< endl;
@@ -1095,27 +1102,31 @@ int daq_begin(const int irun, std::ostream& os)
 
 int daq_end_immediate(std::ostream& os)
 {
-  if ( ! (Daq_Status & DAQ_RUNNING) ) 
+  if ( ! (DAQ_RUNNING) ) 
     {
       os << MyHostName << "Run is not active" << endl;;
       return -1;
     }
   os << MyHostName << "Run " << TheRun << " end requested" << endl;
-  Daq_Status |= DAQ_ENDREQUESTED;
+  DAQ_ENDREQUESTED = 1;
+
   return 0;
 }
 
 // this function is to hold further interactions until a asynchronous begin-run is over 
 int daq_wait_for_begin_done()
 {
-    while ( Daq_Status & DAQ_BEGININPROGRESS ) usleep(1000);
+    while ( DAQ_BEGININPROGRESS ) usleep(10000);
     return 0;
 }
 
 // this function is to avoid a race condition with the asynchronous "end requested" feature
 int daq_wait_for_actual_end()
 {
-    while ( Daq_Status & DAQ_ENDREQUESTED ) usleep(1000);
+  while ( DAQ_ENDREQUESTED ) 
+    {
+      usleep(10000);
+    }
     return 0;
 }
 
@@ -1137,7 +1148,7 @@ int daq_end_interactive(std::ostream& os)
 int daq_end(std::ostream& os)
 {
   
-  if ( ! (Daq_Status & DAQ_RUNNING) ) 
+  if ( ! (DAQ_RUNNING) ) 
     {
       os << MyHostName << "Run is not active" << endl;;
       return -1;
@@ -1194,7 +1205,7 @@ int daq_end(std::ostream& os)
   PreviousFilename = CurrentFilename;
   CurrentFilename = "";
   StartTime = 0;
-  Daq_Status &= ~DAQ_RUNNING;
+  DAQ_RUNNING = 0;
 
   last_volume_time = last_speed_time = time(0);
   last_event_nr = 0;
@@ -1202,8 +1213,7 @@ int daq_end(std::ostream& os)
 
   request_mg_update (MG_REQUEST_SPEED);
 
-  Daq_Status &= ~DAQ_ENDREQUESTED;
-  
+  DAQ_ENDREQUESTED = 0;
   
   return 0;
 }
@@ -1234,7 +1244,8 @@ void * EventLoop( void *arg)
   // std::cout << __FILE__ << " " << __LINE__ << " event loop starting...   " << std::endl;
   // pthread_mutex_unlock(&M_cout);
 
-
+  int rstatus;
+  
   while (TriggerControl)
     {
 
@@ -1256,27 +1267,35 @@ void * EventLoop( void *arg)
       if (CurrentEventType) 
 	{
 	  
-	  if ( Daq_Status & DAQ_RUNNING ) 
+	  if ( DAQ_RUNNING ) 
 	    {
-	      Daq_Status |= DAQ_READING;
-	      
-	      int rstatus = readout(CurrentEventType);
-	      // cout << __LINE__ << "  " << __FILE__ << " readout status: " << rstatus << endl;
 
-	      Daq_Status &= ~DAQ_READING;
-
-	      if (  rstatus)    // we got an endrun signal
+	      if ( DAQ_ENDREQUESTED )
 		{
+		  cout << " asynchronous end requested, run " << TheRun  << endl;
 		  TriggerControl = 0;
-		  //reset_deadtime();
 		  daq_end ( std::cout);
 		}
+
 	      else
 		{
-		  rearm(DATAEVENT);
-		  reset_deadtime();
+		  rstatus = readout(CurrentEventType);
+		  // cout << __LINE__ << "  " << __FILE__ << " readout status: " << rstatus << endl;
+		  
+		  if (  rstatus)    // we got an endrun signal
+		    {
+		      cout << __LINE__ << "  " << __FILE__ << " readout status: " << rstatus << " run nr " << TheRun << endl;
+		      TriggerControl = 0;
+		      //reset_deadtime();
+		      cout << __LINE__ << " calling daq_end" << endl;
+		      daq_end ( std::cout);
+		    }
+		  else
+		    {
+		      rearm(DATAEVENT);
+		      reset_deadtime();
+		    }
 		}
-	    
 	    }
 	  else  // no, we are not running
 	    {
@@ -1367,15 +1386,8 @@ int readout(const int etype)
 
   int returncode = 0;
 
-  if (  Daq_Status & DAQ_RUNNING )
+  if (  DAQ_RUNNING )
     {
-
-      if (  Daq_Status & DAQ_ENDREQUESTED )
-	{
-	  cout << " asynchronous end requested "  << endl;
-	  returncode = 1;
-	}
-      
       if ( etype == DATAEVENT && max_volume > 0 && run_volume >= max_volume) 
 	{
 	  cout << " automatic end after " << max_volume /(1024*1024) << " Mb" << endl;
@@ -1439,7 +1451,7 @@ void set_eventsizes()
 int daq_open (std::ostream& os)
 {
 
-  if ( Daq_Status & DAQ_RUNNING ) 
+  if ( DAQ_RUNNING ) 
     {
       os << MyHostName << "Run is active" << endl;;
       return -1;
@@ -1461,7 +1473,7 @@ int daq_open (std::ostream& os)
 int daq_set_server (const char *hostname, const int port, std::ostream& os)
 {
 
-  if ( Daq_Status & DAQ_RUNNING ) 
+  if ( DAQ_RUNNING ) 
     {
       os << MyHostName << "Run is active" << endl;;
       return -1;
@@ -1523,7 +1535,7 @@ int daq_shutdown(const unsigned long servernumber, const unsigned long versionnu
 		 std::ostream& os)
 {
 
-  if ( Daq_Status & DAQ_RUNNING ) 
+  if ( DAQ_RUNNING ) 
     {
       os << MyHostName << "Run is active" << endl;;
       return -1;
@@ -1568,7 +1580,7 @@ int is_server_open()
 int daq_close (std::ostream& os)
 {
 
-  if ( Daq_Status & DAQ_RUNNING ) 
+  if ( DAQ_RUNNING ) 
     {
       os << MyHostName << "Run is active" << endl;;
       return -1;
@@ -1583,7 +1595,7 @@ int daq_close (std::ostream& os)
 int daq_server_close (std::ostream& os)
 {
 
-  if ( Daq_Status & DAQ_RUNNING ) 
+  if ( DAQ_RUNNING ) 
     {
       os << MyHostName << "Run is active" << endl;;
       return -1;
@@ -1617,7 +1629,7 @@ int daq_list_readlist(std::ostream& os)
 int daq_clear_readlist(std::ostream& os)
 {
 
-  if ( Daq_Status & DAQ_RUNNING ) 
+  if ( DAQ_RUNNING ) 
     {
       os << MyHostName << "Run is active" << endl;;
       return -1;
@@ -1739,7 +1751,7 @@ int rcdaq_init( pthread_mutex_t &M)
 
 int get_runnumber()
 {
-  if ( ! Daq_Status & DAQ_RUNNING ) return -1; 
+  if ( ! DAQ_RUNNING ) return -1; 
   return TheRun;
 }
 
@@ -1750,18 +1762,18 @@ int get_oldrunnumber()  // like get_runnumber, but doesn't return -1 when stoppe
 
 int get_eventnumber()
 {
-  if ( ! Daq_Status & DAQ_RUNNING ) return 0; 
+  if ( !  DAQ_RUNNING ) return 0; 
   return Event_number;
 }
 double get_runvolume()
 {
-  if ( ! Daq_Status & DAQ_RUNNING ) return 0; 
+  if ( ! DAQ_RUNNING ) return 0; 
   double v = run_volume;
   return v / (1024*1024);
 }
 int get_runduration()
 {
-  if ( ! Daq_Status & DAQ_RUNNING ) return 0; 
+  if ( ! DAQ_RUNNING ) return 0; 
   return time(0) - StartTime;
 }
 
@@ -1786,7 +1798,7 @@ int daq_status( const int flag, std::ostream& os)
 
     case STATUSFORMAT_SHORT:    // "short format"
       
-      if ( Daq_Status & DAQ_RUNNING ) 
+      if ( DAQ_RUNNING ) 
 	{
 	  os << TheRun  << " " <<  Event_number -1 << " " 
 	     << volume << " ";
@@ -1809,7 +1821,7 @@ int daq_status( const int flag, std::ostream& os)
       break;
 
     case STATUSFORMAT_NORMAL:
-      if ( Daq_Status & DAQ_RUNNING ) 
+      if ( DAQ_RUNNING ) 
 	{
 	  os << MyHostName << "Run " << TheRun  
 	     << " Event: " << Event_number 
@@ -1862,7 +1874,7 @@ int daq_status( const int flag, std::ostream& os)
 
     default:  // flag 2++
       
-      if ( Daq_Status & DAQ_RUNNING ) 
+      if ( DAQ_RUNNING ) 
 	{
 	  os << " " << MyHostName << ":" << endl;
 	  os << "  Running" << endl;
@@ -2016,7 +2028,7 @@ int daq_getlastfilename( std::ostream& os)
 
 int daq_running()
 {
-  if ( Daq_Status & DAQ_RUNNING ) return 1;
+  if ( DAQ_RUNNING ) return 1;
   return 0;
 }
 
