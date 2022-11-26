@@ -75,6 +75,15 @@
 
 \section{Changelog}
 
+\subsection{November 2022}
+\begin{itemize}
+\item I brought the old file rollover feature from the AML days
+  back. So far the second section field in fle names had not been used
+  by RCDAQ. This is controlled by the \verb|daq_set_rollover| command
+  and takes units of gigabytes (GB).
+
+\end{itemize}
+
 \subsection{February 2022}
 \begin{itemize}
 \item I cleaned up some of the documentation that was still mentioning
@@ -477,10 +486,8 @@ rcdaq-00001333-0000.evt
 \end{verbatim}
 
 The first number is the current run number, and the second is a ``file
-sequence number'' which is in use in the main PHENIX DAQ but currently
-unused and 0 in RCDAQ. I may implement it later; it is used to make
-data of a given run roll over into a new file if that file is getting
-too large for convenient handling. 
+sequence number''. This number is used when files are rolled over after the
+previous file reached its pre-set rollover limit.
 
 The file rule can be changed at any time. The next data file will be
 named according to the current rule.
@@ -694,6 +701,7 @@ alias daq_status='rcdaq_client  daq_status'
 alias daq_set_maxevents='rcdaq_client  daq_set_maxevents'
 alias daq_set_maxvolume='rcdaq_client  daq_set_maxvolume'
 alias daq_set_maxbuffersize='rcdaq_client  daq_set_maxbuffersize'
+alias daq_set_rolloverlimit='rcdaq_client  daq_set_rolloverlimit'
 alias daq_setname='rcdaq_client  daq_setname'
 alias daq_set_adaptivebuffering='rcdaq_client  daq_set_adaptivebuffering'
 alias daq_shutdown='rcdaq_client  daq_shutdown'
@@ -1237,12 +1245,12 @@ The command \verb|rcdaq_client| without parameters lists all available rcdaq com
    daq_open                             enable logging
    daq_set_server hostname [port]       choose logging to a SFS server, or "None" to choose local file
    daq_begin [run-number]             	start taking data for run-number, or auto-increment
-   daq_end                              end the run 
+   daq_end                              end the run
    daq_close                            disable logging
    daq_setfilerule file-rule            set the file rule default rcdaq-%08d-%04d.evt
 
    daq_list_readlist                    display the current readout list
-   daq_clear_readlist                   clear the current readout list 
+   daq_clear_readlist                   clear the current readout list
 
    daq_define_runtype type file-rule    define a run type, such as "calibration"
    daq_set_runtype type                 activate a predefined run type
@@ -1252,9 +1260,10 @@ The command \verb|rcdaq_client| without parameters lists all available rcdaq com
 
    daq_set_maxevents nevt               set automatic end at so many events
    daq_set_maxvolume n_MB               set automatic end at n_MB MegaByte
+   daq_set_rolloverlimit n_GB           set file rollover limit at n_BG GigaByte
 
    load  shared_library_name            load a "plugin" shared library
-   create_device [device-specific parameters] 
+   create_device [device-specific parameters]
 
    daq_setname <string>                 define an identifying string for this RCDAQ instance
    daq_setrunnumberfile file            define a file to maintain the current run number
@@ -1387,6 +1396,16 @@ rcdaq_client daq_set_runtype beam
 
 \begin{verbatim}
 rcdaq_client daq_setrunnumberfile $HOME/.last_rcdaq_runnumber.txt
+\end{verbatim}
+
+\item[daq\_set\_rollover n\_GB] This will make RCDAQ ``roll over'' the
+  output files after the given number of GigaBytes have been reached.
+  This increments the usual second number field in the output files, such as
+\begin{verbatim}
+  rcdaq-00000001-0000.evt
+  rcdaq-00000001-0001.evt
+  rcdaq-00000001-0002.evt
+  ...
 \end{verbatim}
 
 \item[daq\_set\_maxbuffersize n\_KB] Adjust the size of buffers to n
