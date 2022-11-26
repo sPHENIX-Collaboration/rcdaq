@@ -66,6 +66,7 @@ typedef unsigned int UINT;
 #define CTRL_DATA            3
 #define CTRL_CLOSE           4
 #define CTRL_SENDFILENAME    5
+#define CTRL_ROLLOVER        6
 
 #define CTRL_REMOTESUCCESS 100
 #define CTRL_REMOTEFAIL    101
@@ -422,6 +423,51 @@ int handle_this_child( pid_t pid, const std::string &host)
 	  
 	  break;
 	  
+	case  CTRL_ROLLOVER:
+
+	  // after we receive CTRL_ROLLOVER, we get
+	  // - the length of the filename
+	  // the actual filename
+	  // then we send back the status
+	  
+	  // read the length of what we are about to get 
+	  readn (dd_fd, (char *) &len, sizeof(int));
+	  len  = ntohl(len);
+	  // acknowledge... or not
+	  //      cout << __FILE__ << " " << __LINE__ <<  " filename len  = " << len << endl;
+	  if ( len >= 1023)
+	    {
+	      i = htonl(CTRL_REMOTEFAIL);
+	      writen (dd_fd, (char *)&i, sizeof(i));
+	      break;
+	    }
+	  value = readn (dd_fd, filename, len);
+	  filename[value] = 0;
+	  // cout << __FILE__ << " " << __LINE__  << " filename is " << filename << endl;
+
+	  if (! do_not_write)
+	    {
+	      close ( output_fd);
+	      output_fd =  open(filename,  O_WRONLY | O_CREAT | O_TRUNC | O_EXCL | O_LARGEFILE , 
+				S_IRWXU | S_IROTH | S_IRGRP );
+	      if (output_fd < 0) 
+		{
+		  cerr << "file " << filename << " exists, I will not overwrite " << endl;
+		  i = htonl(CTRL_REMOTEFAIL);
+		  writen (dd_fd, (char *)&i, sizeof(i));
+		  break;
+		}
+	      if (verbose)
+		{
+		  cout << " opened new rollover file " << filename << endl; 
+		}
+	    }
+
+	  i = htonl(CTRL_REMOTESUCCESS);
+	  writen (dd_fd, (char *)&i, sizeof(i));
+	  
+	  break;
+	  
 	case  CTRL_BEGINRUN:
 	  
 	  readn (dd_fd, (char *) &local_runnr, sizeof(local_runnr) );
@@ -459,6 +505,11 @@ int handle_this_child( pid_t pid, const std::string &host)
 	  
 	  break;
 	  
+
+
+
+
+
 	case  CTRL_DATA:
 	  status = readn (dd_fd, (char *) &len, sizeof(i));
 	  len = ntohl(len);

@@ -14,6 +14,7 @@
 #define CTRL_DATA            3
 #define CTRL_CLOSE           4
 #define CTRL_SENDFILENAME    5
+#define CTRL_ROLLOVER        6
 
 #define CTRL_REMOTESUCCESS 100
 #define CTRL_REMOTEFAIL    101

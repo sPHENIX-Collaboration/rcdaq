@@ -81,6 +81,7 @@ int daq_status_plugin(const int flag =0, std::ostream& os = std::cout );
 
 int daq_setmaxevents (const int n, std::ostream& os);
 int daq_setmaxvolume (const int n_mb, std::ostream& os);
+int daq_setrolloverlimit (const int n_gb, std::ostream& os);
 
 int daq_setmaxbuffersize (const int n_mb, std::ostream& os);
 

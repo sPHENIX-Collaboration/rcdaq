@@ -51,6 +51,7 @@ int open_file_on_server(const int run_number);
 int server_open_Connection();
 int open_serverSocket(const char * host_name, const int port);
 int server_send_beginrun_sequence(const char * filename, const int runnumber, int fd);
+int server_send_rollover_sequence(const char * filename, int fd);
 int server_send_endrun_sequence(int fd);
 int server_send_close_sequence(int fd);
 
@@ -150,6 +151,7 @@ time_t StartTime = 0;
 int Buffer_number;
 int Event_number;
 
+
 int update_delta;
 
 static int TriggerControl = 0;
@@ -183,6 +185,9 @@ devicevector DeviceList;
 
 int NumberWritten = 0; 
 unsigned long long BytesInThisRun = 0;
+unsigned long long BytesInThisFile = 0;
+unsigned int RolloverLimit = 0;
+
 unsigned long long run_volume, max_volume;
 int max_events;
 
@@ -287,6 +292,14 @@ int daq_setmaxvolume (const int n_mb, std::ostream& os)
 {
   unsigned long long x = n_mb;
   max_volume =x * 1024 *1024;
+  return 0;
+
+}
+
+
+int daq_setrolloverlimit (const int n_gb, std::ostream& os)
+{
+  RolloverLimit = n_gb;
   return 0;
 
 }
@@ -657,21 +670,22 @@ void *writebuffers ( void * arg)
 
       pthread_mutex_lock( &WriteSem); // we wait for an unlock
 
-
+      
       last_bufferwritetime  = time(0);
       if ( daq_open_flag &&  outfile_fd) 
 	{
 	  unsigned int bytecount = transportBuffer->writeout(outfile_fd);
 	  NumberWritten++;
 	  BytesInThisRun += bytecount;
+	  BytesInThisFile += bytecount;
 	}
       else if ( daq_server_flag &&  TheServerFD)
 	{
 	  unsigned int bytecount = transportBuffer->sendout(TheServerFD);
           NumberWritten++;
           BytesInThisRun += bytecount;
+	  BytesInThisFile += bytecount;
         }
-
 
       if ( end_thread) pthread_exit(0);
       
@@ -700,6 +714,47 @@ int switch_buffer()
   fillBuffer = spare;
   fillBuffer->prepare_next(++Buffer_number, TheRun);
 
+
+
+  // let's see if we need to roll over
+    if ( daq_open_flag && RolloverLimit)
+    {
+      
+      if ( transportBuffer->getLength() + BytesInThisFile > RolloverLimit * 1024 * 1024 * 1024) 
+	{
+	  current_filesequence++;
+	  if ( daq_server_flag)
+	    {
+
+	      static char d[1024];
+	      sprintf( d, TheFileRule.c_str(),
+		       TheRun, current_filesequence);
+	      
+	      cout << __FILE__ << " " << __LINE__ << " rolling over " << d << endl;
+
+	      int status = server_send_rollover_sequence(d,TheServerFD);
+	      CurrentFilename = d;
+	    }
+	  else   // not server
+	    {
+	      close(outfile_fd);
+	      file_is_open = 0;
+	      int status = open_file ( TheRun, &outfile_fd);
+	      if (status)
+		{
+		  cout << MyHostName << "Could not open output file - Run " << TheRun << "  file sequence " << current_filesequence<< endl;
+		}
+	    }
+	  // cout << MyHostName << " -- Rolling output file over at "
+	  //      << transportBuffer->getLength() + BytesInThisFile
+	  //      << " sequence: " << current_filesequence
+	  //      << " now: " << CurrentFilename 
+	  //      << endl;
+	  BytesInThisFile = 0;
+	}
+    }
+  
+  
   pthread_mutex_unlock(&WriteSem);
   pthread_mutex_unlock(&SendSem);
   return 0;
@@ -966,7 +1021,8 @@ int daq_begin(const int irun, std::ostream& os)
   
   // set the status to "running"
   DAQ_RUNNING = 1;
-
+  current_filesequence = 0;
+  
   if (  irun ==0)
     {
       TheRun++;
@@ -1026,6 +1082,11 @@ int daq_begin(const int irun, std::ostream& os)
   //initialize the Buffer and event number
   Buffer_number = 1;
   Event_number  = 1;
+
+  // initialize the run/file volume
+  BytesInThisRun = 0;    // bytes actually written
+  BytesInThisFile = 0;
+
 
   // just to be safe, clear the "end requested" bit
   DAQ_ENDREQUESTED = 0;
@@ -1201,6 +1262,7 @@ int daq_end(std::ostream& os)
   Event_number = 0;
   run_volume = 0;    // volume in longwords 
   BytesInThisRun = 0;    // bytes actually written
+  BytesInThisFile = 0;
   Buffer_number = 0;
   PreviousFilename = CurrentFilename;
   CurrentFilename = "";
@@ -1840,8 +1902,7 @@ int daq_status( const int flag, std::ostream& os)
 	  else
 	    {
 	      os << "  Logging disabled";
-	    }	      
-	  os<< endl;
+	    }
 	}
       else   // not running
 	{
@@ -1868,8 +1929,17 @@ int daq_status( const int flag, std::ostream& os)
 		  os << "  Logging disabled";
 		}
 	    }	      
-	  os<< endl;
 	}
+      //os<< endl;
+      if ( RolloverLimit)
+	{
+	  os << "  File rollover: " << RolloverLimit << "GB" << endl;
+	}
+      //      else    --- don't say anything when not in effect
+      //	{
+      //	  os << "  File rollover disabled" << endl;
+      //	}
+
       break;
 
     default:  // flag 2++
@@ -1878,10 +1948,18 @@ int daq_status( const int flag, std::ostream& os)
 	{
 	  os << " " << MyHostName << ":" << endl;
 	  os << "  Running" << endl;
-	  os << "  Run Number:   " << TheRun  << endl;
-	  os << "  Event:        " << Event_number << endl;;
-	  os << "  Run Volume:   " << volume << " MB"<< endl;
-	  os << "  Filerule:     " <<  daq_get_filerule() << endl;
+	  os << "  Run Number:    " << TheRun  << endl;
+	  os << "  Event:         " << Event_number << endl;;
+	  os << "  Run Volume:    " << volume << " MB"<< endl;
+	  os << "  Filerule:      " <<  daq_get_filerule() << endl;
+	  if ( RolloverLimit)
+	    {
+	      os << "  File rollover: " << RolloverLimit << "GB" << endl;
+	    }
+	  //else
+	  //  {
+	  //    os << "  File rollover:    disabled" << endl;
+	  //  }
 
 	  if ( daq_open_flag )
 	    {
@@ -1891,11 +1969,11 @@ int daq_status( const int flag, std::ostream& os)
 		}
 	      else
 		{
-		  os << "  Filename:     " << get_current_filename() << endl; 	  
+		  os << "  Filename:      " << get_current_filename() << endl; 	  
 		}
 	    }
 
-	  os << "  Duration:     " <<  time(0) - StartTime << " s" <<endl;
+	  os << "  Duration:      " <<  time(0) - StartTime << " s" <<endl;
 
 	  if (max_volume)
 	    {
@@ -1906,7 +1984,7 @@ int daq_status( const int flag, std::ostream& os)
 	      os << "  Event Limit:  " <<  max_events << endl;
 	    }
 	}
-      else
+      else  // not runnig
 	{
 	  os << MyHostName << " Stopped"  << endl;
 	  if ( daq_open_flag )
@@ -1932,6 +2010,16 @@ int daq_status( const int flag, std::ostream& os)
 		}
 	    }	      
 	  os << "  Filerule:     " <<  daq_get_filerule() << endl;
+	  
+	  if ( RolloverLimit)
+	    {
+	      os << "  File rollover: " << RolloverLimit << "GB" << endl;
+	    }
+	  //else
+	  //  {
+	  //    os << "  File rollover:    disabled" << endl;
+	  //  }
+
 	  
 	  if (max_volume)
 	    {
@@ -2156,6 +2244,37 @@ int server_send_beginrun_sequence(const char * filename, const int runnumber, in
 
   return 0;
 }
+
+int server_send_rollover_sequence(const char * filename, int fd)
+{
+  int opcode;
+  int status;
+  int len;
+  
+  // std::cout << __FILE__ << " " << __LINE__ << " sending    " << CTRL_SENDFILENAME << std::endl ;
+  opcode = htonl(CTRL_ROLLOVER);
+  status = writen(fd, (char *) &opcode, sizeof(int));
+  if ( status != sizeof(int)) return -1;
+
+  len = strlen(filename);
+  opcode = htonl(len);
+  //std::cout << __FILE__ << " " << __LINE__ << " sending    " << filename  << " len = " << len<< std::endl ;
+  status = writen(fd, (char *) &opcode, sizeof(int));
+  if ( status != sizeof(int)) return -1;
+
+  status = writen(fd, (char *) filename, len);
+  if ( status != len) return -1;
+
+  status = readn (fd, (char *) &opcode, sizeof(int) );
+  if ( status != sizeof(int)  || ntohl(opcode) != CTRL_REMOTESUCCESS )
+    {
+      perror("read_ack");
+      return -1;
+    }
+
+  return 0;
+}
+
 
 int server_send_endrun_sequence(int fd)
 {
