@@ -66,6 +66,7 @@ typedef unsigned int UINT;
 #define CTRL_DATA            3
 #define CTRL_CLOSE           4
 #define CTRL_SENDFILENAME    5
+#define CTRL_ROLLOVER        6
 
 #define CTRL_REMOTESUCCESS 100
 #define CTRL_REMOTEFAIL    101
@@ -106,6 +107,8 @@ int output_fd = -1;
 
 int the_port = 5001;
 
+int do_not_write = 0;
+
 int RunIsActive = 0; 
 int NumberWritten = 0; 
 int file_open = 0;
@@ -121,7 +124,7 @@ void sig_handler(...);
 #endif
 
 void *writebuffers ( void * arg);
-int handle_this_child( pid_t pid);
+int handle_this_child( pid_t pid, const std::string &host);
 in_addr_t find_address_from_interface(const char *);
 
 void cleanup(const int exitstatus);
@@ -142,6 +145,7 @@ void exitmsg()
   cout << "   -b interface    bind only to this interface" << endl;
   cout << "   -p number       use this port (default 5001)" << endl;
   cout << "   -v increase verbosity" << endl;
+  cout << "   -x do not write data to disk (testing)" << endl;
   cout << "  Examples:" << endl;
   cout << "    sfs -b ens801f0      -- listen only on that interface" << endl;
   cout << "    sfs -p 5002          -- listen on port 5002" << endl;
@@ -188,16 +192,16 @@ int main( int argc, char* argv[])
 
   char c;
   
-  while ((c = getopt(argc, argv, "hvdb:p:")) != EOF)
+  while ((c = getopt(argc, argv, "hvdxb:p:")) != EOF)
     {
       switch (c) 
 	{
 
 	case 'v':   // verbose
-	  verbose += 1;
+	  verbose++;
 	  break;
 
-	case 'h':   // verbose
+	case 'h': 
 	  exitmsg();
 	  break;
 
@@ -213,6 +217,10 @@ int main( int argc, char* argv[])
 	case 'd':   // no database
 	  // databaseflag=1;
 	  // cout << "database access enabled" << endl;
+	  break;
+
+	case 'x':   // no writing
+	  do_not_write = 1;
 	  break;
 
 
@@ -237,7 +245,7 @@ int main( int argc, char* argv[])
   int xs = 1024*1024;
 
   int s = setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF,
-		       &xs, 4);
+		     &xs, sizeof(xs));
 
   if (s)
     {
@@ -274,6 +282,8 @@ int main( int argc, char* argv[])
 
   pid_t pid;
   struct sockaddr_in out;
+
+  std::string host;
   
   while  (sockfd > 0)
     {
@@ -291,23 +301,30 @@ int main( int argc, char* argv[])
 	}
 
 
+      char h[512]; 
+      getnameinfo((struct sockaddr *) &out, sizeof(struct sockaddr_in), h, 511,
+		  NULL, 0, NI_NOFQDN);
+      host = h;
+      
       if (verbose)
 	{
-	  char *host = new char[512]; 
-	  getnameinfo((struct sockaddr *) &out, sizeof(struct sockaddr_in), host, 511,
-		      NULL, 0, NI_NOFQDN); 
-    	  cout << " new connection from " << host << endl;
+    	  cout << " new connection from " << host << " at " << time(0) << endl;
 	}
       
       
       if ( (pid = fork()) == 0 ) 
 	{
-	  handle_this_child( pid);
+	  close(sockfd);
+	  return handle_this_child( pid, host);
+	}
+      else
+	{
+	  close (dd_fd);
 	}
     }
 }
 
-int handle_this_child( pid_t pid)
+int handle_this_child( pid_t pid, const std::string &host)
 {
 
 
@@ -335,7 +352,7 @@ int handle_this_child( pid_t pid)
 		      
   int i;
   
-  // we make a thread tht will write out our buffers
+  // we make a thread that will write out our buffers
   i = pthread_create(&ThreadId, NULL, 
 		     writebuffers, 
 		     (void *) 0);
@@ -364,12 +381,11 @@ int handle_this_child( pid_t pid)
   int go_on = 1;
   while ( go_on)
     {
-      if ( (status = readn (dd_fd, (char *) &xx, 4) ) <= 0)
+      if ( (status = readn (dd_fd, (char *) &xx, sizeof(xx)) ) <= 0)
 	{
 	  cout  << "error in read from socket" << endl;
 	  perror ("read " );
 	  cleanup(1);
-	  exit(1);
 	}
 	
       controlword = ntohl(xx);
@@ -395,7 +411,7 @@ int handle_this_child( pid_t pid)
 	  if ( len >= 1023)
 	    {
 	      i = htonl(CTRL_REMOTEFAIL);
-	      writen (dd_fd, (char *)&i, 4);
+	      writen (dd_fd, (char *)&i, sizeof(i));
 	      break;
 	    }
 	  value = readn (dd_fd, filename, len);
@@ -403,30 +419,78 @@ int handle_this_child( pid_t pid)
 	  //cout  << " filename is " << filename << endl;
 
           i = htonl(CTRL_REMOTESUCCESS);
-          writen (dd_fd, (char *)&i, 4);
+          writen (dd_fd, (char *)&i, sizeof(i));
+	  
+	  break;
+	  
+	case  CTRL_ROLLOVER:
+
+	  // after we receive CTRL_ROLLOVER, we get
+	  // - the length of the filename
+	  // the actual filename
+	  // then we send back the status
+	  
+	  // read the length of what we are about to get 
+	  readn (dd_fd, (char *) &len, sizeof(int));
+	  len  = ntohl(len);
+	  // acknowledge... or not
+	  //      cout << __FILE__ << " " << __LINE__ <<  " filename len  = " << len << endl;
+	  if ( len >= 1023)
+	    {
+	      i = htonl(CTRL_REMOTEFAIL);
+	      writen (dd_fd, (char *)&i, sizeof(i));
+	      break;
+	    }
+	  value = readn (dd_fd, filename, len);
+	  filename[value] = 0;
+	  // cout << __FILE__ << " " << __LINE__  << " filename is " << filename << endl;
+
+	  if (! do_not_write)
+	    {
+	      close ( output_fd);
+	      output_fd =  open(filename,  O_WRONLY | O_CREAT | O_TRUNC | O_EXCL | O_LARGEFILE , 
+				S_IRWXU | S_IROTH | S_IRGRP );
+	      if (output_fd < 0) 
+		{
+		  cerr << "file " << filename << " exists, I will not overwrite " << endl;
+		  i = htonl(CTRL_REMOTEFAIL);
+		  writen (dd_fd, (char *)&i, sizeof(i));
+		  break;
+		}
+	      if (verbose)
+		{
+		  cout << " opened new rollover file " << filename << endl; 
+		}
+	    }
+
+	  i = htonl(CTRL_REMOTESUCCESS);
+	  writen (dd_fd, (char *)&i, sizeof(i));
 	  
 	  break;
 	  
 	case  CTRL_BEGINRUN:
 	  
-	  readn (dd_fd, (char *) &local_runnr, 4);
+	  readn (dd_fd, (char *) &local_runnr, sizeof(local_runnr) );
 	  local_runnr = ntohl(local_runnr);
 	  //cout  << " runnumber = " << local_runnr << endl;
 
-	  output_fd =  open(filename,  O_WRONLY | O_CREAT | O_TRUNC | O_EXCL | O_LARGEFILE , 
-			    S_IRWXU | S_IROTH | S_IRGRP );
-	  if (output_fd < 0) 
+	  if (! do_not_write)
 	    {
-	      cerr << "file " << filename << " exists, I will not overwrite " << endl;
-	      i = htonl(CTRL_REMOTEFAIL);
-	      writen (dd_fd, (char *)&i, 4);
-	      break;
+	      output_fd =  open(filename,  O_WRONLY | O_CREAT | O_TRUNC | O_EXCL | O_LARGEFILE , 
+				S_IRWXU | S_IROTH | S_IRGRP );
+	      if (output_fd < 0) 
+		{
+		  cerr << "file " << filename << " exists, I will not overwrite " << endl;
+		  i = htonl(CTRL_REMOTEFAIL);
+		  writen (dd_fd, (char *)&i, sizeof(i));
+		  break;
+		}
+	      if (verbose)
+		{
+		  cout << " opened new file " << filename << endl; 
+		}
 	    }
-	  if (verbose)
-	    {
-	      cout << " opened new file " << filename << endl; 
-	    }
-    
+
 	  bf_being_received = &B0;
 	  bf_being_written = &B1;
 	    
@@ -437,36 +501,25 @@ int handle_this_child( pid_t pid)
 	  bf_being_written->dirty = 0;
 	    
 	  i = htonl(CTRL_REMOTESUCCESS);
-	  writen (dd_fd, (char *)&i, 4);
+	  writen (dd_fd, (char *)&i, sizeof(i));
 	  
 	  break;
 	  
-	case  CTRL_ENDRUN:
-	  //cout  << " endrun signal " << endl;
-	  
-	  pthread_mutex_lock(&M_done);
-	  close (output_fd);
-	  if (verbose)
-	    {
-	      cout << " closed file "  << filename << endl; 
-	    }
 
-	  i = htonl(CTRL_REMOTESUCCESS);
-	  writen (dd_fd, (char *)&i, 4);
-	  pthread_mutex_unlock(&M_done);
 
-	  break;
-	  
+
+
+
 	case  CTRL_DATA:
-	  status = readn (dd_fd, (char *) &len, 4);
+	  status = readn (dd_fd, (char *) &len, sizeof(i));
 	  len = ntohl(len);
 	  //cout  << " data! len = " << len << endl;
 	  
 	  bf_being_received->bytecount = len;
-	  if ( (len+3)/4 > bf_being_received->buffersize)
+	  if ( (len+sizeof(int)-1)/sizeof(int) > bf_being_received->buffersize)
 	    { 
 	      delete [] bf_being_received->bf;
-	      bf_being_received->buffersize = (len+3)/4 + 2048;
+	      bf_being_received->buffersize = (len + sizeof(int)-1)/sizeof(int) + 2048;
 	      
 	      pthread_mutex_lock(&M_cout);
 	      //	      cout << "expanding buffer to " << bf_being_received->buffersize << " for host " << host << endl;
@@ -508,18 +561,45 @@ int handle_this_child( pid_t pid)
 	  
 	  break;
 
+	case  CTRL_ENDRUN:
+	  //cout  << " endrun signal " << endl;
+	  
+	  pthread_mutex_lock(&M_done);
+	  if (! do_not_write)
+	    {
+	      close (output_fd);
+	      if (verbose)
+		{
+		  cout << " closed file "  << filename << " at " << time(0) << endl;
+		}
+	    }
+
+	  i = htonl(CTRL_REMOTESUCCESS);
+	  writen (dd_fd, (char *)&i, sizeof(i));
+	  pthread_mutex_unlock(&M_done);
+
+	  break;
+	  
 	case CTRL_CLOSE:
 	  close ( dd_fd);
+
+	  // we set go_on to 0 so our loop stops and we return 
 	  go_on = 0;
-	  if (verbose)
+	  if (verbose == 1)
 	    {
-	      cout << " closed connection" << endl; 
+	      cout << " closed connection from " << host << endl; 
+	    }
+	  else if (verbose > 1)
+	    {
+	      cout << " closed connection from "  << host << " at " << time(0) << endl;
 	    }
 	  break;
 	  
 	}
 		  
     }
+  
+  if (verbose > 1) cout << " ending thread " << " at " << time(0) << endl;
   
   return 0;
 }
@@ -534,31 +614,37 @@ void *writebuffers ( void * arg)
 
       pthread_mutex_lock(&M_write);
 
-      pthread_mutex_lock(&M_cout);
-      //cout << __LINE__ << "  " << __FILE__ << " write thread unlocked  " <<  endl;
-      pthread_mutex_unlock(&M_cout);
-
-      int blockcount = ( bf_being_written->bytecount + BUFFERBLOCKSIZE -1)/BUFFERBLOCKSIZE;
-      int bytecount = blockcount*BUFFERBLOCKSIZE;
-      
-      pthread_mutex_lock(&M_cout);
-      //cout << __LINE__ << "  " << __FILE__ << " write thread unlocked, block count " << blockcount <<  endl;
-      pthread_mutex_unlock(&M_cout);
-
-      int bytes = writen ( output_fd, (char *) bf_being_written->bf , bytecount );
-      if ( bytes != bytecount)
+      if (! do_not_write)
 	{
 	  pthread_mutex_lock(&M_cout);
-	  cout << __LINE__ << "  " << __FILE__ << " write error " << bytes << "  " << bytecount <<  endl;
+	  //cout << __LINE__ << "  " << __FILE__ << " write thread unlocked  " <<  endl;
 	  pthread_mutex_unlock(&M_cout);
-	  bf_being_written->dirty = -1;  // mark as "error"
+	  
+	  int blockcount = ( bf_being_written->bytecount + BUFFERBLOCKSIZE -1)/BUFFERBLOCKSIZE;
+	  int bytecount = blockcount*BUFFERBLOCKSIZE;
+	  
+	  pthread_mutex_lock(&M_cout);
+	  //cout << __LINE__ << "  " << __FILE__ << " write thread unlocked, block count " << blockcount <<  endl;
+	  pthread_mutex_unlock(&M_cout);
+	  
+	  int bytes = writen ( output_fd, (char *) bf_being_written->bf , bytecount );
+	  if ( bytes != bytecount)
+	    {
+	      pthread_mutex_lock(&M_cout);
+	      cout << __LINE__ << "  " << __FILE__ << " write error " << bytes << "  " << bytecount <<  endl;
+	      pthread_mutex_unlock(&M_cout);
+	      bf_being_written->dirty = -1;  // mark as "error"
+	    }
+	  else
+	    {
+	      //      usleep(1000000);
+	      bf_being_written->dirty = 0;
+	    }
 	}
       else
-	{
-	  //      usleep(1000000);
+	{ 
 	  bf_being_written->dirty = 0;
 	}
-      //      bytes = writen ( fd, (char *) buffers[i].bf , bytecount );
       pthread_mutex_unlock(&M_done);
       
     }
@@ -653,7 +739,6 @@ in_addr_t find_address_from_interface(const char *interface)
 
 void cleanup( const int exitstatus)
 {
-  close (sockfd);
   close (dd_fd);
 
   exit(exitstatus);

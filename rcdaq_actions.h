@@ -38,7 +38,11 @@
 
 #define DAQ_SET_SERVER        128
 
+#define DAQ_BEGIN_IMMEDIATE   129
 
+#define DAQ_SYNC              130
+
+#define DAQ_ROLLOVERLIMIT 131
 
 #define DAQ_DEVICE_RANDOM         1001
 #define DAQ_DEVICE_FILE           1002

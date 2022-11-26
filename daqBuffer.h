@@ -8,17 +8,13 @@
 #include <BufferConstants.h>
 #include <arpa/inet.h>
 
-#define DAQONCSFORMAT 0
-#define DAQPRDFFORMAT 1
-
-#define PRDFBUFFERHEADER 0xffffffc0;
-#define ONCSBUFFERHEADER 0xffffc0c0;
 
 #define CTRL_BEGINRUN        1
 #define CTRL_ENDRUN          2
 #define CTRL_DATA            3
 #define CTRL_CLOSE           4
 #define CTRL_SENDFILENAME    5
+#define CTRL_ROLLOVER        6
 
 #define CTRL_REMOTESUCCESS 100
 #define CTRL_REMOTEFAIL    101

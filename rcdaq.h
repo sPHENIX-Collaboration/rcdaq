@@ -27,6 +27,9 @@ int rcdaq_init(pthread_mutex_t &M );
 int add_readoutdevice( daq_device *d);
 
 int daq_begin(const int irun,std::ostream& os = std::cout );
+int daq_begin_immediate(const int irun, std::ostream& os);
+void * daq_begin_thread( void *arg);
+
 
 int daq_end_immediate(std::ostream& os = std::cout);
 int daq_end_interactive(std::ostream& os);
@@ -78,6 +81,7 @@ int daq_status_plugin(const int flag =0, std::ostream& os = std::cout );
 
 int daq_setmaxevents (const int n, std::ostream& os);
 int daq_setmaxvolume (const int n_mb, std::ostream& os);
+int daq_setrolloverlimit (const int n_gb, std::ostream& os);
 
 int daq_setmaxbuffersize (const int n_mb, std::ostream& os);
 
@@ -87,6 +91,7 @@ int daq_set_eloghandler( const char *host, const int port, const char *logname);
 
 int daq_load_plugin( const char *sharedlib, std::ostream& os);
 
+int daq_wait_for_begin_done();
 int daq_wait_for_actual_end();
 
 // functions for the webserver
