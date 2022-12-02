@@ -299,6 +299,11 @@ int daq_setmaxvolume (const int n_mb, std::ostream& os)
 
 int daq_setrolloverlimit (const int n_gb, std::ostream& os)
 {
+  if ( DAQ_RUNNING ) 
+    {
+      os << "Run is active" << endl;
+      return -1;
+    }
   RolloverLimit = n_gb;
   return 0;
 
@@ -746,12 +751,12 @@ int switch_buffer()
 		  cout << MyHostName << "Could not open output file - Run " << TheRun << "  file sequence " << current_filesequence<< endl;
 		}
 	    }
-	  cout << MyHostName << " -- Rolling output file over at "
-	       << transportBuffer->getLength() + BytesInThisFile
-	       << " sequence: " << current_filesequence
-	       << " limit: " << RolloverLimit
-	       << " now: " << CurrentFilename 
-	       << endl;
+	  // cout << MyHostName << " -- Rolling output file over at "
+	  //      << transportBuffer->getLength() + BytesInThisFile
+	  //      << " sequence: " << current_filesequence
+	  //      << " limit: " << RolloverLimit
+	  //      << " now: " << CurrentFilename 
+	  //      << endl;
 	  BytesInThisFile = 0;
 	}
     }
@@ -1932,15 +1937,16 @@ int daq_status( const int flag, std::ostream& os)
 		}
 	    }	      
 	}
-      //os<< endl;
+
       if ( RolloverLimit)
 	{
-	  os << "  File rollover: " << RolloverLimit << "GB" << endl;
+	  os << "  File rollover: " << RolloverLimit << "GB";
 	}
       //      else    --- don't say anything when not in effect
       //	{
       //	  os << "  File rollover disabled" << endl;
       //	}
+      os<< endl;
 
       break;
 
