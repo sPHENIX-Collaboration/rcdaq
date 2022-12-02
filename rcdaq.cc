@@ -186,7 +186,7 @@ devicevector DeviceList;
 int NumberWritten = 0; 
 unsigned long long BytesInThisRun = 0;
 unsigned long long BytesInThisFile = 0;
-unsigned int RolloverLimit = 0;
+unsigned long long RolloverLimit = 0;
 
 unsigned long long run_volume, max_volume;
 int max_events;
@@ -719,8 +719,9 @@ int switch_buffer()
   // let's see if we need to roll over
     if ( daq_open_flag && RolloverLimit)
     {
+      unsigned int blength = transportBuffer->getLength();
       
-      if ( transportBuffer->getLength() + BytesInThisFile > RolloverLimit * 1024 * 1024 * 1024) 
+      if ( blength + BytesInThisFile > RolloverLimit * 1024 * 1024 * 1024) 
 	{
 	  current_filesequence++;
 	  if ( daq_server_flag)
@@ -745,11 +746,12 @@ int switch_buffer()
 		  cout << MyHostName << "Could not open output file - Run " << TheRun << "  file sequence " << current_filesequence<< endl;
 		}
 	    }
-	  // cout << MyHostName << " -- Rolling output file over at "
-	  //      << transportBuffer->getLength() + BytesInThisFile
-	  //      << " sequence: " << current_filesequence
-	  //      << " now: " << CurrentFilename 
-	  //      << endl;
+	  cout << MyHostName << " -- Rolling output file over at "
+	       << transportBuffer->getLength() + BytesInThisFile
+	       << " sequence: " << current_filesequence
+	       << " limit: " << RolloverLimit
+	       << " now: " << CurrentFilename 
+	       << endl;
 	  BytesInThisFile = 0;
 	}
     }

@@ -38,10 +38,10 @@ public:
   int prepare_next( const int iseq, const int irun =-1);
 
   // subevent adding
-  int addSubevent( daq_device *);
+  unsigned int addSubevent( daq_device *);
 
   //  add end-of-buffer
-  int addEoB();
+  unsigned int addEoB();
 
   // now the write routine
   unsigned int writeout ( int fd);
@@ -60,7 +60,7 @@ public:
 
   // and the query
   int getBufSeq () const { return bptr->Bufseq; } ;
-  int getLength () const { return bptr->Length; } ;
+  unsigned int getLength () const { return bptr->Length; } ;
 
   int setEventFormat(const int f);
   int getEventFormat() const {return format;};
@@ -70,7 +70,7 @@ protected:
 
   typedef struct 
   { 
-    int Length;
+    unsigned int Length;
     int ID;
     int Bufseq;
     int Runnr;

@@ -101,9 +101,9 @@ int daqBuffer::nextEvent(const int etype, const int evtseq, const int evtsize)
 }
 
 // ----------------------------------------------------------
-int daqBuffer::addSubevent( daq_device *dev)
+unsigned int daqBuffer::addSubevent( daq_device *dev)
 {
-  int len;
+  unsigned int len;
 
   len = current_event->addSubevent(current_etype, dev);
 
@@ -115,7 +115,7 @@ int daqBuffer::addSubevent( daq_device *dev)
 }
 
 // ----------------------------------------------------------
-int daqBuffer::addEoB()
+unsigned int daqBuffer::addEoB()
 {
   if (has_end) return -1;
   bptr->data[current_index++] = 2;  
