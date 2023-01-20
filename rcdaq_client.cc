@@ -214,8 +214,6 @@ int command_execute( int argc, char **argv)
     }
 
   
-  //  std::cout << "Server number is " << servernumber << std::endl;
-
   char lh[] = "localhost";
   char *host = lh;
     
@@ -223,6 +221,14 @@ int command_execute( int argc, char **argv)
     {
       host = getenv("RCDAQHOST");
     }
+
+  if ( getenv("RCDAQSERVERNUMBER")  )
+    {
+      servernumber = atoi(getenv("RCDAQSERVERNUMBER"));
+    }
+
+  //  std::cout << "Server number is " << servernumber << std::endl;
+
   
   rcdaq_client_Init (host,servernumber);
   
