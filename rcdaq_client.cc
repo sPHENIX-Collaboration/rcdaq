@@ -62,6 +62,7 @@ void showHelp()
   std::cout << "   daq_set_maxevents nevt               set automatic end at so many events" << std::endl;
   std::cout << "   daq_set_maxvolume n_MB               set automatic end at n_MB MegaByte" << std::endl;
   std::cout << "   daq_set_rolloverlimit n_GB           set file rollover limit at n_BG GigaByte" << std::endl;
+  std::cout << "   daq_set_eventformat n                dynamically switch from standard (0) to legacy header format (1)" << std::endl;
   std::cout << std::endl; 
 
   std::cout << "   load  shared_library_name            load a \"plugin\" shared library" << std::endl;
@@ -675,6 +676,23 @@ int command_execute( int argc, char **argv)
  
     }
 
+  else if ( strcasecmp(command,"daq_set_eventformat") == 0)
+    {
+      if ( argc < optind + 2) return -1;
+
+      ab.action = DAQ_SETEVENTFORMAT;
+      ab.ipar[0] = get_value(argv[optind + 1]);
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+  
   else if ( strcasecmp(command,"elog") == 0)
     {
 

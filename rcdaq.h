@@ -108,6 +108,10 @@ double get_runvolume();
 int get_runduration();
 int get_openflag();
 
+int daq_setEventFormat(const int f, std::ostream& os = std::cout );
+int daq_getEventFormat();
+
+
 #define MG_REQUEST_NAME 1
 #define MG_REQUEST_SPEED 2
 // more defs to come in the future

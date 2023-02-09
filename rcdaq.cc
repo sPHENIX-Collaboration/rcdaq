@@ -328,10 +328,21 @@ int daq_setadaptivebuffering (const int usecs, std::ostream& os)
   return 0;
 }
 
-// this call is for later when we offer the
-// option at run-time 
-int daq_setEventFormat(const int f)
+// this call was added to allow chaging the format after the 
+// server was started. Before this was a compile-time option.
+int daq_setEventFormat(const int f, std::ostream& os )
 {
+  if ( daq_running() )
+    {
+      os << "Run is active" << endl;
+      return -1;
+    }
+      
+  if (DeviceList.size())
+    {
+      os << "Cannot switch format after devices are defined" << endl;
+      return -1;
+    }
   int status =  Buffer1.setEventFormat(f);
   status |= Buffer2.setEventFormat(f);
   return status;
@@ -1818,6 +1829,7 @@ int rcdaq_init( pthread_mutex_t &M)
   return 0;
 }
 
+
 int get_runnumber()
 {
   if ( ! DAQ_RUNNING ) return -1; 
@@ -1893,7 +1905,7 @@ int daq_status( const int flag, std::ostream& os)
       if ( DAQ_RUNNING ) 
 	{
 	  os << MyHostName << "Run " << TheRun  
-	     << " Event: " << Event_number 
+	     << " Event: " << Event_number -1 
 	     << " Volume: " << volume;
 	  if ( daq_open_flag )
 	    {
@@ -1946,6 +1958,7 @@ int daq_status( const int flag, std::ostream& os)
       //	{
       //	  os << "  File rollover disabled" << endl;
       //	}
+
       os<< endl;
 
       break;
@@ -1954,8 +1967,9 @@ int daq_status( const int flag, std::ostream& os)
       
       if ( DAQ_RUNNING ) 
 	{
-	  os << " " << MyHostName << ":" << endl;
-	  os << "  Running" << endl;
+	  os << MyHostName << " running"  << endl;
+	  //os << " " << MyHostName << ":" << endl;
+	  //os << "  Running" << endl;
 	  os << "  Run Number:    " << TheRun  << endl;
 	  os << "  Event:         " << Event_number << endl;;
 	  os << "  Run Volume:    " << volume << " MB"<< endl;
@@ -2055,6 +2069,10 @@ int daq_status( const int flag, std::ostream& os)
       	  os << "  No Web control defined" << endl;
       	}
 
+      if ( daq_getEventFormat())
+	{
+	  os << "  Writing legacy format " << endl;
+	}
 
       if ( ElogH)
       	{

@@ -42,7 +42,9 @@
 
 #define DAQ_SYNC              130
 
-#define DAQ_ROLLOVERLIMIT 131
+#define DAQ_ROLLOVERLIMIT     131
+
+#define DAQ_SETEVENTFORMAT     132
 
 #define DAQ_DEVICE_RANDOM         1001
 #define DAQ_DEVICE_FILE           1002

@@ -135,14 +135,14 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
   
   if ( daq_running() )
     {
-      strcpy(e_string, "Run is active");
+      strcpy(e_string, "Run is active\n");
       error.content = 1;
       error.what    = 0;
       error.status  = -1;
       return &error;
     }
 
-  strcpy(e_string, "Device needs at least 2 parameters");
+  strcpy(e_string, "Device needs at least 2 parameters\n");
   error.content = 1;
   error.what    = 0;
   error.status  = -1;
@@ -158,12 +158,12 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
 
   if ( db->npar < 3)
     {
-      strcpy(r_string, "Device needs at least 2 parameters");
+      strcpy(r_string, "Device needs at least 2 parameters\n");
       return &error;
     }
   
       
-  strcpy(r_string, "Wrong number of parameters");
+  strcpy(r_string, "Wrong number of parameters\n");
 
   // and we decode the event type and subid
   eventtype  = get_value ( db->argv1); // event type
@@ -781,6 +781,19 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
+    case DAQ_SETEVENTFORMAT:
+      result.status = daq_setEventFormat ( ab->ipar[0], outputstream);
+      if (result.status) 
+	{
+	  outputstream.str().copy(resultstring,outputstream.str().size());
+	  resultstring[outputstream.str().size()] = 0;
+	  result.str = resultstring;
+	  result.content = 1;
+	}
       pthread_mutex_unlock(&M_output);
       return &result;
       break;
