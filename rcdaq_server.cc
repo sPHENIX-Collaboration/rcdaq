@@ -554,6 +554,14 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       daq_set_name(ab->spar);
       break;
 
+    case DAQ_OPENSQLSTREAM:
+      daq_open_sqlstream(ab->spar);
+      break;
+
+    case DAQ_CLOSESQLSTREAM:
+      daq_close_sqlstream();
+      break;
+
 
     case DAQ_SETRUNTYPE:
       result.status = daq_setruntype(ab->spar,outputstream);

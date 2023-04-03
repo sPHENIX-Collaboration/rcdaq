@@ -67,6 +67,11 @@ int daq_set_name(const char *name);
 int daq_get_name(std::ostream& os = std::cout);
 std::string daq_get_myname();
 
+int daq_open_sqlstream(const char *name);
+int daq_close_sqlstream();
+int get_sqlfd();
+
+
 double daq_get_mb_per_second();
 double daq_get_events_per_second();
 

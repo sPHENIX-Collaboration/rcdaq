@@ -77,6 +77,11 @@ void showHelp()
 
   std::cout << "   daq_webcontrol <port number>         restart web controls on a new port (default 8080)" << std::endl;
   std::cout << std::endl; 
+
+  std::cout << "   daq_open_sqlstream <string>          open a stream to issue SQL commands and enable this" << std::endl;
+  std::cout << "   daq_close_sqlstream                  close a SQL stream" << std::endl;
+  std::cout << std::endl; 
+
   std::cout << "   elog elog-server port                specify coordinates for an Elog server" << std::endl;
   std::cout << std::endl; 
   std::cout << "   daq_shutdown                         terminate the rcdaq backend" << std::endl;
@@ -682,6 +687,35 @@ int command_execute( int argc, char **argv)
 
       ab.action = DAQ_SETEVENTFORMAT;
       ab.ipar[0] = get_value(argv[optind + 1]);
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+  else if ( strcasecmp(command,"daq_open_sqlstream") == 0)
+    {
+      if ( argc != optind + 2) return -1;
+
+      ab.action = DAQ_OPENSQLSTREAM;
+      ab.spar = argv[optind + 1];
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+  else if ( strcasecmp(command,"daq_close_sqlstream") == 0)
+    {
+
+      ab.action = DAQ_CLOSESQLSTREAM;
 
       r = r_action_1(&ab, clnt);
       if (r == (shortResult *) NULL) 

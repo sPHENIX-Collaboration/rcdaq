@@ -46,6 +46,9 @@
 
 #define DAQ_SETEVENTFORMAT     132
 
+#define DAQ_OPENSQLSTREAM         133
+#define DAQ_CLOSESQLSTREAM        134
+
 #define DAQ_DEVICE_RANDOM         1001
 #define DAQ_DEVICE_FILE           1002
 #define DAQ_DEVICE_TSPMPROTO      1003

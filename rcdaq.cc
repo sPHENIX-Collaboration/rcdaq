@@ -1,16 +1,17 @@
 //#define WRITEPRDF
 
-#include <pthread.h>
+#include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
+
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <signal.h>
 #include <limits.h>
 
+#include <pthread.h>
 
-#include <stdio.h>
 #include <iostream>
 #include <iomanip>
 
@@ -95,6 +96,7 @@ using namespace std;
 static std::map<string,string> RunTypes;
 
 static std::string TheFileRule = "rcdaq-%08d-%04d.evt";
+static std::string TheRunType = " ";
 static std::string CurrentFilename = "";
 static std::string PreviousFilename = "";
 
@@ -112,6 +114,10 @@ static int file_is_open = 0;
 static int server_is_open = 0;
 static int current_filesequence = 0;
 static int outfile_fd;
+
+static std::string sqlfile="";
+static int sql_fd = 0;
+
 
 static int CurrentEventType = 0;
 
@@ -471,6 +477,14 @@ int open_file(const int run_number, int *fd)
 
   file_is_open =1;
 
+  int sfd = get_sqlfd();
+  if ( sfd)
+    {
+      std::ostringstream out;
+      out << "insert into $FILETABLE values (" << TheRun << ",\'" << CurrentFilename << "\');" << std::endl;
+      write (sfd, out.str().c_str(), out.str().size());
+    }
+  
   return 0;
 }
 
@@ -826,7 +840,37 @@ int daq_set_name(const char *name)
   return 0;
 }
 
+int daq_open_sqlstream(const char *sqlname)
+{
+  //  int ifd =  open(sqlname, O_WRONLY | O_APPEND | S_IRWXU | S_IROTH | S_IRGRP );
+  int ifd =  open(sqlname, O_WRONLY | O_CREAT | O_APPEND );
+  if (ifd < 0) 
+    {
+      pthread_mutex_lock(&M_cout);
+      cout << " error opening file " << sqlname << endl;
+      perror ( sqlname);
+      pthread_mutex_unlock(&M_cout);
 
+      return -1;
+    }
+
+  sql_fd = ifd;
+  sqlfile = sqlname;
+  return 0;
+}
+
+int daq_close_sqlstream()
+{
+  if ( sql_fd > 0) close (sql_fd);
+  sql_fd = 0;
+  sqlfile.clear();
+  return 0;
+}
+
+int get_sqlfd()
+{
+  return sql_fd;
+}
 
 
 
@@ -840,6 +884,7 @@ int daq_setruntype(const char *type, std::ostream& os )
       if ( iter->first == _type )
 	{
 	  TheFileRule = iter->second;
+	  TheRunType = _type;
 	  return 0;
 	}
     }
@@ -1093,6 +1138,8 @@ int daq_begin(const int irun, std::ostream& os)
 	      return -1;
 	    }
 	}
+
+      
     }
 
 
@@ -1160,6 +1207,23 @@ int daq_begin(const int irun, std::ostream& os)
       setenv ( "DAQ_FILENAME", CurrentFilename.c_str() , 1);
     }
 
+  if ( daq_open_flag )
+    {
+      int sfd = get_sqlfd();
+      if ( sfd)
+	{
+	  std::ostringstream out;
+	  out << "insert into $RUNTABLE values (" << TheRun
+	      << ",\'" << TheRunType << ",\'"
+	      << ",to_timestamp(" << StartTime << ")"
+	      << "," << StartTime
+	      << ");" << std::endl;
+	  write (sfd, out.str().c_str(), out.str().size());
+	}
+    }
+
+
+  
   fillBuffer->prepare_next(Buffer_number,TheRun);
 
   run_volume = 0;
@@ -1266,6 +1330,14 @@ int daq_end(std::ostream& os)
 	  outfile_fd = 0;
 	}
       file_is_open = 0;
+
+      int sfd = get_sqlfd();
+      if ( sfd)
+	{
+	  std::ostringstream out;
+	  out << "update $RUNTABLE set eventsinrun=" << Event_number << " where runnumber=" << TheRun << ";" << std::endl;
+	  write (sfd, out.str().c_str(), out.str().size());
+	}
 
     } 
 
@@ -1954,10 +2026,7 @@ int daq_status( const int flag, std::ostream& os)
 	{
 	  os << "  File rollover: " << RolloverLimit << "GB";
 	}
-      //      else    --- don't say anything when not in effect
-      //	{
-      //	  os << "  File rollover disabled" << endl;
-      //	}
+
 
       os<< endl;
 
@@ -2082,6 +2151,10 @@ int daq_status( const int flag, std::ostream& os)
       	{
       	  os << "  Elog: not defined" << endl;
       	}
+      if (get_sqlfd())
+	{
+	  os << "  SQL stream:     " << sqlfile << endl;  
+	}
 
       daq_status_runtypes ( os);
       daq_status_plugin(flag, os);
