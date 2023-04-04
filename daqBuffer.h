@@ -6,6 +6,8 @@
 #include <EventTypes.h>
 #include <daqEvent.h>
 #include <BufferConstants.h>
+#include "md5.h"
+
 #include <arpa/inet.h>
 
 
@@ -28,7 +30,7 @@ public:
   //** Constructors
 
   daqBuffer(const int irun = 1, const int length = 8*1024*1024+2*8192
-	 , const int iseq = 1);
+	    , const int iseq = 1,   md5_state_t *md5state = 0);
 
   virtual ~daqBuffer();
 
@@ -65,6 +67,9 @@ public:
   int setEventFormat(const int f);
   int getEventFormat() const {return format;};
 
+  // MD5 checksum business
+  void setMD5State( md5_state_t *md5state) {_md5state = md5state;};
+  md5_state_t * getMD5State() const {return _md5state;};
 
 protected:
 
@@ -89,7 +94,9 @@ protected:
   int format;
 
   int currentBufferID;
-  
+
+  md5_state_t *_md5state;
+
 };
 
 #endif

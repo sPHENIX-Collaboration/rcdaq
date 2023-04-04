@@ -1,6 +1,5 @@
 
 
-
 #include <iostream>
 #include <iomanip>
 #include <getopt.h>
@@ -80,6 +79,9 @@ void showHelp()
 
   std::cout << "   daq_open_sqlstream <string>          open a stream to issue SQL commands and enable this" << std::endl;
   std::cout << "   daq_close_sqlstream                  close a SQL stream" << std::endl;
+  std::cout << std::endl; 
+
+  std::cout << "   daq_set_runcontrolmode n             swiitch to Run Control Mode (1=on, 0=off)" << std::endl;
   std::cout << std::endl; 
 
   std::cout << "   elog elog-server port                specify coordinates for an Elog server" << std::endl;
@@ -686,6 +688,22 @@ int command_execute( int argc, char **argv)
       if ( argc < optind + 2) return -1;
 
       ab.action = DAQ_SETEVENTFORMAT;
+      ab.ipar[0] = get_value(argv[optind + 1]);
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+  else if ( strcasecmp(command,"daq_set_runcontrolmode") == 0)
+    {
+      if ( argc < optind + 2) return -1;
+
+      ab.action = DAQ_SET_RUNCONTROLMODE;
       ab.ipar[0] = get_value(argv[optind + 1]);
 
       r = r_action_1(&ab, clnt);

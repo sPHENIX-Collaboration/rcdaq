@@ -46,6 +46,7 @@
 
 #include "rcdaq.h"
 #include "rcdaq_rpc.h"
+#include "md5.h"
 
 
 int open_file_on_server(const int run_number);
@@ -55,6 +56,9 @@ int server_send_beginrun_sequence(const char * filename, const int runnumber, in
 int server_send_rollover_sequence(const char * filename, int fd);
 int server_send_endrun_sequence(int fd);
 int server_send_close_sequence(int fd);
+int update_fileSQLinfo();
+
+int daq_setRunControlMode(const int flag);   // 0=no, 1 = yes
 
 void * mg_server (void *arg);
 int mg_end();
@@ -118,7 +122,10 @@ static int outfile_fd;
 static std::string sqlfile="";
 static int sql_fd = 0;
 
+static md5_state_t md5state;
 
+
+static int RunControlMode = 0;
 static int CurrentEventType = 0;
 
 static ElogHandler *ElogH =0;
@@ -302,6 +309,17 @@ int daq_setmaxvolume (const int n_mb, std::ostream& os)
 
 }
 
+int daq_setRunControlMode(const int flag, std::ostream& os)
+{
+  if ( DAQ_RUNNING ) 
+    {
+      os << "Run is active" << endl;
+      return -1;
+    }
+  if (flag) RunControlMode = 1;
+  else RunControlMode = 0;
+  return 0;
+}
 
 int daq_setrolloverlimit (const int n_gb, std::ostream& os)
 {
@@ -474,6 +492,7 @@ int open_file(const int run_number, int *fd)
   *fd = ifd;
   CurrentFilename = d;
   PreviousFilename = CurrentFilename;
+  md5_init(&md5state);
 
   file_is_open =1;
 
@@ -481,7 +500,12 @@ int open_file(const int run_number, int *fd)
   if ( sfd)
     {
       std::ostringstream out;
-      out << "insert into $FILETABLE values (" << TheRun << ",\'" << CurrentFilename << "\');" << std::endl;
+      out << "insert into $FILETABLE values (" << TheRun
+	  << ",\'" << CurrentFilename << "\'"
+	  << ","   << current_filesequence
+	  << ","   << Event_number
+	  << ");"
+	  << std::endl;
       write (sfd, out.str().c_str(), out.str().size());
     }
   
@@ -742,6 +766,8 @@ int switch_buffer()
   spare = transportBuffer;
   transportBuffer = fillBuffer;
   fillBuffer = spare;
+
+  //+++
   fillBuffer->prepare_next(++Buffer_number, TheRun);
 
 
@@ -753,10 +779,10 @@ int switch_buffer()
       
       if ( blength + BytesInThisFile > RolloverLimit * 1024 * 1024 * 1024) 
 	{
-	  current_filesequence++;
 	  if ( daq_server_flag)
 	    {
 
+	      current_filesequence++;
 	      static char d[1024];
 	      sprintf( d, TheFileRule.c_str(),
 		       TheRun, current_filesequence);
@@ -769,6 +795,9 @@ int switch_buffer()
 	  else   // not server
 	    {
 	      close(outfile_fd);
+	      update_fileSQLinfo();
+	      current_filesequence++;
+
 	      file_is_open = 0;
 	      int status = open_file ( TheRun, &outfile_fd);
 	      if (status)
@@ -1086,6 +1115,14 @@ int daq_begin(const int irun, std::ostream& os)
   DAQ_RUNNING = 1;
   current_filesequence = 0;
   
+  // if we are in run Control mode, we don't allow automatic run numbers
+
+  if ( RunControlMode &&  irun ==0 )
+    {
+      os << MyHostName << " No automtatic Run Numbers in Run Contol Mode" << endl;;
+      return -1;
+    }
+  
   if (  irun ==0)
     {
       TheRun++;
@@ -1095,6 +1132,8 @@ int daq_begin(const int irun, std::ostream& os)
       TheRun = irun;
     }
 
+
+  
   if ( daq_open_flag)
     {
       if ( daq_server_flag)
@@ -1210,11 +1249,11 @@ int daq_begin(const int irun, std::ostream& os)
   if ( daq_open_flag )
     {
       int sfd = get_sqlfd();
-      if ( sfd)
+      if ( sfd && RunControlMode == 0)
 	{
 	  std::ostringstream out;
 	  out << "insert into $RUNTABLE values (" << TheRun
-	      << ",\'" << TheRunType << ",\'"
+	      << ",\'" << TheRunType << "\'"
 	      << ",to_timestamp(" << StartTime << ")"
 	      << "," << StartTime
 	      << ");" << std::endl;
@@ -1222,7 +1261,8 @@ int daq_begin(const int irun, std::ostream& os)
 	}
     }
 
-
+  // we are opening a new file here, so we restart the MD5 calculation 
+  md5_init(&md5state);
   
   fillBuffer->prepare_next(Buffer_number,TheRun);
 
@@ -1327,12 +1367,13 @@ int daq_end(std::ostream& os)
       else
 	{
 	  close (outfile_fd);
+	  update_fileSQLinfo();
 	  outfile_fd = 0;
 	}
       file_is_open = 0;
 
       int sfd = get_sqlfd();
-      if ( sfd)
+      if ( sfd && RunControlMode == 0)
 	{
 	  std::ostringstream out;
 	  out << "update $RUNTABLE set eventsinrun=" << Event_number << " where runnumber=" << TheRun << ";" << std::endl;
@@ -1836,6 +1877,10 @@ int rcdaq_init( pthread_mutex_t &M)
 
   outfile_fd = 0;
 
+  // we give the buffers our state variable
+  Buffer1.setMD5State(&md5state);
+  Buffer2.setMD5State(&md5state);
+  
   fillBuffer = &Buffer1;
   transportBuffer = &Buffer2;
 
@@ -2122,6 +2167,11 @@ int daq_status( const int flag, std::ostream& os)
 	    }
 	  if ( TriggerH ) os << "  have a trigger object" << endl;
 	}
+      if (RunControlMode)
+	{
+	  os << "  Run Control Mode enabled  " << endl;
+	}
+
       os << "  Buffer Sizes:     " <<  Buffer1.getMaxSize()/1024 << " KB";
       if ( adaptivebuffering) 
 	{
@@ -2404,6 +2454,31 @@ int server_send_close_sequence(int fd)
   opcode = htonl(CTRL_CLOSE);
   status = writen (fd, (char *)&opcode, sizeof(int) );
   if ( status != sizeof(int)) return -1;
+  
+  return 0;
+}
+
+int update_fileSQLinfo()
+{
+  int sfd = get_sqlfd();
+  md5_byte_t md5_digest[16];  
+  char digest_string[33];
+
+  if ( sfd)
+    {
+      md5_finish(&md5state, md5_digest);
+      for ( int i=0; i< 16; i++) 
+	{
+	  sprintf ( &digest_string[2*i], "%02x",  md5_digest[i]);
+	}
+      digest_string[32] = 0;
+  
+      std::ostringstream out;
+      out << "update $FILETABLE set md5sum=\'" << digest_string << "\'"
+	  << ",lastevent=" << Event_number 
+	  << " where runnumber=" << TheRun << " and filename=\'" << CurrentFilename << "\';" << std::endl;
+      write (sfd, out.str().c_str(), out.str().size());
+    }
   
   return 0;
 }
