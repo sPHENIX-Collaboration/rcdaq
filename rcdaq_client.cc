@@ -1,6 +1,5 @@
 
 
-
 #include <iostream>
 #include <iomanip>
 #include <getopt.h>
@@ -62,6 +61,7 @@ void showHelp()
   std::cout << "   daq_set_maxevents nevt               set automatic end at so many events" << std::endl;
   std::cout << "   daq_set_maxvolume n_MB               set automatic end at n_MB MegaByte" << std::endl;
   std::cout << "   daq_set_rolloverlimit n_GB           set file rollover limit at n_BG GigaByte" << std::endl;
+  std::cout << "   daq_set_eventformat n                dynamically switch from standard (0) to legacy header format (1)" << std::endl;
   std::cout << std::endl; 
 
   std::cout << "   load  shared_library_name            load a \"plugin\" shared library" << std::endl;
@@ -76,6 +76,14 @@ void showHelp()
 
   std::cout << "   daq_webcontrol <port number>         restart web controls on a new port (default 8080)" << std::endl;
   std::cout << std::endl; 
+
+  std::cout << "   daq_open_sqlstream <string>          open a stream to issue SQL commands and enable this" << std::endl;
+  std::cout << "   daq_close_sqlstream                  close a SQL stream" << std::endl;
+  std::cout << std::endl; 
+
+  std::cout << "   daq_set_runcontrolmode n             swiitch to Run Control Mode (1=on, 0=off)" << std::endl;
+  std::cout << std::endl; 
+
   std::cout << "   elog elog-server port                specify coordinates for an Elog server" << std::endl;
   std::cout << std::endl; 
   std::cout << "   daq_shutdown                         terminate the rcdaq backend" << std::endl;
@@ -214,8 +222,6 @@ int command_execute( int argc, char **argv)
     }
 
   
-  //  std::cout << "Server number is " << servernumber << std::endl;
-
   char lh[] = "localhost";
   char *host = lh;
     
@@ -223,6 +229,14 @@ int command_execute( int argc, char **argv)
     {
       host = getenv("RCDAQHOST");
     }
+
+  if ( getenv("RCDAQSERVERNUMBER")  )
+    {
+      servernumber = atoi(getenv("RCDAQSERVERNUMBER"));
+    }
+
+  //  std::cout << "Server number is " << servernumber << std::endl;
+
   
   rcdaq_client_Init (host,servernumber);
   
@@ -669,6 +683,68 @@ int command_execute( int argc, char **argv)
  
     }
 
+  else if ( strcasecmp(command,"daq_set_eventformat") == 0)
+    {
+      if ( argc < optind + 2) return -1;
+
+      ab.action = DAQ_SETEVENTFORMAT;
+      ab.ipar[0] = get_value(argv[optind + 1]);
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+  else if ( strcasecmp(command,"daq_set_runcontrolmode") == 0)
+    {
+      if ( argc < optind + 2) return -1;
+
+      ab.action = DAQ_SET_RUNCONTROLMODE;
+      ab.ipar[0] = get_value(argv[optind + 1]);
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+  else if ( strcasecmp(command,"daq_open_sqlstream") == 0)
+    {
+      if ( argc != optind + 2) return -1;
+
+      ab.action = DAQ_OPENSQLSTREAM;
+      ab.spar = argv[optind + 1];
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+  else if ( strcasecmp(command,"daq_close_sqlstream") == 0)
+    {
+
+      ab.action = DAQ_CLOSESQLSTREAM;
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+  
   else if ( strcasecmp(command,"elog") == 0)
     {
 

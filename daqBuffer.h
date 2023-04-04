@@ -6,6 +6,8 @@
 #include <EventTypes.h>
 #include <daqEvent.h>
 #include <BufferConstants.h>
+#include "md5.h"
+
 #include <arpa/inet.h>
 
 
@@ -28,7 +30,7 @@ public:
   //** Constructors
 
   daqBuffer(const int irun = 1, const int length = 8*1024*1024+2*8192
-	 , const int iseq = 1);
+	    , const int iseq = 1,   md5_state_t *md5state = 0);
 
   virtual ~daqBuffer();
 
@@ -38,10 +40,10 @@ public:
   int prepare_next( const int iseq, const int irun =-1);
 
   // subevent adding
-  int addSubevent( daq_device *);
+  unsigned int addSubevent( daq_device *);
 
   //  add end-of-buffer
-  int addEoB();
+  unsigned int addEoB();
 
   // now the write routine
   unsigned int writeout ( int fd);
@@ -60,17 +62,20 @@ public:
 
   // and the query
   int getBufSeq () const { return bptr->Bufseq; } ;
-  int getLength () const { return bptr->Length; } ;
+  unsigned int getLength () const { return bptr->Length; } ;
 
   int setEventFormat(const int f);
   int getEventFormat() const {return format;};
 
+  // MD5 checksum business
+  void setMD5State( md5_state_t *md5state) {_md5state = md5state;};
+  md5_state_t * getMD5State() const {return _md5state;};
 
 protected:
 
   typedef struct 
   { 
-    int Length;
+    unsigned int Length;
     int ID;
     int Bufseq;
     int Runnr;
@@ -89,7 +94,9 @@ protected:
   int format;
 
   int currentBufferID;
-  
+
+  md5_state_t *_md5state;
+
 };
 
 #endif

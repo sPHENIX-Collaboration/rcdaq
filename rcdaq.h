@@ -67,6 +67,11 @@ int daq_set_name(const char *name);
 int daq_get_name(std::ostream& os = std::cout);
 std::string daq_get_myname();
 
+int daq_open_sqlstream(const char *name);
+int daq_close_sqlstream();
+int get_sqlfd();
+
+
 double daq_get_mb_per_second();
 double daq_get_events_per_second();
 
@@ -107,6 +112,10 @@ int get_eventnumber();
 double get_runvolume();
 int get_runduration();
 int get_openflag();
+
+int daq_setEventFormat(const int f, std::ostream& os = std::cout );
+int daq_getEventFormat();
+int daq_setRunControlMode ( const int flag, std::ostream& os = std::cout );
 
 #define MG_REQUEST_NAME 1
 #define MG_REQUEST_SPEED 2

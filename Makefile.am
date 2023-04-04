@@ -45,6 +45,7 @@ noinst_HEADERS = \
   daq_device_command.h \
   daq_device_rtclock.h \
   mongoose.h \
+  md5.h \
   all.h
 
 include_HEADERS =  \
@@ -87,6 +88,7 @@ librcdaq_la_SOURCES = rcdaq.cc \
   daq_device.cc \
   rcdaq_mg_server.cc \
   mongoose.cc \
+  md5.cc \
   parseargument.cc
 
 

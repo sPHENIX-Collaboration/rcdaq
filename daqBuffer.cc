@@ -18,7 +18,7 @@ int writen (int fd, char *ptr, const int nbytes);
 
 // the constructor first ----------------
 daqBuffer::daqBuffer (const int irun, const int length
-		, const int iseq)
+		      , const int iseq, md5_state_t *md5state)
 {
   int *b = new int [length];
   bptr = ( buffer_ptr ) b;
@@ -33,7 +33,8 @@ daqBuffer::daqBuffer (const int irun, const int length
   // preset everything to ONCS format
   format=DAQONCSFORMAT;
   currentBufferID = ONCSBUFFERHEADER;
-
+  _md5state = md5state;
+  
   prepare_next (iseq, irun);
 }
 
@@ -65,6 +66,8 @@ int daqBuffer::prepare_next( const int iseq
   current_index = 0;
   left = max_size - BUFFERHEADERLENGTH - EOBLENGTH; 
   has_end = 0;
+
+  
   return 0;
 }
 
@@ -101,9 +104,9 @@ int daqBuffer::nextEvent(const int etype, const int evtseq, const int evtsize)
 }
 
 // ----------------------------------------------------------
-int daqBuffer::addSubevent( daq_device *dev)
+unsigned int daqBuffer::addSubevent( daq_device *dev)
 {
-  int len;
+  unsigned int len;
 
   len = current_event->addSubevent(current_etype, dev);
 
@@ -115,7 +118,7 @@ int daqBuffer::addSubevent( daq_device *dev)
 }
 
 // ----------------------------------------------------------
-int daqBuffer::addEoB()
+unsigned int daqBuffer::addEoB()
 {
   if (has_end) return -1;
   bptr->data[current_index++] = 2;  
@@ -147,6 +150,11 @@ unsigned int daqBuffer::writeout ( int fd)
   int blockcount = ( getLength() + 8192 -1)/8192;
   int bytecount = blockcount*8192;
   bytes = writen ( fd, (char *) bptr , bytecount );
+  if ( _md5state)
+    {
+      //cout << __FILE__ << " " << __LINE__ << " updating md5  with " << bytes << " bytes" << endl; 
+      md5_append(_md5state, (const md5_byte_t *)bptr,bytes );
+    }
   return bytes;
 }
 
