@@ -14,6 +14,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 
 #include <errno.h>
 #include <string.h>
