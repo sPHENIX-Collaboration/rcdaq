@@ -59,7 +59,6 @@ int server_send_endrun_sequence(int fd);
 int server_send_close_sequence(int fd);
 int update_fileSQLinfo();
 
-int daq_setRunControlMode(const int flag);   // 0=no, 1 = yes
 
 void * mg_server (void *arg);
 int mg_end();
@@ -379,6 +378,12 @@ int daq_setEventFormat(const int f, std::ostream& os )
 int daq_getEventFormat()
 {
   return Buffer1.getEventFormat();
+}
+
+int daq_getRunControlMode(std::ostream& os)
+{
+  os << RunControlMode << endl;
+  return 0;
 }
 
 // elog server setup
@@ -846,6 +851,7 @@ int daq_set_runnumberfile(const char *file)
 int daq_write_runnumberfile(const int run)
 {
   if ( !RunnumberfileIsSet ) return 1;
+  if ( RunControlMode ) return 1;
 
   FILE *fp = fopen(TheRunnumberfile.c_str(), "w");
   if (fp )
@@ -873,15 +879,16 @@ int daq_set_name(const char *name)
 int daq_open_sqlstream(const char *sqlname)
 {
   //  int ifd =  open(sqlname, O_WRONLY | O_APPEND | S_IRWXU | S_IROTH | S_IRGRP );
-  int ifd =  open(sqlname, O_WRONLY | O_CREAT | O_APPEND );
+  int ifd =  open(sqlname, O_WRONLY | O_APPEND );
   if (ifd < 0) 
     {
       pthread_mutex_lock(&M_cout);
       cout << " error opening file " << sqlname << endl;
       perror ( sqlname);
       pthread_mutex_unlock(&M_cout);
+      ifd =  open(sqlname, O_WRONLY | O_CREAT);
 
-      return -1;
+      if ( ifd < 0) return -1;
     }
 
   sql_fd = ifd;
@@ -1103,6 +1110,12 @@ int daq_begin(const int irun, std::ostream& os)
       return -1;
     }
 
+  if ( RunControlMode &&  irun ==0 )
+    {
+      os << MyHostName << " No automatic Run Numbers in Run Contol Mode" << endl;;
+      return -1;
+    }
+  
   if ( persistentErrorCondition)
     {
       os << MyHostName << "*** Previous error with server connection" << endl;;
@@ -1118,12 +1131,6 @@ int daq_begin(const int irun, std::ostream& os)
   
   // if we are in run Control mode, we don't allow automatic run numbers
 
-  if ( RunControlMode &&  irun ==0 )
-    {
-      os << MyHostName << " No automtatic Run Numbers in Run Contol Mode" << endl;;
-      return -1;
-    }
-  
   if (  irun ==0)
     {
       TheRun++;

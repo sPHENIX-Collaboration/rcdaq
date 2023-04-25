@@ -819,6 +819,16 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       return &result;
       break;
 
+    case DAQ_GET_RUNCONTROLMODE:
+      result.status = daq_getRunControlMode (outputstream);
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
     default:
       strcpy(resultstring, "Unknown action");
       result.content = 1;

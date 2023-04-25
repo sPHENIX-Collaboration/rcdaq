@@ -116,6 +116,7 @@ int get_openflag();
 int daq_setEventFormat(const int f, std::ostream& os = std::cout );
 int daq_getEventFormat();
 int daq_setRunControlMode ( const int flag, std::ostream& os = std::cout );
+int daq_getRunControlMode (std::ostream& os = std::cout);
 
 #define MG_REQUEST_NAME 1
 #define MG_REQUEST_SPEED 2
