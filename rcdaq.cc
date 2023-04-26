@@ -814,10 +814,12 @@ int switch_buffer()
 	  else   // not server
 	    {
 	      close(outfile_fd);
-	      update_fileSQLinfo();
-	      current_filesequence++;
-
 	      file_is_open = 0;
+
+	      current_filesequence++;
+	      update_fileSQLinfo();
+
+	      Event_number_at_last_open = Event_number_at_last_write +1;
 	      int status = open_file ( TheRun, &outfile_fd);
 	      if (status)
 		{
@@ -830,7 +832,6 @@ int switch_buffer()
 	  //      << " limit: " << RolloverLimit
 	  //      << " now: " << CurrentFilename 
 	  //      << endl;
-	  Event_number_at_last_open = Event_number_at_last_write +1;
 	  BytesInThisFile = 0;
 	}
     }
