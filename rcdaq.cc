@@ -163,6 +163,7 @@ int TheRun = 0;
 time_t StartTime = 0;
 int Buffer_number;
 int Event_number;
+int Event_number_at_file_open = 0;
 
 
 int update_delta;
@@ -501,7 +502,8 @@ int open_file(const int run_number, int *fd)
   md5_init(&md5state);
 
   file_is_open =1;
-
+  Event_number_at_file_open = Event_number;
+  
   int sfd = get_sqlfd();
   if ( sfd)
     {
@@ -1140,6 +1142,14 @@ int daq_begin(const int irun, std::ostream& os)
       TheRun = irun;
     }
 
+  //initialize the Buffer and event number
+  Buffer_number = 1;
+  Event_number  = 1;
+  Event_number_at_file_open =0;
+  
+  // initialize the run/file volume
+  BytesInThisRun = 0;    // bytes actually written
+  BytesInThisFile = 0;
 
   
   if ( daq_open_flag)
@@ -1189,15 +1199,6 @@ int daq_begin(const int irun, std::ostream& os)
       
     }
 
-
-
-  //initialize the Buffer and event number
-  Buffer_number = 1;
-  Event_number  = 1;
-
-  // initialize the run/file volume
-  BytesInThisRun = 0;    // bytes actually written
-  BytesInThisFile = 0;
 
 
   // just to be safe, clear the "end requested" bit
@@ -1399,6 +1400,7 @@ int daq_end(std::ostream& os)
   unsetenv ("DAQ_STARTTIME");
 
   Event_number = 0;
+  Event_number_at_file_open = 0;
   run_volume = 0;    // volume in longwords 
   BytesInThisRun = 0;    // bytes actually written
   BytesInThisFile = 0;
@@ -2484,7 +2486,9 @@ int update_fileSQLinfo()
       std::ostringstream out;
       out << "update $FILETABLE set md5sum=\'" << digest_string << "\'"
 	  << ",lastevent=" << Event_number 
-	  << " where runnumber=" << TheRun << " and filename=\'" << CurrentFilename << "\';" << std::endl;
+	  << ",events=" << Event_number - Event_number_at_file_open +1 
+	  << " where runnumber=" << TheRun
+	  << " and filename=\'" << CurrentFilename << "\';" << std::endl;
       write (sfd, out.str().c_str(), out.str().size());
     }
   
