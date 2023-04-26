@@ -897,10 +897,10 @@ int daq_open_sqlstream(const char *sqlname)
   int ifd =  open(sqlname, O_WRONLY | O_APPEND );
   if (ifd < 0) 
     {
-      pthread_mutex_lock(&M_cout);
+      //pthread_mutex_lock(&M_cout);
       cout << " error opening file " << sqlname << endl;
       perror ( sqlname);
-      pthread_mutex_unlock(&M_cout);
+      //pthread_mutex_unlock(&M_cout);
       ifd =  open(sqlname, O_WRONLY | O_CREAT);
 
       if ( ifd < 0) return -1;
