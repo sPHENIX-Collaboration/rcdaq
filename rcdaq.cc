@@ -2500,7 +2500,7 @@ int update_fileSQLinfo()
       std::ostringstream out;
       out << "update $FILETABLE set md5sum=\'" << digest_string << "\'"
 	  << ",lastevent=" << Event_number_at_last_write -1
-	  << ",events=" << Event_number_at_last_write - Event_number_at_last_open +1 
+	  << ",events=" << Event_number_at_last_write - Event_number_at_last_open  
 	  << " where runnumber=" << TheRun
 	  << " and filename=\'" << CurrentFilename << "\';" << std::endl;
       write (sfd, out.str().c_str(), out.str().size());
