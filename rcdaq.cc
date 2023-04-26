@@ -163,7 +163,8 @@ int TheRun = 0;
 time_t StartTime = 0;
 int Buffer_number;
 int Event_number;
-int Event_number_at_file_open = 0;
+int Event_number_at_last_open = 0;
+int Event_number_at_last_write = 0;
 
 
 int update_delta;
@@ -502,7 +503,16 @@ int open_file(const int run_number, int *fd)
   md5_init(&md5state);
 
   file_is_open =1;
-  Event_number_at_file_open = Event_number;
+  
+  // this is tricky. If we open the very first file, we latch in this event number.
+  // but if we need to roll over, we find that out when the current buffer is written,
+  // and the event nr is what's in this buffer, not the last written buffer.
+  // only for the real start this is right:
+  if (current_filesequence == 0)
+    {
+      Event_number_at_last_open = Event_number;
+      Event_number_at_last_write = Event_number;
+    }
   
   int sfd = get_sqlfd();
   if ( sfd)
@@ -787,6 +797,7 @@ int switch_buffer()
       
       if ( blength + BytesInThisFile > RolloverLimit * 1024 * 1024 * 1024) 
 	{
+
 	  if ( daq_server_flag)
 	    {
 
@@ -819,11 +830,12 @@ int switch_buffer()
 	  //      << " limit: " << RolloverLimit
 	  //      << " now: " << CurrentFilename 
 	  //      << endl;
+	  Event_number_at_last_open = Event_number_at_last_write +1;
 	  BytesInThisFile = 0;
 	}
     }
   
-  
+  Event_number_at_last_write = Event_number;
   pthread_mutex_unlock(&WriteSem);
   pthread_mutex_unlock(&SendSem);
   return 0;
@@ -1145,8 +1157,9 @@ int daq_begin(const int irun, std::ostream& os)
   //initialize the Buffer and event number
   Buffer_number = 1;
   Event_number  = 1;
-  Event_number_at_file_open =0;
-  
+  Event_number_at_last_write = 0;
+  Event_number_at_last_open = 0;
+
   // initialize the run/file volume
   BytesInThisRun = 0;    // bytes actually written
   BytesInThisFile = 0;
@@ -1400,7 +1413,7 @@ int daq_end(std::ostream& os)
   unsetenv ("DAQ_STARTTIME");
 
   Event_number = 0;
-  Event_number_at_file_open = 0;
+  Event_number_at_last_write = 0;
   run_volume = 0;    // volume in longwords 
   BytesInThisRun = 0;    // bytes actually written
   BytesInThisFile = 0;
@@ -2485,8 +2498,8 @@ int update_fileSQLinfo()
   
       std::ostringstream out;
       out << "update $FILETABLE set md5sum=\'" << digest_string << "\'"
-	  << ",lastevent=" << Event_number 
-	  << ",events=" << Event_number - Event_number_at_file_open +1 
+	  << ",lastevent=" << Event_number_at_last_write
+	  << ",events=" << Event_number_at_last_write - Event_number_at_last_open +1 
 	  << " where runnumber=" << TheRun
 	  << " and filename=\'" << CurrentFilename << "\';" << std::endl;
       write (sfd, out.str().c_str(), out.str().size());
