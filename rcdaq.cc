@@ -819,7 +819,7 @@ int switch_buffer()
 	      current_filesequence++;
 	      update_fileSQLinfo();
 
-	      Event_number_at_last_open = Event_number_at_last_write +1;
+	      Event_number_at_last_open = Event_number_at_last_write;
 	      int status = open_file ( TheRun, &outfile_fd);
 	      if (status)
 		{
