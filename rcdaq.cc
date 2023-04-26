@@ -521,7 +521,7 @@ int open_file(const int run_number, int *fd)
       out << "insert into $FILETABLE values (" << TheRun
 	  << ",\'" << CurrentFilename << "\'"
 	  << ","   << current_filesequence
-	  << ","   << Event_number
+	  << ","   << Event_number_at_last_open
 	  << ");"
 	  << std::endl;
       write (sfd, out.str().c_str(), out.str().size());
@@ -2498,7 +2498,7 @@ int update_fileSQLinfo()
   
       std::ostringstream out;
       out << "update $FILETABLE set md5sum=\'" << digest_string << "\'"
-	  << ",lastevent=" << Event_number_at_last_write
+	  << ",lastevent=" << Event_number_at_last_write -1
 	  << ",events=" << Event_number_at_last_write - Event_number_at_last_open +1 
 	  << " where runnumber=" << TheRun
 	  << " and filename=\'" << CurrentFilename << "\';" << std::endl;
