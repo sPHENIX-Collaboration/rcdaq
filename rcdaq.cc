@@ -1127,7 +1127,7 @@ int daq_begin(const int irun, std::ostream& os)
 
   if ( RunControlMode &&  irun ==0 )
     {
-      os << MyHostName << " No automatic Run Numbers in Run Contol Mode" << endl;;
+      os << MyHostName << " No automatic Run Numbers in Run Control Mode" << endl;;
       return -1;
     }
   
