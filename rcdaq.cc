@@ -9,6 +9,9 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <limits.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/file.h>
 
 #include <pthread.h>
 
@@ -74,6 +77,7 @@ pthread_mutex_t SendProtectSem;
 
 pthread_mutex_t FdManagementSem;
 
+char pidfilename[128];
 
 // those are the "todo" definitions. DAQ can be woken up by a trigger
 // and read something, or by a command and change its status.
@@ -227,6 +231,11 @@ int last_bufferwritetime  = 0;
 int persistentErrorCondition = 0;
 
 std::string MyHostName;
+
+char *obtain_pidfilename()
+{
+ return pidfilename;
+}
 
 int registerTriggerHandler ( TriggerHandler *th)
 {
@@ -566,12 +575,16 @@ void *shutdown_thread (void *arg)
   
   pthread_mutex_lock(&M_cout);
   cout << "shutting down... " <<  t_args[0] << "  " <<  t_args[1] << endl;
+  int pid_fd = t_args[2];
   TriggerControl = 0;
   if ( TriggerH) delete TriggerH;
   pthread_mutex_unlock(&M_cout);
   // unregister out service 
   svc_unregister ( t_args[0], t_args[1]);
 
+  flock(pid_fd, LOCK_UN);
+  unlink(pidfilename);
+  
   sleep(2);
   exit(0);
 }
@@ -1748,7 +1761,7 @@ int server_open_Connection()
 }
 
 
-int daq_shutdown(const unsigned long servernumber, const unsigned long versionnumber,
+int daq_shutdown(const unsigned long servernumber, const unsigned long versionnumber, const int pid_fd,
 		 std::ostream& os)
 {
 
@@ -1763,9 +1776,10 @@ int daq_shutdown(const unsigned long servernumber, const unsigned long versionnu
       daq_close(std::cout);
     }
   
-  static unsigned long  t_args[2];
+  static unsigned long  t_args[3];
   t_args[0] = servernumber;
   t_args[1] = versionnumber;
+  t_args[3] = pid_fd;
 
   
   pthread_t t;

@@ -17,6 +17,7 @@ void *EventLoop( void *arg);
 //int daq_end();
 int Command( const int command);
 
+char * obtain_pidfilename();
 
 int switch_buffer();
 int device_init();
@@ -51,7 +52,7 @@ std::string& daq_get_filerule();
 
 
 int daq_open(std::ostream& os = std::cout);
-int daq_shutdown(const unsigned long servernumber, const unsigned long versionnumber,
+int daq_shutdown(const unsigned long servernumber, const unsigned long versionnumber, const int pid_fd,
 		 std::ostream& os = std::cout);
 std::string& get_current_filename();
 int daq_close (std::ostream& os = std::cout);
