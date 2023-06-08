@@ -23,7 +23,7 @@ AS_IF([test "x$enable_WRITEPRDF" = "xyes"], [AC_DEFINE_UNQUOTED([WRITEPRDF],[1])
 
 
 
-CXXFLAGS=" -g -O2"
+AM_CXXFLAGS=" -g -O2"
 
 
 AC_OUTPUT(Makefile)
