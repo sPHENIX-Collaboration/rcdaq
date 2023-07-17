@@ -562,14 +562,29 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       daq_set_name(ab->spar);
       break;
 
-    case DAQ_OPENSQLSTREAM:
-      daq_open_sqlstream(ab->spar);
+    case DAQ_SET_MQTT_HOST:
+      result.status = daq_set_mqtt_host(ab->spar, ab->ipar[0], outputstream);
+      if ( result.status)
+	{
+	  outputstream.str().copy(resultstring,outputstream.str().size());
+	  resultstring[outputstream.str().size()] = 0;
+	  result.str = resultstring;
+	  result.content = 1;
+	}
+      pthread_mutex_unlock(&M_output);
+      return &result;
       break;
 
-    case DAQ_CLOSESQLSTREAM:
-      daq_close_sqlstream();
-      break;
 
+    case DAQ_GET_MQTT_HOST:
+      result.status = daq_get_mqtt_host(outputstream);
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
 
     case DAQ_SETRUNTYPE:
       result.status = daq_setruntype(ab->spar,outputstream);

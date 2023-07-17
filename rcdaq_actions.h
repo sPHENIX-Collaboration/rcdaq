@@ -46,12 +46,14 @@
 
 #define DAQ_SETEVENTFORMAT     132
 
-#define DAQ_OPENSQLSTREAM         133
-#define DAQ_CLOSESQLSTREAM        134
+//#define DAQ_OPENSQLSTREAM         133
+//#define DAQ_CLOSESQLSTREAM        134
 
 #define DAQ_SET_RUNCONTROLMODE       135
 #define DAQ_GET_RUNCONTROLMODE       136
 
+#define DAQ_SET_MQTT_HOST      137
+#define DAQ_GET_MQTT_HOST      138
 
 #define DAQ_DEVICE_RANDOM         1001
 #define DAQ_DEVICE_FILE           1002

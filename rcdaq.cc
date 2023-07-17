@@ -52,6 +52,11 @@
 #include "rcdaq_rpc.h"
 #include "md5.h"
 
+#ifdef HAVE_MOSQUITTO_H
+#include "MQTTConnection.h"
+#endif
+
+
 
 int open_file_on_server(const int run_number);
 int server_open_Connection();
@@ -60,8 +65,6 @@ int server_send_beginrun_sequence(const char * filename, const int runnumber, in
 int server_send_rollover_sequence(const char * filename, int fd);
 int server_send_endrun_sequence(int fd);
 int server_send_close_sequence(int fd);
-int update_fileSQLinfo();
-
 
 void * mg_server (void *arg);
 int mg_end();
@@ -123,8 +126,10 @@ static int server_is_open = 0;
 static int current_filesequence = 0;
 static int outfile_fd;
 
-static std::string sqlfile="";
-static int sql_fd = 0;
+
+MQTTConnection *mqtt = 0;
+std::string mqtt_host;
+int mqtt_port = 0;
 
 static md5_state_t md5state;
 
@@ -231,6 +236,7 @@ int last_bufferwritetime  = 0;
 int persistentErrorCondition = 0;
 
 std::string MyHostName;
+std::string shortHostName;
 
 char *obtain_pidfilename()
 {
@@ -522,19 +528,22 @@ int open_file(const int run_number, int *fd)
       Event_number_at_last_open = Event_number;
       Event_number_at_last_write = Event_number;
     }
+
+
+  daq_generate_json (0); // generate the "new file" report
   
-  int sfd = get_sqlfd();
-  if ( sfd)
-    {
-      std::ostringstream out;
-      out << "insert into $FILETABLE values (" << TheRun
-	  << ",\'" << CurrentFilename << "\'"
-	  << ","   << current_filesequence
-	  << ","   << Event_number_at_last_open
-	  << ");"
-	  << std::endl;
-      write (sfd, out.str().c_str(), out.str().size());
-    }
+// #ifdef HAVE_MOSQUITTO_H
+//   if (MQTT_enabled)
+//     {
+//       std::ostringstream out;
+//       out << "insert into $FILETABLE values (" << TheRun
+// 	  << ",\'" << CurrentFilename << "\'"
+// 	  << ","   << current_filesequence
+// 	  << ","   << Event_number_at_last_open
+// 	  << ");"
+// 	  << std::endl;
+//       write (sfd, out.str().c_str(), out.str().size());
+//     }
   
   return 0;
 }
@@ -830,7 +839,7 @@ int switch_buffer()
 	      file_is_open = 0;
 
 	      current_filesequence++;
-	      update_fileSQLinfo();
+	      daq_generate_json(1);
 
 	      Event_number_at_last_open = Event_number_at_last_write;
 	      int status = open_file ( TheRun, &outfile_fd);
@@ -904,37 +913,47 @@ int daq_set_name(const char *name)
   return 0;
 }
 
-int daq_open_sqlstream(const char *sqlname)
-{
-  //  int ifd =  open(sqlname, O_WRONLY | O_APPEND | S_IRWXU | S_IROTH | S_IRGRP );
-  int ifd =  open(sqlname, O_WRONLY | O_APPEND );
-  if (ifd < 0) 
-    {
-      //pthread_mutex_lock(&M_cout);
-      cout << " error opening file " << sqlname << endl;
-      perror ( sqlname);
-      //pthread_mutex_unlock(&M_cout);
-      ifd =  open(sqlname, O_WRONLY | O_CREAT);
 
-      if ( ifd < 0) return -1;
+int daq_set_mqtt_host(const char * host, const int port, std::ostream& os)
+{
+  std::cout << __FILE__ << "  " << __LINE__ <<  " mqtt host " << host << " port " << port << endl;
+  if (mqtt) delete mqtt;
+
+  if (strcasecmp(host, "None") == 0) // delete existing def
+    {
+      mqtt = 0;
+      mqtt_host = "";
+      mqtt_port = 0;
+      return 0;
     }
 
-  sql_fd = ifd;
-  sqlfile = sqlname;
+  mqtt_host = host;
+  mqtt = new MQTTConnection(mqtt_host, "rcdaq", port);
+  if ( mqtt->Status())
+    {
+      delete mqtt;
+      mqtt =0;
+      mqtt_host = "";
+      mqtt_port = 0;
+      os << "Could not connect to host " << host << " on port " << port << endl;
+      return 1;
+    }
+
+  mqtt_host = host;
+  mqtt_port = port;
+
   return 0;
 }
 
-int daq_close_sqlstream()
+int daq_get_mqtt_host(std::ostream& os)
 {
-  if ( sql_fd > 0) close (sql_fd);
-  sql_fd = 0;
-  sqlfile.clear();
+  if (!mqtt)
+    {
+      os << " No MQTT host defined" << endl;
+      return 1;
+    }
+  os << " Host " << mqtt->GetHostName() << " " << " port " << mqtt->GetPort() << endl; 
   return 0;
-}
-
-int get_sqlfd()
-{
-  return sql_fd;
 }
 
 
@@ -1100,7 +1119,7 @@ int daq_begin_immediate(const int irun, std::ostream& os)
 
   if ( DAQ_RUNNING ) 
     {
-      os << MyHostName << "Run is active" << endl;;
+      os << MyHostName << "Run is active" << endl;
       return -1;
     }
   if ( irun )
@@ -1282,19 +1301,20 @@ int daq_begin(const int irun, std::ostream& os)
       setenv ( "DAQ_FILENAME", CurrentFilename.c_str() , 1);
     }
 
-  if ( daq_open_flag )
+  if ( daq_open_flag && mqtt)
     {
-      int sfd = get_sqlfd();
-      if ( sfd && RunControlMode == 0)
-	{
-	  std::ostringstream out;
-	  out << "insert into $RUNTABLE values (" << TheRun
-	      << ",\'" << TheRunType << "\'"
-	      << ",to_timestamp(" << StartTime << ")"
-	      << "," << StartTime
-	      << ");" << std::endl;
-	  write (sfd, out.str().c_str(), out.str().size());
-	}
+
+
+      // if ( sfd && RunControlMode == 0)
+      // 	{
+      // 	  std::ostringstream out;
+      // 	  out << "insert into $RUNTABLE values (" << TheRun
+      // 	      << ",\'" << TheRunType << "\'"
+      // 	      << ",to_timestamp(" << StartTime << ")"
+      // 	      << "," << StartTime
+      // 	      << ");" << std::endl;
+      // 	  write (sfd, out.str().c_str(), out.str().size());
+      // 	}
     }
 
   // we are opening a new file here, so we restart the MD5 calculation 
@@ -1403,18 +1423,18 @@ int daq_end(std::ostream& os)
       else
 	{
 	  close (outfile_fd);
-	  update_fileSQLinfo();
+	  daq_generate_json(1);
 	  outfile_fd = 0;
 	}
       file_is_open = 0;
 
-      int sfd = get_sqlfd();
-      if ( sfd && RunControlMode == 0)
-	{
-	  std::ostringstream out;
-	  out << "update $RUNTABLE set eventsinrun=" << Event_number << " where runnumber=" << TheRun << ";" << std::endl;
-	  write (sfd, out.str().c_str(), out.str().size());
-	}
+      // int sfd = get_sqlfd();
+      // if ( sfd && RunControlMode == 0)
+      // 	{
+      // 	  std::ostringstream out;
+      // 	  out << "update $RUNTABLE set eventsinrun=" << Event_number << " where runnumber=" << TheRun << ";" << std::endl;
+      // 	  write (sfd, out.str().c_str(), out.str().size());
+      // 	}
 
     } 
 
@@ -1889,6 +1909,7 @@ int rcdaq_init( pthread_mutex_t &M)
   status = gethostname(hostname, HOST_NAME_MAX);
   if (!status)
     {
+      shortHostName = hostname;
       MyHostName = hostname;
       MyHostName += ": ";
     }
@@ -2239,9 +2260,9 @@ int daq_status( const int flag, std::ostream& os)
       	{
       	  os << "  Elog: not defined" << endl;
       	}
-      if (get_sqlfd())
+      if (mqtt)
 	{
-	  os << "  SQL stream:     " << sqlfile << endl;  
+	  os << "  mqtt:     " << mqtt->GetHostName() << " Port " << mqtt->GetPort() << endl;  
 	}
 
       daq_status_runtypes ( os);
@@ -2496,30 +2517,84 @@ int server_send_close_sequence(int fd)
   return 0;
 }
 
-int update_fileSQLinfo()
-{
-  int sfd = get_sqlfd();
-  md5_byte_t md5_digest[16];  
-  char digest_string[33];
+// int update_fileSQLinfo()
+// {
+//   int sfd = get_sqlfd();
+//   md5_byte_t md5_digest[16];  
+//   char digest_string[33];
 
-  if ( sfd)
+//   if ( sfd)
+//     {
+//       md5_finish(&md5state, md5_digest);
+//       for ( int i=0; i< 16; i++) 
+// 	{
+// 	  sprintf ( &digest_string[2*i], "%02x",  md5_digest[i]);
+// 	}
+//       digest_string[32] = 0;
+  
+//       std::ostringstream out;
+//       out << "update $FILETABLE set md5sum=\'" << digest_string << "\'"
+// 	  << ",lastevent=" << Event_number_at_last_write -1
+// 	  << ",events=" << Event_number_at_last_write - Event_number_at_last_open  
+// 	  << " where runnumber=" << TheRun
+// 	  << " and filename=\'" << CurrentFilename << "\';" << std::endl;
+//       write (sfd, out.str().c_str(), out.str().size());
+//     }
+  
+//   return 0;
+// }
+
+// "what" refers to the various phases, new, update, end
+//int daq_generate_json (const int flag, const std::string what, const std::string type, std::ostream& os)
+int daq_generate_json (const int flag)
+{
+#ifdef HAVE_MOSQUITTO_H
+
+  if ( !  mqtt) return 0;
+  
+  std::ostringstream out;
+
+  if (flag == 0) // we start a new entry
     {
+
+      out << "{\"file\": [" << endl;
+      out << "    { \"what\":\"new\","
+	  << " \"runnumber\":" << TheRun << ","
+	  << " \"host\":\"" << shortHostName << "\","
+	  << " \"runtype\":\"" << TheRunType << "\","
+	  << " \"CurrentFileName\":\"" << CurrentFilename << "\","
+	  << " \"CurrentFileSequence\":" << current_filesequence << ","
+	  << " \"FirstEventNr\":" << Event_number_at_last_open << ","
+	  << " \"time\": " << time(0)  << " }" << endl;
+      out << "] }" << endl;
+    }
+  else   // update an entry
+    {
+      md5_byte_t md5_digest[16];  
+      char digest_string[33];
+
       md5_finish(&md5state, md5_digest);
       for ( int i=0; i< 16; i++) 
 	{
 	  sprintf ( &digest_string[2*i], "%02x",  md5_digest[i]);
 	}
       digest_string[32] = 0;
-  
-      std::ostringstream out;
-      out << "update $FILETABLE set md5sum=\'" << digest_string << "\'"
-	  << ",lastevent=" << Event_number_at_last_write -1
-	  << ",events=" << Event_number_at_last_write - Event_number_at_last_open  
-	  << " where runnumber=" << TheRun
-	  << " and filename=\'" << CurrentFilename << "\';" << std::endl;
-      write (sfd, out.str().c_str(), out.str().size());
+
+      out << "{\"file\": [" << endl;
+      out << "    { \"what\":\"" << "update"
+	  << "\", \"runnumber\":" << TheRun << ","
+	  << " \"host\":\"" << shortHostName << "\","
+	  << " \"CurrentFileName\":\"" << CurrentFilename << "\","
+	  << " \"MD5\":\"" << digest_string << "\","
+	  << " \"LastEventNr\":" << Event_number_at_last_write -1 << ","
+	  << " \"NrEvents\":" <<  Event_number_at_last_write - Event_number_at_last_open << ","
+	  << " \"time\":" << time(0)  << " }" << endl;
+      out << "] }" << endl;
     }
+
+  mqtt->send(out.str());
+  
+#endif
   
   return 0;
 }
-

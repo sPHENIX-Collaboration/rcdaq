@@ -77,8 +77,10 @@ void showHelp()
   std::cout << "   daq_webcontrol <port number>         restart web controls on a new port (default 8080)" << std::endl;
   std::cout << std::endl; 
 
-  std::cout << "   daq_open_sqlstream <string>          open a stream to issue SQL commands" << std::endl;
-  std::cout << "   daq_close_sqlstream                  close a SQL stream" << std::endl;
+  std::cout << "   daq_set_mqtt_host <host> [port]      set up the MQTT host/port for the DB interaction, or \"none\" to remove" << std::endl;
+
+  //  std::cout << "   daq_open_sqlstream <string>          open a stream to issue SQL commands" << std::endl;
+  //  std::cout << "   daq_close_sqlstream                  close a SQL stream" << std::endl;
   std::cout << std::endl; 
 
   std::cout << "   daq_set_runcontrolmode n             switch to Run Control Mode (1=on, 0=off)" << std::endl;
@@ -730,33 +732,40 @@ int command_execute( int argc, char **argv)
  
     }
 
-  else if ( strcasecmp(command,"daq_open_sqlstream") == 0)
+  else if ( strcasecmp(command, "daq_set_mqtt_host") == 0)
     {
-      if ( argc != optind + 2) return -1;
+      if ( argc < optind + 2) return -1;
 
-      ab.action = DAQ_OPENSQLSTREAM;
+      ab.action = DAQ_SET_MQTT_HOST;
       ab.spar = argv[optind + 1];
+      if ( argc == optind + 3)
+        {
+          ab.ipar[0] = get_value(argv[optind + 2]);
+        }
+      else
+        {
+          ab.ipar[0] = 1883;
+        }
       r = r_action_1(&ab, clnt);
-      if (r == (shortResult *) NULL) 
-	{
-	  clnt_perror (clnt, "call failed");
-	}
+      if (r == (shortResult *) NULL)
+        {
+          clnt_perror (clnt, "call failed");
+        }
       if (r->content) std::cout <<  r->str << std::flush;
- 
+
     }
 
-  else if ( strcasecmp(command,"daq_close_sqlstream") == 0)
+  else if ( strcasecmp(command, "daq_get_mqtt_host") == 0)
     {
-
-      ab.action = DAQ_CLOSESQLSTREAM;
+      ab.action = DAQ_GET_MQTT_HOST;
 
       r = r_action_1(&ab, clnt);
-      if (r == (shortResult *) NULL) 
-	{
-	  clnt_perror (clnt, "call failed");
-	}
+      if (r == (shortResult *) NULL)
+        {
+          clnt_perror (clnt, "call failed");
+        }
       if (r->content) std::cout <<  r->str << std::flush;
- 
+
     }
 
   
