@@ -18,7 +18,7 @@ allsources = \
 
 AM_LDFLAGS = -L$(libdir) -L$(ONLINE_MAIN)/lib
 
-AM_CPPFLAGS = $(AM_CPPFLAGS) -I$(includedir) -I$(ONLINE_MAIN)/include $(RPC_INCLUDE)
+AM_CPPFLAGS += -I$(includedir) -I$(ONLINE_MAIN)/include $(RPC_INCLUDE)
 
 noinst_HEADERS = \
   EvtConstants.h \
@@ -34,20 +34,9 @@ noinst_HEADERS = \
   daq_device_rtclock.h \
   mongoose.h \
   md5.h \
+  MQTTConnection.h \
   all.h
 
-if MOSQUITTO
-include_HEADERS =  \
-  SubevtStructures.h \
-  SubevtConstants.h \
-  daq_device.h \
-  rcdaq_rpc.h \
-  rcdaq_actions.h \
-  TriggerHandler.h \
-  rcdaq_plugin.h \
-  MQTTConnection.h \
-  parseargument.h
-else
 include_HEADERS =  \
   SubevtStructures.h \
   SubevtConstants.h \
@@ -57,7 +46,7 @@ include_HEADERS =  \
   TriggerHandler.h \
   rcdaq_plugin.h \
   parseargument.h
-endif
+
 
 htmldir = $(datadir)/html
 html_DATA = control.html control_fancy.html gauge.min.js favicon.ico
