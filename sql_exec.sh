@@ -15,7 +15,6 @@ export FILETABLE=filelist
 export RUNTABLE=run
 
 # define the fifo
-FIFO
 
 while true ; do
     while read -r line ; do
