@@ -55,6 +55,9 @@
 #define DAQ_SET_MQTT_HOST      137
 #define DAQ_GET_MQTT_HOST      138
 
+#define DAQ_GETLASTEVENTNUMBER  139
+
+
 #define DAQ_DEVICE_RANDOM         1001
 #define DAQ_DEVICE_FILE           1002
 #define DAQ_DEVICE_TSPMPROTO      1003

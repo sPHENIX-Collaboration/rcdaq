@@ -22,6 +22,7 @@ alias daq_set_adaptivebuffering='rcdaq_client  daq_set_adaptivebuffering'
 alias daq_shutdown='rcdaq_client  daq_shutdown'
 alias daq_webcontrol='rcdaq_client daq_webcontrol'
 alias daq_get_lastfilename="rcdaq_client  daq_get_lastfilename"
+alias daq_get_last_event_number="rcdaq_client daq_get_last_event_number"
 alias daq_set_mqtt_host="rcdaq_client daq_set_mqtt_host"
 alias daq_get_mqtt_host="rcdaq_client daq_get_mqtt_host"
 alias daq_set_runcontrolmode="rcdaq_client  daq_set_runcontrolmode"

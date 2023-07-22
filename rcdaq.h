@@ -109,6 +109,7 @@ int daq_wait_for_actual_end();
 int daq_webcontrol(const int port,std::ostream& os = std::cout );
 
 int daq_getlastfilename(std::ostream& os = std::cout );
+int daq_getlastevent_number(std::ostream& os = std::cout );
 
 
 int get_runnumber();

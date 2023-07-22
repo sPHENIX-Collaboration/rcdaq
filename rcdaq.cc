@@ -171,9 +171,11 @@ int Command_Todo;
 int TheRun = 0;
 time_t StartTime = 0;
 int Buffer_number;
+
 int Event_number;
 int Event_number_at_last_open = 0;
 int Event_number_at_last_write = 0;
+int Event_number_at_last_end = 0;
 
 
 int update_delta;
@@ -1192,6 +1194,7 @@ int daq_begin(const int irun, std::ostream& os)
   Event_number  = 1;
   Event_number_at_last_write = 0;
   Event_number_at_last_open = 0;
+  Event_number_at_last_end = 0;
 
   // initialize the run/file volume
   BytesInThisRun = 0;    // bytes actually written
@@ -1446,6 +1449,7 @@ int daq_end(std::ostream& os)
   unsetenv ("DAQ_FILENAME");
   unsetenv ("DAQ_STARTTIME");
 
+  Event_number_at_last_end = Event_number;
   Event_number = 0;
   Event_number_at_last_write = 0;
   run_volume = 0;    // volume in longwords 
@@ -1625,7 +1629,7 @@ int readout(const int etype)
       status = fillBuffer->nextEvent(etype,Event_number,  Eventsize[etype]);
     }
   Event_number++;
-
+  Event_number_at_last_end = Event_number;
 
   for ( d_it = DeviceList.begin(); d_it != DeviceList.end(); ++d_it)
     {
@@ -2318,9 +2322,13 @@ int daq_getlastfilename( std::ostream& os)
   if (get_previous_filename().empty() ) return -1;
   os <<  get_previous_filename() << endl;
   return 0;
-
 }
 
+int daq_getlastevent_number( std::ostream& os)
+{
+  os <<  Event_number_at_last_end << endl;
+  return Event_number_at_last_end;
+}
 
 int daq_running()
 {

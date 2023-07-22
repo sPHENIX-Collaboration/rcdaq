@@ -56,6 +56,7 @@ void showHelp()
   std::cout << "   daq_get_runtype [-l]                 list the active runtype (if any)" << std::endl;
   std::cout << "   daq_list_runtypes [-s]               list defined run types" << std::endl;
   std::cout << "   daq_get_lastfilename                 return the last file name written, if any" << std::endl;
+  std::cout << "   daq_get_last_event_number            return the last event number from the previous run" << std::endl;
   std::cout << std::endl; 
 
   std::cout << "   daq_set_maxevents nevt               set automatic end at so many events" << std::endl;
@@ -674,6 +675,22 @@ int command_execute( int argc, char **argv)
     {
 
       ab.action = DAQ_GETLASTFILENAME;
+
+      ab.ipar[0] = 0;
+
+      r = r_action_1 (&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+  else if ( strcasecmp(command,"daq_get_last_event_number") == 0)
+    {
+
+      ab.action = DAQ_GETLASTEVENTNUMBER;
 
       ab.ipar[0] = 0;
 
