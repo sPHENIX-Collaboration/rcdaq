@@ -50,6 +50,20 @@ void rcdaq_1(struct svc_req *rqstp, SVCXPRT *transp);
 static int pid_fd = 0;
 
 
+void sig_handler(int i)
+
+{
+  if (pid_fd)
+    {
+      char *pidfilename = obtain_pidfilename();
+      unlink (pidfilename);
+    }
+  exit(0);
+}
+
+
+
+
 //-------------------------------------------------------------
 
 int server_setup(int argc, char **argv)
@@ -919,13 +933,16 @@ main (int argc, char **argv)
 {
 
   int servernumber = 0;
-  
+
+  mode_t mask = umask(0);
   int i = mkdir ( "/tmp/rcdaq", 0777);
   if ( i && errno != EEXIST)
     {
       std::cerr << "Error accessing the lock directory /tmp/rcdaq" << std::endl;
       return 2;
     }
+
+  umask(mask);
   
   if ( argc > 1)
     {
@@ -935,10 +952,20 @@ main (int argc, char **argv)
   char *pidfilename = obtain_pidfilename();
   
   sprintf (pidfilename, "/tmp/rcdaq/rcdaq_%d", servernumber);
-  
+
   pid_fd = open(pidfilename, O_CREAT | O_RDWR, 0666);
   if ( pid_fd < 0)
     {
+
+      ifstream pidfile = ifstream(pidfilename);
+      if ( pidfile.is_open())
+	{
+	  int ipid;
+	  pidfile >> ipid;
+	  std::cerr << "Another server is already running, PID= " << ipid << std::endl;
+	  return 2;
+	}
+  
       std::cerr << "Error creating the lock file" << std::endl;
       return 2;
     }
@@ -948,6 +975,15 @@ main (int argc, char **argv)
     {
       if (errno == EWOULDBLOCK)
 	{
+	  ifstream pidfile = ifstream(pidfilename);
+	  if ( pidfile.is_open())
+	    {
+	      int ipid;
+	      pidfile >> ipid;
+	      std::cerr << "Another server is already running, PID= " << ipid << std::endl;
+	      return 3;
+	    }
+	  
 	  std::cerr << "Another server is already running" << std::endl;
 	  return 3;
 	}
@@ -960,6 +996,11 @@ main (int argc, char **argv)
   
   
   std::cout << "Server number is " << servernumber << std::endl;
+
+  signal(SIGKILL, sig_handler);
+  signal(SIGTERM, sig_handler);
+  signal(SIGINT,  sig_handler);
+  
   
   pthread_mutex_init(&M_output, 0); 
 
