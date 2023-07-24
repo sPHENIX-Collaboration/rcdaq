@@ -17,6 +17,7 @@ void *EventLoop( void *arg);
 //int daq_end();
 int Command( const int command);
 
+char * obtain_pidfilename();
 
 int switch_buffer();
 int device_init();
@@ -51,7 +52,7 @@ std::string& daq_get_filerule();
 
 
 int daq_open(std::ostream& os = std::cout);
-int daq_shutdown(const unsigned long servernumber, const unsigned long versionnumber,
+int daq_shutdown(const unsigned long servernumber, const unsigned long versionnumber, const int pid_fd,
 		 std::ostream& os = std::cout);
 std::string& get_current_filename();
 int daq_close (std::ostream& os = std::cout);
@@ -67,10 +68,14 @@ int daq_set_name(const char *name);
 int daq_get_name(std::ostream& os = std::cout);
 std::string daq_get_myname();
 
-int daq_open_sqlstream(const char *name);
-int daq_close_sqlstream();
-int get_sqlfd();
+int daq_set_mqtt_host(const char * host, const int port, std::ostream& os);
+int daq_get_mqtt_host(std::ostream& os);
 
+//int daq_open_sqlstream(const char *name);
+//int daq_close_sqlstream();
+//int get_sqlfd();
+
+int daq_generate_json (const int flag);
 
 double daq_get_mb_per_second();
 double daq_get_events_per_second();
@@ -104,6 +109,7 @@ int daq_wait_for_actual_end();
 int daq_webcontrol(const int port,std::ostream& os = std::cout );
 
 int daq_getlastfilename(std::ostream& os = std::cout );
+int daq_getlastevent_number(std::ostream& os = std::cout );
 
 
 int get_runnumber();

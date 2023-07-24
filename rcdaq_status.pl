@@ -152,6 +152,9 @@ $filenamelabel = $outerlabel->
 
 
 # update once to fill all the values in
+$prev_evt = 0;
+$delta_evt = 0;
+$rate = 0;
 update();
 
 #and schedule an update every 5 seconds
@@ -188,6 +191,10 @@ sub update()
 	($junk, $name )= split (/\"/ ,$res);
 #    print " run $run  evt $evt  vol $v open  $openflag file  $fn \n";
 	
+	$delta_evt = $evt - $prev_evt;
+	$rate = $delta_evt/2;       # assuming 2s update, should use variable in case this changes
+	$prev_evt = $evt;
+
 	if ( $run < 0)
 	{
 	    if ( $old_run < 0)
@@ -246,7 +253,7 @@ sub update()
     $label{'sline2'}->configure( -text =>  $name);
     $runnumberlabel->configure(-text => "Run:    $run");
     
-    $eventcountlabel->configure(-text =>"Events: $evt");
+    $eventcountlabel->configure(-text =>"Events: $evt  ($rate Hz)");
     
     $volumelabel->configure(-text =>    "Volume: $v MB");
     

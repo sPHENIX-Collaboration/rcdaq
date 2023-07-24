@@ -25,6 +25,12 @@
 #include "pthread.h"
 #include "signal.h"
 
+#include <sys/file.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+
 #include <vector>
 
 
@@ -40,6 +46,21 @@ std::vector<RCDAQPlugin *> pluginlist;
 static unsigned long  my_servernumber = 0;
 
 void rcdaq_1(struct svc_req *rqstp, SVCXPRT *transp);
+
+static int pid_fd = 0;
+
+
+void sig_handler(int i)
+{
+  if (pid_fd)
+    {
+      char *pidfilename = obtain_pidfilename();
+      unlink (pidfilename);
+    }
+  exit(0);
+}
+
+
 
 
 //-------------------------------------------------------------
@@ -554,14 +575,29 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       daq_set_name(ab->spar);
       break;
 
-    case DAQ_OPENSQLSTREAM:
-      daq_open_sqlstream(ab->spar);
+    case DAQ_SET_MQTT_HOST:
+      result.status = daq_set_mqtt_host(ab->spar, ab->ipar[0], outputstream);
+      if ( result.status)
+	{
+	  outputstream.str().copy(resultstring,outputstream.str().size());
+	  resultstring[outputstream.str().size()] = 0;
+	  result.str = resultstring;
+	  result.content = 1;
+	}
+      pthread_mutex_unlock(&M_output);
+      return &result;
       break;
 
-    case DAQ_CLOSESQLSTREAM:
-      daq_close_sqlstream();
-      break;
 
+    case DAQ_GET_MQTT_HOST:
+      result.status = daq_get_mqtt_host(outputstream);
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
 
     case DAQ_SETRUNTYPE:
       result.status = daq_setruntype(ab->spar,outputstream);
@@ -793,6 +829,17 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       return &result;
       break;
 
+    case DAQ_GETLASTEVENTNUMBER:
+      result.what = daq_getlastevent_number ( outputstream);
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
+      result.content = 1;
+      result.status = 0;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
     case DAQ_SETEVENTFORMAT:
       result.status = daq_setEventFormat ( ab->ipar[0], outputstream);
       if (result.status) 
@@ -863,7 +910,7 @@ shortResult * r_shutdown_1_svc(void *x, struct svc_req *rqstp)
 
   result.str = (char *) outputstream.str().c_str();
 
-  result.status = daq_shutdown ( my_servernumber, RCDAQ_VERS, outputstream);
+  result.status = daq_shutdown ( my_servernumber, RCDAQ_VERS, pid_fd, outputstream);
   cout << "daq_shutdown status = " << result.status  << endl;
   if (result.status) 
     {
@@ -884,8 +931,76 @@ int
 main (int argc, char **argv)
 {
 
-  int i;
+  int servernumber = 0;
 
+  mode_t mask = umask(0);
+  int i = mkdir ( "/tmp/rcdaq", 0777);
+  if ( i && errno != EEXIST)
+    {
+      std::cerr << "Error accessing the lock directory /tmp/rcdaq" << std::endl;
+      return 2;
+    }
+
+  umask(mask);
+  
+  if ( argc > 1)
+    {
+      servernumber = get_value(argv[1]);
+    }
+
+  char *pidfilename = obtain_pidfilename();
+  
+  sprintf (pidfilename, "/tmp/rcdaq/rcdaq_%d", servernumber);
+
+  pid_fd = open(pidfilename, O_CREAT | O_RDWR, 0666);
+  if ( pid_fd < 0)
+    {
+
+      ifstream pidfile = ifstream(pidfilename);
+      if ( pidfile.is_open())
+	{
+	  int ipid;
+	  pidfile >> ipid;
+	  std::cerr << "Another server is already running, PID= " << ipid << std::endl;
+	  return 2;
+	}
+  
+      std::cerr << "Error creating the lock file" << std::endl;
+      return 2;
+    }
+  
+  int rc = flock(pid_fd, LOCK_EX | LOCK_NB);
+  if(rc)
+    {
+      if (errno == EWOULDBLOCK)
+	{
+	  ifstream pidfile = ifstream(pidfilename);
+	  if ( pidfile.is_open())
+	    {
+	      int ipid;
+	      pidfile >> ipid;
+	      std::cerr << "Another server is already running, PID= " << ipid << std::endl;
+	      return 3;
+	    }
+	  
+	  std::cerr << "Another server is already running" << std::endl;
+	  return 3;
+	}
+    }
+
+  // we write out pid in here, for good measure
+  char pid[64];
+  int x = sprintf(pid,"%d\n", getpid());
+  write (pid_fd, pid, x);
+  
+  
+  std::cout << "Server number is " << servernumber << std::endl;
+
+  signal(SIGKILL, sig_handler);
+  signal(SIGTERM, sig_handler);
+  signal(SIGINT,  sig_handler);
+  
+  
   pthread_mutex_init(&M_output, 0); 
 
   rcdaq_init( M_output);
@@ -893,13 +1008,6 @@ main (int argc, char **argv)
 
   server_setup(argc, argv);
 
-  int servernumber = 0;
-
-  if ( argc > 1)
-    {
-      servernumber = get_value(argv[1]);
-    }
-  std::cout << "Server number is " << servernumber << std::endl;
 
   my_servernumber = RCDAQ+servernumber;  // remember who we are for later
 

@@ -5,6 +5,6 @@ test -z "$srcdir" && srcdir=.
 (cd $srcdir; aclocal ;\
 libtoolize --force; automake -a --add-missing; autoconf)
 
-$srcdir/configure --enable-maintainer-mode "$@"
+$srcdir/configure  "$@"
 
 
