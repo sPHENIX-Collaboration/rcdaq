@@ -51,7 +51,6 @@ static int pid_fd = 0;
 
 
 void sig_handler(int i)
-
 {
   if (pid_fd)
     {
