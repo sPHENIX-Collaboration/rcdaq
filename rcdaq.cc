@@ -126,10 +126,11 @@ static int server_is_open = 0;
 static int current_filesequence = 0;
 static int outfile_fd;
 
-
+#ifdef HAVE_MOSQUITTO_H
 MQTTConnection *mqtt = 0;
 std::string mqtt_host;
 int mqtt_port = 0;
+#endif
 
 static md5_state_t md5state;
 
@@ -534,19 +535,6 @@ int open_file(const int run_number, int *fd)
 
   daq_generate_json (0); // generate the "new file" report
   
-// #ifdef HAVE_MOSQUITTO_H
-//   if (MQTT_enabled)
-//     {
-//       std::ostringstream out;
-//       out << "insert into $FILETABLE values (" << TheRun
-// 	  << ",\'" << CurrentFilename << "\'"
-// 	  << ","   << current_filesequence
-// 	  << ","   << Event_number_at_last_open
-// 	  << ");"
-// 	  << std::endl;
-//       write (sfd, out.str().c_str(), out.str().size());
-//     }
-  
   return 0;
 }
 
@@ -915,7 +903,7 @@ int daq_set_name(const char *name)
   return 0;
 }
 
-
+#ifdef HAVE_MOSQUITTO_H
 int daq_set_mqtt_host(const char * host, const int port, std::ostream& os)
 {
   std::cout << __FILE__ << "  " << __LINE__ <<  " mqtt host " << host << " port " << port << endl;
@@ -957,6 +945,7 @@ int daq_get_mqtt_host(std::ostream& os)
   os << " Host " << mqtt->GetHostName() << " " << " port " << mqtt->GetPort() << endl; 
   return 0;
 }
+#endif
 
 
 
@@ -1304,21 +1293,6 @@ int daq_begin(const int irun, std::ostream& os)
       setenv ( "DAQ_FILENAME", CurrentFilename.c_str() , 1);
     }
 
-  if ( daq_open_flag && mqtt)
-    {
-
-
-      // if ( sfd && RunControlMode == 0)
-      // 	{
-      // 	  std::ostringstream out;
-      // 	  out << "insert into $RUNTABLE values (" << TheRun
-      // 	      << ",\'" << TheRunType << "\'"
-      // 	      << ",to_timestamp(" << StartTime << ")"
-      // 	      << "," << StartTime
-      // 	      << ");" << std::endl;
-      // 	  write (sfd, out.str().c_str(), out.str().size());
-      // 	}
-    }
 
   // we are opening a new file here, so we restart the MD5 calculation 
   md5_init(&md5state);
@@ -2264,11 +2238,13 @@ int daq_status( const int flag, std::ostream& os)
       	{
       	  os << "  Elog: not defined" << endl;
       	}
+#ifdef HAVE_MOSQUITTO_H
       if (mqtt)
 	{
 	  os << "  mqtt:     " << mqtt->GetHostName() << " Port " << mqtt->GetPort() << endl;  
 	}
-
+#endif
+      
       daq_status_runtypes ( os);
       daq_status_plugin(flag, os);
 

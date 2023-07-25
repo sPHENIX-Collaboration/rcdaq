@@ -77,9 +77,10 @@ void showHelp()
 
   std::cout << "   daq_webcontrol <port number>         restart web controls on a new port (default 8080)" << std::endl;
   std::cout << std::endl; 
-
+#ifdef HAVE_MOSQUITTO_H
   std::cout << "   daq_set_mqtt_host <host> [port]      set up the MQTT host/port for the DB interaction, or \"none\" to remove" << std::endl;
-
+  std::cout << "   daq_get_mqtt_host <host> [port]      retrieve the MQTT host/port for the DB interaction" << std::endl;
+#endif
   //  std::cout << "   daq_open_sqlstream <string>          open a stream to issue SQL commands" << std::endl;
   //  std::cout << "   daq_close_sqlstream                  close a SQL stream" << std::endl;
   std::cout << std::endl; 
@@ -749,6 +750,7 @@ int command_execute( int argc, char **argv)
  
     }
 
+#ifdef HAVE_MOSQUITTO_H
   else if ( strcasecmp(command, "daq_set_mqtt_host") == 0)
     {
       if ( argc < optind + 2) return -1;
@@ -784,6 +786,7 @@ int command_execute( int argc, char **argv)
       if (r->content) std::cout <<  r->str << std::flush;
 
     }
+#endif
 
   
   else if ( strcasecmp(command,"elog") == 0)
