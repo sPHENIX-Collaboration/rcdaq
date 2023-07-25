@@ -575,6 +575,8 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       daq_set_name(ab->spar);
       break;
 
+#ifdef HAVE_MOSQUITTO_H
+      
     case DAQ_SET_MQTT_HOST:
       result.status = daq_set_mqtt_host(ab->spar, ab->ipar[0], outputstream);
       if ( result.status)
@@ -598,7 +600,8 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       pthread_mutex_unlock(&M_output);
       return &result;
       break;
-
+#endif
+      
     case DAQ_SETRUNTYPE:
       result.status = daq_setruntype(ab->spar,outputstream);
       if ( result.status)
