@@ -930,14 +930,11 @@ int getRunNumberFromApp()
     
     std::stringstream s (in);
     int run;
-    if ( s >> run)
-      {
-        std::cout << "len = " << len << " run number: " << run << std::endl;
-      }
-    else
+    if (! (s >> run) )
       {
 	return -1;
       }
+
   return run;
 }
 
