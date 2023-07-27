@@ -57,6 +57,9 @@
 
 #define DAQ_GETLASTEVENTNUMBER  139
 
+#define DAQ_SETRUNNUMBERAPP    140
+
+
 
 #define DAQ_DEVICE_RANDOM         1001
 #define DAQ_DEVICE_FILE           1002

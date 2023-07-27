@@ -1,6 +1,7 @@
 alias daq_begin='rcdaq_client  daq_begin'
 alias daq_end='rcdaq_client  daq_end'
 alias daq_setrunnumberfile='rcdaq_client  daq_setrunnumberfile'
+alias daq_setrunnumberApp='rcdaq_client  daq_setrunnumberApp'
 alias daq_define_runtype='rcdaq_client  daq_define_runtype'
 alias daq_set_runtype='rcdaq_client  daq_set_runtype'
 alias daq_get_runtype='rcdaq_client  daq_get_runtype'

@@ -111,8 +111,11 @@ static std::string TheRunType = " ";
 static std::string CurrentFilename = "";
 static std::string PreviousFilename = "";
 
-static std::string TheRunnumberfile = " ";
+static std::string TheRunnumberfile;
 static int RunnumberfileIsSet = 0;
+
+static std::string TheRunnumberApp;
+static int RunnumberAppIsSet = 0;
 
 static std::string MyName = ""; 
 
@@ -855,8 +858,15 @@ int switch_buffer()
 
 }
 
-int daq_set_runnumberfile(const char *file)
+int daq_set_runnumberfile(const char *file, const int flag)
 {
+    if ( flag)
+    {
+      TheRunnumberfile.clear();
+      RunnumberfileIsSet = 0;
+      return 0;
+    }
+
   TheRunnumberfile = file;
   RunnumberfileIsSet = 1;
   FILE *fp = fopen(TheRunnumberfile.c_str(), "r");
@@ -889,7 +899,50 @@ int daq_write_runnumberfile(const int run)
 
   return 0;
 }
+
+
+int daq_set_runnumberApp(const char *file, const int flag)
+{
+  if ( flag)
+    {
+      TheRunnumberApp.clear();
+      RunnumberAppIsSet = 0;
+      return 0;
+    }
   
+  TheRunnumberApp = file;
+  RunnumberAppIsSet = 1;
+  return 0;
+}
+
+int getRunNumberFromApp()
+{
+  if ( ! RunnumberAppIsSet) return -1;
+  FILE *fp = popen(TheRunnumberApp.c_str(),"r");
+  if (fp < 0)
+    {
+      std::cerr << "error running the runnumber app" << std::endl;
+      return -1;
+    }
+    char in[64];
+    int len = fread(in, 1, 64, fp);
+    pclose(fp);
+    
+    std::stringstream s (in);
+    int run;
+    if ( s >> run)
+      {
+        std::cout << "len = " << len << " run number: " << run << std::endl;
+      }
+    else
+      {
+	return -1;
+      }
+  return run;
+}
+
+
+
 int daq_set_filerule(const char *rule)
 {
   TheFileRule = rule;
@@ -1171,7 +1224,21 @@ int daq_begin(const int irun, std::ostream& os)
 
   if (  irun ==0)
     {
-      TheRun++;
+      if ( RunnumberAppIsSet)
+	{
+	  int run = getRunNumberFromApp();
+	  if ( run < 0)
+	    {
+	      os << MyHostName << "Could not obtain a run number from " << TheRunnumberApp << ", run  not started" << endl;
+	      DAQ_RUNNING = 0;
+	      return -1;
+	    }
+	  TheRun = run;
+	}
+      else
+	{
+	  TheRun++;
+	}
     }
   else
     {

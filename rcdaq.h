@@ -40,7 +40,8 @@ int daq_fake_trigger (const int n, const int waitinterval);
 
 int daq_write_runnumberfile(const int run);
 
-int daq_set_runnumberfile(const char *file);
+int daq_set_runnumberfile(const char *file, const int flag);
+int daq_set_runnumberApp(const char *file, const int flag);
 
 int daq_set_filerule(const char *rule);
 
@@ -123,6 +124,9 @@ int daq_setEventFormat(const int f, std::ostream& os = std::cout );
 int daq_getEventFormat();
 int daq_setRunControlMode ( const int flag, std::ostream& os = std::cout );
 int daq_getRunControlMode (std::ostream& os = std::cout);
+
+int getRunNumberFromApp();
+
 
 #define MG_REQUEST_NAME 1
 #define MG_REQUEST_SPEED 2
