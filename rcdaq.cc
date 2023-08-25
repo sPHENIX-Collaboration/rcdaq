@@ -2103,8 +2103,8 @@ int daq_status( const int flag, std::ostream& os)
 	     << volume << " ";
 	  os  << daq_open_flag << " ";
 	  os  << daq_server_flag << " ";
+	  os  << time(0) - StartTime << " ";
 	  os << get_current_filename() << " "
-	     << time(0) - StartTime
 	     << " \"" << MyName << "\"" << endl;
 	}
       else
