@@ -1305,7 +1305,8 @@ int daq_begin(const int irun, std::ostream& os)
 
   // just to be safe, clear the "end requested" bit
   DAQ_ENDREQUESTED = 0;
-
+  
+  cout << "starting run " << TheRun << " at " << time(0) << endl; 
   set_eventsizes();
   // initialize Buffer1 to be the fill buffer
   //fillBuffer      = &Buffer1;
@@ -1389,6 +1390,8 @@ int daq_end_immediate(std::ostream& os)
     }
   os << MyHostName << "Run " << TheRun << " end requested" << endl;
   DAQ_ENDREQUESTED = 1;
+
+  cout << "ended run " << TheRun << " at " << time(0) << endl; 
 
   return 0;
 }
@@ -1482,7 +1485,8 @@ int daq_end(std::ostream& os)
 
   
   os << MyHostName <<  "Run " << TheRun << " ended" << endl;
-  
+  cout << "ended run " << TheRun << " at " << time(0) << endl; 
+
   unsetenv ("DAQ_RUNNUMBER");
   unsetenv ("DAQ_FILENAME");
   unsetenv ("DAQ_STARTTIME");
