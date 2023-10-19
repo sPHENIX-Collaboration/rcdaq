@@ -187,7 +187,7 @@ sub update()
     }
     else
     {
-	($run, $evt, $v, $openflag, $serverflag, $fn, $duration )= split (/\s/ ,$res);
+	($run, $evt, $v, $openflag, $serverflag, $duration, $fn  )= split (/\s/ ,$res);
 	($junk, $name )= split (/\"/ ,$res);
 #    print " run $run  evt $evt  vol $v open  $openflag file  $fn \n";
 	

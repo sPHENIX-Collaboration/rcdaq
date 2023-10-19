@@ -70,7 +70,8 @@ void showHelp()
   std::cout << std::endl; 
 
   std::cout << "   daq_setname <string>                 define an identifying string for this RCDAQ instance" << std::endl;
-  std::cout << "   daq_setrunnumberfile file            define a file to maintain the current run number" << std::endl;
+  std::cout << "   daq_setrunnumberfile file            define a file to maintain the current run number, \"None\" to reset" << std::endl;
+  std::cout << "   daq_setrunnumberApp file             define an App that dispenses run numbers, \"None\" to reset" << std::endl;
   std::cout << "   daq_set_maxbuffersize n_KB           adjust the size of buffers written to n KB" << std::endl;
   std::cout << "   daq_set_adaptivebuffering seconds    enable adaptive buffering at n seconds (0 = off)" << std::endl;
   std::cout << std::endl;
@@ -355,6 +356,29 @@ int command_execute( int argc, char **argv)
 
       ab.action = DAQ_RUNNUMBERFILE;
       ab.spar = argv[optind + 1];
+      
+      // if we set "none", unset the app
+      if ( strcasecmp(argv[optind + 1],"None") == 0) ab.ipar[0] = 1;
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+  
+  else if ( strcasecmp(command,"daq_setrunnumberApp") == 0)
+    {
+      if ( argc != optind + 2) return -1;
+
+      ab.action = DAQ_SETRUNNUMBERAPP;
+      ab.spar = argv[optind + 1];
+
+      // if we set "none", unset the app
+      if ( strcasecmp(argv[optind + 1],"None") == 0) ab.ipar[0] = 1;
+
       r = r_action_1(&ab, clnt);
       if (r == (shortResult *) NULL) 
 	{

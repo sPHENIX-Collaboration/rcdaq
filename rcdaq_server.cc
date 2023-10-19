@@ -564,7 +564,11 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       break;
 
     case DAQ_RUNNUMBERFILE:
-      daq_set_runnumberfile(ab->spar);
+      daq_set_runnumberfile(ab->spar, ab->ipar[0]);
+      break;
+
+    case DAQ_SETRUNNUMBERAPP:
+      daq_set_runnumberApp(ab->spar, ab->ipar[0]);
       break;
 
     case DAQ_SETFILERULE:
