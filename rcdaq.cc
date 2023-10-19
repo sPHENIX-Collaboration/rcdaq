@@ -919,7 +919,7 @@ int getRunNumberFromApp()
 {
   if ( ! RunnumberAppIsSet) return -1;
   FILE *fp = popen(TheRunnumberApp.c_str(),"r");
-  if (fp < 0)
+  if (fp == NULL)
     {
       std::cerr << "error running the runnumber app" << std::endl;
       return -1;
