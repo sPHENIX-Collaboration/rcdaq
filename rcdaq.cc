@@ -1989,6 +1989,10 @@ int rcdaq_init( pthread_mutex_t &M)
   fillBuffer = &Buffer1;
   transportBuffer = &Buffer2;
 
+  Buffer1.setCompression(1);
+  Buffer2.setCompression(1);
+  
+
 #ifdef WRITEPRDF
   Buffer1.setEventFormat(DAQPRDFFORMAT);
   Buffer2.setEventFormat(DAQPRDFFORMAT);
