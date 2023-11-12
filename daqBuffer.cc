@@ -280,7 +280,7 @@ int daqBuffer::setCompression(const int flag)
 	  outputarray = new unsigned int[outputarraylength];
 	}
       wants_compression = 1;
-      cout << " LZO compression enabled" << endl;
+      //cout << " LZO compression enabled" << endl;
       return 0;
     }
 }

@@ -49,10 +49,8 @@ public:
   unsigned int addEoB();
 
   int setCompression(const int flag);
+  int getCompression() const {return wants_compression;} ;
   
-  // now the compress routine
-  int compress ();
-
   // now the write routine
   unsigned int writeout ( int fd);
 
@@ -81,6 +79,9 @@ public:
 
 protected:
 
+  // now the compress routine
+  int compress ();
+  
   typedef struct 
   { 
     unsigned int Length;

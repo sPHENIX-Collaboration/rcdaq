@@ -18,7 +18,7 @@ allsources = \
 
 AM_LDFLAGS = -L$(libdir) -L$(ONLINE_MAIN)/lib
 
-CPPFLAGS += -I$(includedir) -I$(ONLINE_MAIN)/include $(RPC_INCLUDE)
+AM_CXXFLAGS = -I$(includedir) -I$(ONLINE_MAIN)/include $(RPC_INCLUDE)
 
 noinst_HEADERS = \
   EvtConstants.h \

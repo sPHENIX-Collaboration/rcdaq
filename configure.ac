@@ -13,7 +13,7 @@ AC_PROG_INSTALL
 AC_PROG_LIBTOOL
 
 AC_CHECK_HEADER([rpc/rpc.h], [ ],
-                [AC_SUBST(CPPFLAGS, "-I/usr/include/tirpc")] [AC_SUBST(RPC_LDD, "-ltirpc")])
+                [AC_SUBST(RPC_INCLUDE, "-I/usr/include/tirpc")] [AC_SUBST(RPC_LDD, "-ltirpc")])
 
 AC_CHECK_HEADERS([mosquitto.h])
 
