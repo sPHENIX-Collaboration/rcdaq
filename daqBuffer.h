@@ -1,6 +1,9 @@
 #ifndef __DAQBUFFER_H
 #define __DAQBUFFER_H
 
+
+#include <lzo/lzoutil.h>
+
 #include <EvtStructures.h>
 #include <daq_device.h>
 #include <EventTypes.h>
@@ -45,6 +48,9 @@ public:
   //  add end-of-buffer
   unsigned int addEoB();
 
+  int setCompression(const int flag);
+  int getCompression() const {return wants_compression;} ;
+  
   // now the write routine
   unsigned int writeout ( int fd);
 
@@ -73,6 +79,9 @@ public:
 
 protected:
 
+  // now the compress routine
+  int compress ();
+  
   typedef struct 
   { 
     unsigned int Length;
@@ -82,6 +91,7 @@ protected:
     int data[1];
   } *buffer_ptr;
 
+  int _broken;
   buffer_ptr bptr;
   int *data_ptr;
   int current_index;
@@ -91,11 +101,18 @@ protected:
   daqEvent *current_event;
   int current_etype;
   int has_end;
+  
   int format;
-
+  int wants_compression;
+  
   int currentBufferID;
 
   md5_state_t *_md5state;
+
+  static int lzo_initialized;
+  lzo_byte *wrkmem;
+  lzo_uint  outputarraylength;
+  unsigned int *outputarray;
 
 };
 

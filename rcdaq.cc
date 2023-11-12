@@ -1765,6 +1765,28 @@ int daq_open (std::ostream& os)
   return 0;
 }
 
+int daq_set_compression (const int flag, std::ostream& os)
+{
+
+  if ( DAQ_RUNNING ) 
+    {
+      os << MyHostName << "Run is active" << endl;;
+      return -1;
+    }
+  if (flag)
+    {
+      Buffer1.setCompression(1);
+      Buffer2.setCompression(1);
+    }
+  else
+    {
+      Buffer1.setCompression(0);
+      Buffer2.setCompression(0);
+    }
+
+  return 0;
+}
+
 
 int daq_set_server (const char *hostname, const int port, std::ostream& os)
 {
@@ -1989,6 +2011,7 @@ int rcdaq_init( pthread_mutex_t &M)
   fillBuffer = &Buffer1;
   transportBuffer = &Buffer2;
 
+
 #ifdef WRITEPRDF
   Buffer1.setEventFormat(DAQPRDFFORMAT);
   Buffer2.setEventFormat(DAQPRDFFORMAT);
@@ -2138,6 +2161,7 @@ int daq_status( const int flag, std::ostream& os)
 	      else
 		{
 		  os << "  Logging enabled";
+		  if ( Buffer1.getCompression() ) os << "  compression enabled";
 		}
 	    }
 	  else
@@ -2157,6 +2181,7 @@ int daq_status( const int flag, std::ostream& os)
 	      else
 		{
 		  os << "  Logging enabled";
+		  if ( Buffer1.getCompression() ) os << "  compression enabled";
 		}
 	    }
 	  else
@@ -2236,7 +2261,9 @@ int daq_status( const int flag, std::ostream& os)
 		}
 	      else
 		{
-		  os << "  Logging enabled" << endl;
+		  os << "  Logging enabled";
+		  if ( Buffer1.getCompression() ) os << "  compression enabled";
+		  os << endl;
 		}
 	    }
 	  else
