@@ -8,9 +8,13 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-
+#include <string.h>
+#include <lzo/lzo1x.h>
 
 using namespace std;
+
+int daqBuffer::lzo_initialized = 0;
+
 
 int readn (int fd, char *ptr, const int nbytes);
 int writen (int fd, char *ptr, const int nbytes);
@@ -26,7 +30,8 @@ daqBuffer::daqBuffer (const int irun, const int length
   data_ptr = &(bptr->data[0]);
   max_length = length;   // in 32bit units
   max_size = max_length;
-
+  _broken = 0;
+  
   current_event = 0;
   current_etype = -1;
 
@@ -34,6 +39,10 @@ daqBuffer::daqBuffer (const int irun, const int length
   format=DAQONCSFORMAT;
   currentBufferID = ONCSBUFFERHEADER;
   _md5state = md5state;
+  wants_compression = 0;
+  wrkmem = 0;
+  outputarraylength = 0;
+  outputarray = 0;
   
   prepare_next (iseq, irun);
 }
@@ -44,6 +53,8 @@ daqBuffer::~daqBuffer ()
 {
   int *b = (int *)  bptr;
   delete [] b;
+  if (outputarray) delete []  outputarray;
+  if (wrkmem) delete [] wrkmem;
 }
 
 
@@ -144,24 +155,43 @@ unsigned int daqBuffer::addEoB()
 unsigned int daqBuffer::writeout ( int fd)
 {
 
+  if ( _broken) return 0;
   if (!has_end) addEoB();
 
-  unsigned int bytes;
-  int blockcount = ( getLength() + 8192 -1)/8192;
-  int bytecount = blockcount*8192;
-  bytes = writen ( fd, (char *) bptr , bytecount );
-  if ( _md5state)
+  unsigned int bytes = 0;;
+
+  if ( ! wants_compression)
     {
-      //cout << __FILE__ << " " << __LINE__ << " updating md5  with " << bytes << " bytes" << endl; 
-      md5_append(_md5state, (const md5_byte_t *)bptr,bytes );
+      int blockcount = ( getLength() + 8192 -1)/8192;
+      int bytecount = blockcount*8192;
+      bytes = writen ( fd, (char *) bptr , bytecount );
+      if ( _md5state)
+	{
+	  //cout << __FILE__ << " " << __LINE__ << " updating md5  with " << bytes << " bytes" << endl; 
+	  md5_append(_md5state, (const md5_byte_t *)bptr,bytes );
+	}
+      return bytes;
     }
-  return bytes;
+  else // we want compression
+    {
+      compress();
+      int blockcount = ( outputarray[0] + 8192 -1)/8192;
+      int bytecount = blockcount*8192;
+      bytes = writen ( fd, (char *) outputarray , bytecount );
+      if ( _md5state)
+	{
+	  //cout << __FILE__ << " " << __LINE__ << " updating md5  with " << bytes << " bytes" << endl; 
+	  md5_append(_md5state, (const md5_byte_t *)outputarray,bytes );
+	}
+      return bytes;
+    }
 }
 
 #define ACKVALUE 101
 
 unsigned int daqBuffer::sendout ( int fd )
 {
+  if ( _broken) return 0;
 
   if (!has_end) addEoB();
 
@@ -193,6 +223,7 @@ unsigned int daqBuffer::sendout ( int fd )
 // this is sending the monitoring data to a client
 unsigned int daqBuffer::sendData ( int fd, const int max_length)
 {
+  if ( _broken) return 0;
 
   if (!has_end) addEoB();
 
@@ -213,7 +244,67 @@ unsigned int daqBuffer::sendData ( int fd, const int max_length)
   return sent;
 }
 
+int daqBuffer::setCompression(const int flag)
+{
+  if ( !flag)
+    {
+      wants_compression = 0;
+      return 0;
+    }
+  else
+    {
+      if ( !  lzo_initialized )
+	{
+	  if (lzo_init() != LZO_E_OK)
+	    {
+	      std::cerr << "Could not initialize LZO" << std::endl;
+	      _broken = 1;
+	    }
+	  lzo_initialized = 1;
+	}
+    
+      if ( !wrkmem)
+	{
+	  wrkmem = (lzo_bytep) lzo_malloc(LZO1X_1_12_MEM_COMPRESS);
+	  if (wrkmem)
+	    {
+	      memset(wrkmem, 0, LZO1X_1_12_MEM_COMPRESS);
+	    }
+	  else
+	    {
+	      std::cerr << "Could not allocate LZO memory" << std::endl;
+	      _broken = 1;
+	      return -1;
+	    }
+	  outputarraylength = max_length + 8192;
+	  outputarray = new unsigned int[outputarraylength];
+	}
+      wants_compression = 1;
+      //cout << " LZO compression enabled" << endl;
+      return 0;
+    }
+}
 
+int daqBuffer::compress ()
+{
+  if ( _broken) return -1;
+  
+  lzo_uint outputlength_in_bytes = outputarraylength*4-16;
+  lzo_uint in_len = getLength(); 
+
+  lzo1x_1_12_compress( (lzo_byte *) bptr,
+			in_len,  
+		       (lzo_byte *)&outputarray[4],
+			&outputlength_in_bytes,wrkmem);
+
+
+  outputarray[0] = outputlength_in_bytes +4*BUFFERHEADERLENGTH;
+  outputarray[1] = LZO1XBUFFERMARKER;
+  outputarray[2] = bptr->Bufseq;
+  outputarray[3] = getLength();
+
+  return 0;
+}
 
 
 // ----------------------------------------------------------

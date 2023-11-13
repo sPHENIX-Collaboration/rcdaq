@@ -125,9 +125,9 @@ rcdaq_client_LDADD = librcdaqutils.la  $(RPC_LDD)
 
 rcdaq_server_SOURCES = rcdaq_server.cc
 if MOSQUITTO
-rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo $(RPC_LDD) -lmosquitto -lpthread -ldl 
+rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo $(RPC_LDD) -lmosquitto -lpthread -ldl -llzo2
 else
-rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo $(RPC_LDD) -lpthread -ldl 
+rcdaq_server_LDADD = librcdaq.la rcdaq_rpc_svc.lo rcdaq_rpc_xdr.lo eloghandler.lo $(RPC_LDD) -lpthread -ldl -llzo2
 endif
 
 rcdaq_server_LDFLAGS =  -Wl,-export-dynamic

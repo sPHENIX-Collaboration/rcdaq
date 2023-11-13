@@ -64,6 +64,8 @@ int is_server_open();
 int daq_server_close (std::ostream& os = std::cout);
 int get_serverflag();
 
+int daq_set_compression(const int flag, std::ostream& os = std::cout);
+
 
 int daq_set_name(const char *name);
 int daq_get_name(std::ostream& os = std::cout);

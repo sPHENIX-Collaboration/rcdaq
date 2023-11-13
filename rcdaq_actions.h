@@ -59,6 +59,8 @@
 
 #define DAQ_SETRUNNUMBERAPP    140
 
+#define DAQ_SET_COMPRESSION    141
+
 
 
 #define DAQ_DEVICE_RANDOM         1001
