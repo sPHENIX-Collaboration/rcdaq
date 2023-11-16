@@ -133,7 +133,7 @@ simpleRandom::xMD5Final(byte bdigest[16], struct xMD5Context *ctx)
 void
 simpleRandom::xMD5Transform(word32 buf[4], word32 const in[16])
 {
-        register word32 a, b, c, d;
+        word32 a, b, c, d;
 
         a = buf[0];
         b = buf[1];

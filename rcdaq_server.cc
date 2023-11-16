@@ -45,7 +45,7 @@ std::vector<RCDAQPlugin *> pluginlist;
 
 static unsigned long  my_servernumber = 0;
 
-void rcdaq_1(struct svc_req *rqstp, SVCXPRT *transp);
+extern "C"  void rcdaq_1(struct svc_req *rqstp, SVCXPRT *transp);
 
 static int pid_fd = 0;
 
