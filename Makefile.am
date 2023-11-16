@@ -19,6 +19,7 @@ allsources = \
 AM_LDFLAGS = -L$(libdir) -L$(ONLINE_MAIN)/lib
 
 AM_CXXFLAGS = -I$(includedir) -I$(ONLINE_MAIN)/include $(RPC_INCLUDE)
+AM_CPPFLAGS = -I$(includedir) -I$(ONLINE_MAIN)/include $(RPC_INCLUDE)
 
 noinst_HEADERS = \
   EvtConstants.h \
@@ -56,9 +57,9 @@ RPCGEN = rpcgen
 
 
 BUILT_SOURCES = \
-        rcdaq_rpc_clnt.cc \
-        rcdaq_rpc_svc.cc \
-        rcdaq_rpc_xdr.cc \
+        rcdaq_rpc_clnt.c \
+        rcdaq_rpc_svc.c \
+        rcdaq_rpc_xdr.c \
         rcdaq_rpc.h
 
 
@@ -105,7 +106,7 @@ endif
 
 librcdaq_la_CPPFLAGS = -DHTMLFILE=\"$(html_INDEX)\" -DHTMLDIR=\"$(htmldir)\"
 
-librcdaqutils_la_SOURCES = rcdaq_rpc_clnt.cc rcdaq_rpc_xdr.cc parseargument.cc
+librcdaqutils_la_SOURCES = rcdaq_rpc_clnt.cc rcdaq_rpc_xdr.c parseargument.cc
 
 librcdaqplugin_example_la_SOURCES = daq_device_pluginexample.cc example_plugin.cc
 
@@ -138,19 +139,19 @@ sfs_LDADD = -lpthread
 
 
 
-rcdaq_rpc_clnt.cc : $(srcdir)/rcdaq_rpc.x
+rcdaq_rpc_clnt.c : $(srcdir)/rcdaq_rpc.x
 	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xx
 	$(RPCGEN) -l rcdaq_rpc.xx  > $@
 	rm rcdaq_rpc.xx
 
 
-rcdaq_rpc_svc.cc : $(srcdir)/rcdaq_rpc.x
+rcdaq_rpc_svc.c : $(srcdir)/rcdaq_rpc.x
 	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xx
 	$(RPCGEN) -m rcdaq_rpc.xx  > $@
 	rm rcdaq_rpc.xx
 
 
-rcdaq_rpc_xdr.cc : $(srcdir)/rcdaq_rpc.x
+rcdaq_rpc_xdr.c : $(srcdir)/rcdaq_rpc.x
 	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xx
 	$(RPCGEN)  -c  rcdaq_rpc.xx  > $@
 	rm rcdaq_rpc.xx
