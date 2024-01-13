@@ -56,7 +56,7 @@
 #include "MQTTConnection.h"
 #endif
 
-
+#define NR_THREADS 4
 
 int open_file_on_server(const int run_number);
 int server_open_Connection();
@@ -124,6 +124,10 @@ static int daq_server_flag = 0;  //no server access
 static int daq_server_port = 0;  // invalid port
 static std::string daq_server_name = "";  // our server, if any
 
+static unsigned int currentFillBuffernr = 0;
+static unsigned int currentTransportBuffernr = 0;
+
+
 static int file_is_open = 0;
 static int server_is_open = 0;
 static int current_filesequence = 0;
@@ -168,6 +172,8 @@ int  DAQ_BEGININPROGRESS =0;
 
 static daqBuffer Buffer1;
 static daqBuffer Buffer2;
+
+std::vector<daqBuffer *> daqBufferVector;
 
 int Trigger_Todo;
 int Command_Todo;
@@ -366,6 +372,11 @@ int daq_setmaxbuffersize (const int n_kb, std::ostream& os)
 
   Buffer1.setMaxSize(n_kb*1024);
   Buffer2.setMaxSize(n_kb*1024);
+  for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
+    {
+      (*it)->setMaxSize(n_kb*1024);
+    }
+
   return 0;
 }
 
@@ -392,6 +403,12 @@ int daq_setEventFormat(const int f, std::ostream& os )
     }
   int status =  Buffer1.setEventFormat(f);
   status |= Buffer2.setEventFormat(f);
+
+  for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
+    {
+      status |= (*it)->setEventFormat(f);
+    }
+
   return status;
 }
 
@@ -400,7 +417,8 @@ int daq_setEventFormat(const int f, std::ostream& os )
  
 int daq_getEventFormat()
 {
-  return Buffer1.getEventFormat();
+  //  return Buffer1.getEventFormat();
+  return daqBufferVector[0]->getEventFormat();
 }
 
 int daq_getRunControlMode(std::ostream& os)
@@ -480,6 +498,7 @@ int writen (int fd, char *ptr, const int nbytes)
       if ( nwritten <0 )
 	{
 	  perror ("writen");
+	  cerrfl << "fd nr = " << fd << endl;
 	  return 0;
 	}
       
@@ -761,7 +780,8 @@ void *writebuffers ( void * arg)
       last_bufferwritetime  = time(0);
       if ( daq_open_flag &&  outfile_fd) 
 	{
-	  unsigned int bytecount = transportBuffer->writeout(outfile_fd);
+	  coutfl << "starting write thread on buffer " << transportBuffer->getID() << endl;
+	  unsigned int bytecount = transportBuffer->start_writeout_thread(outfile_fd);
 	  NumberWritten++;
 	  BytesInThisRun += bytecount;
 	  BytesInThisFile += bytecount;
@@ -785,10 +805,10 @@ int switch_buffer()
 {
 
    // pthread_mutex_lock(&M_cout);
-   // cout << __LINE__ << "  " << __FILE__ << " switching buffer" << endl;
+  cout << __LINE__ << "  " << __FILE__ << " switching buffer" << endl;
    // pthread_mutex_unlock(&M_cout);
 
-  daqBuffer *spare;
+  //daqBuffer *spare;
   
   pthread_mutex_lock(&WriteProtectSem);
   pthread_mutex_lock(&SendProtectSem);
@@ -796,11 +816,25 @@ int switch_buffer()
   fillBuffer->addEoB();
 
   //switch buffers
-  spare = transportBuffer;
-  transportBuffer = fillBuffer;
-  fillBuffer = spare;
+  // spare = transportBuffer;
 
-  //+++
+  currentTransportBuffernr = currentFillBuffernr;
+  transportBuffer = fillBuffer;
+  coutfl << " transportBuffer is now " << transportBuffer->getID()  << endl; 
+
+  currentFillBuffernr++;
+  if ( currentFillBuffernr >= daqBufferVector.size())
+    {
+      currentFillBuffernr = 0;
+    }
+  fillBuffer = daqBufferVector[currentFillBuffernr];
+  
+  coutfl << " transportBuffer " << transportBuffer->getID() << " asking if complete " << endl; 
+  transportBuffer->Wait_for_Completion();
+  coutfl << " transportBuffer " << transportBuffer->getID() << " ready to go " << endl; 
+
+  
+
   fillBuffer->prepare_next(++Buffer_number, TheRun);
 
 
@@ -1249,6 +1283,12 @@ int daq_begin(const int irun, std::ostream& os)
   Event_number_at_last_open = 0;
   Event_number_at_last_end = 0;
 
+  currentFillBuffernr = 0;
+  currentTransportBuffernr = 0;
+  fillBuffer = daqBufferVector[currentFillBuffernr];
+  transportBuffer = daqBufferVector[currentTransportBuffernr];
+
+  
   // initialize the run/file volume
   BytesInThisRun = 0;    // bytes actually written
   BytesInThisFile = 0;
@@ -1308,9 +1348,6 @@ int daq_begin(const int irun, std::ostream& os)
   
   cout << "starting run " << TheRun << " at " << time(0) << endl; 
   set_eventsizes();
-  // initialize Buffer1 to be the fill buffer
-  //fillBuffer      = &Buffer1;
-  //transportBuffer = &Buffer2;
 
   // a safety check: see that the buffers haven't been adjusted 
   // to a smaller value than the event size
@@ -1441,8 +1478,17 @@ int daq_end(std::ostream& os)
   device_endrun();
 
   readout(ENDRUNEVENT);
+  coutfl << "forcing a buffer flush " << endl;
   switch_buffer();  // we force a buffer flush
-		
+
+  //  transportBuffer->Wait_for_Completion(); 
+
+  for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
+    {
+      (*it)->Wait_for_Completion();
+    }
+
+  
   if ( file_is_open  )
     {
 
@@ -1777,11 +1823,20 @@ int daq_set_compression (const int flag, std::ostream& os)
     {
       Buffer1.setCompression(1);
       Buffer2.setCompression(1);
+      for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
+	{
+	  (*it)->setCompression(1);
+	}
+
     }
   else
     {
       Buffer1.setCompression(0);
       Buffer2.setCompression(0);
+      for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
+	{
+	  (*it)->setCompression(0);
+	}
     }
 
   return 0;
@@ -1982,7 +2037,25 @@ int rcdaq_init( pthread_mutex_t &M)
       MyHostName += ": ";
     }
 
+  // we give the buffers our state variable
+  Buffer1.setMD5State(&md5state);
+  Buffer2.setMD5State(&md5state);
+  
+  for (int i = 0; i < NR_THREADS; i++)
+    {
+      daqBuffer *x = new daqBuffer;
+      x->setID(i);
+      x->setMD5State(&md5state);
+      daqBufferVector.push_back(x);
+    }
 
+  for (int i = 1; i < NR_THREADS; i++)
+    {
+      daqBufferVector[i]->setPreviousBuffer(daqBufferVector[i-1]);
+    }
+  daqBufferVector[0]->setPreviousBuffer(daqBufferVector[NR_THREADS-1]);
+
+  
   //  pthread_mutex_init(&M_cout, 0); 
   M_cout = M;
 
@@ -2004,17 +2077,18 @@ int rcdaq_init( pthread_mutex_t &M)
 
   outfile_fd = 0;
 
-  // we give the buffers our state variable
-  Buffer1.setMD5State(&md5state);
-  Buffer2.setMD5State(&md5state);
-  
-  fillBuffer = &Buffer1;
-  transportBuffer = &Buffer2;
+  //  fillBuffer = &Buffer1;
+  fillBuffer = daqBufferVector[0];
+  transportBuffer = daqBufferVector[1];
 
 
 #ifdef WRITEPRDF
   Buffer1.setEventFormat(DAQPRDFFORMAT);
   Buffer2.setEventFormat(DAQPRDFFORMAT);
+  for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
+    {
+      (*it)->setEventFormat(DAQPRDFFORMAT);
+    }
 #endif
 
 
@@ -2161,7 +2235,7 @@ int daq_status( const int flag, std::ostream& os)
 	      else
 		{
 		  os << "  Logging enabled";
-		  if ( Buffer1.getCompression() ) os << "  compression enabled";
+		  if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled";
 		}
 	    }
 	  else
@@ -2181,7 +2255,7 @@ int daq_status( const int flag, std::ostream& os)
 	      else
 		{
 		  os << "  Logging enabled";
-		  if ( Buffer1.getCompression() ) os << "  compression enabled";
+		  if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled";
 		}
 	    }
 	  else
@@ -2262,7 +2336,7 @@ int daq_status( const int flag, std::ostream& os)
 	      else
 		{
 		  os << "  Logging enabled";
-		  if ( Buffer1.getCompression() ) os << "  compression enabled";
+		  if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled";
 		  os << endl;
 		}
 	    }
@@ -2304,7 +2378,7 @@ int daq_status( const int flag, std::ostream& os)
 	  os << "  Run Control Mode enabled  " << endl;
 	}
 
-      os << "  Buffer Sizes:     " <<  Buffer1.getMaxSize()/1024 << " KB";
+      os << "  Buffer Sizes:     " <<  daqBufferVector[0]->getMaxSize()/1024 << " KB";
       if ( adaptivebuffering) 
 	{
 	  os << " adaptive buffering: " << adaptivebuffering << " s"; 

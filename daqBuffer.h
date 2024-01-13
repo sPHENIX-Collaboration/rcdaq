@@ -32,7 +32,7 @@ public:
 
   //** Constructors
 
-  daqBuffer(const int irun = 1, const int length = 8*1024*1024+2*8192
+  daqBuffer(const int irun = 1, const int length = 16*1024*1024+2*8192
 	    , const int iseq = 1,   md5_state_t *md5state = 0);
 
   virtual ~daqBuffer();
@@ -50,6 +50,9 @@ public:
 
   int setCompression(const int flag);
   int getCompression() const {return wants_compression;} ;
+
+  // now the write routine
+  int start_writeout_thread (int fd);
   
   // now the write routine
   unsigned int writeout ( int fd);
@@ -77,10 +80,22 @@ public:
   void setMD5State( md5_state_t *md5state) {_md5state = md5state;};
   md5_state_t * getMD5State() const {return _md5state;};
 
+  void setPreviousBuffer( daqBuffer *b) {previousBuffer = b;};
+  void setID( const int i) {_my_number=i;};
+  int getID() const {return _my_number;};
+  
+  // this allows others to wait for me to finish writing
+  int Wait_for_Completion() const;
+
 protected:
 
   // now the compress routine
   int compress ();
+
+  // now the write routine
+  static void * writeout_thread ( void * me);
+
+
   
   typedef struct 
   { 
@@ -91,6 +106,19 @@ protected:
     int data[1];
   } *buffer_ptr;
 
+  typedef struct
+  {
+    int fd;
+    daqBuffer * me;
+  } thread_argument;
+
+  thread_argument _ta;
+    
+  int _my_number;
+  int _busy;
+  
+  daqBuffer * previousBuffer;
+  
   int _broken;
   buffer_ptr bptr;
   int *data_ptr;
@@ -107,6 +135,10 @@ protected:
   
   int currentBufferID;
 
+  pthread_t _writeout_thread_t;
+
+
+  
   md5_state_t *_md5state;
 
   static int lzo_initialized;

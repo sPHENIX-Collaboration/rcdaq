@@ -5,7 +5,7 @@ allsources = \
   daqONCSEvent.cc \
   daq_device_random.cc \
   daq_device_deadtime.cc \
-  daq_device_file.cc \
+daq_device_file.cc \
   daq_device_filenumbers.cc \
   daq_device_command.cc \
   daq_device_rtclock.cc \
@@ -140,27 +140,27 @@ sfs_LDADD = -lpthread
 
 
 rcdaq_rpc_clnt.c : $(srcdir)/rcdaq_rpc.x
-	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xx
-	$(RPCGEN) -l rcdaq_rpc.xx  > $@
-	rm rcdaq_rpc.xx
+	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xclnt
+	$(RPCGEN) -l rcdaq_rpc.xclnt  > $@
+	rm rcdaq_rpc.xclnt
 
 
 rcdaq_rpc_svc.c : $(srcdir)/rcdaq_rpc.x
-	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xx
-	$(RPCGEN) -m rcdaq_rpc.xx  > $@
-	rm rcdaq_rpc.xx
+	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xsvc
+	$(RPCGEN) -m rcdaq_rpc.xsvc  > $@
+	rm rcdaq_rpc.xsvc
 
 
 rcdaq_rpc_xdr.c : $(srcdir)/rcdaq_rpc.x
-	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xx
-	$(RPCGEN)  -c  rcdaq_rpc.xx  > $@
-	rm rcdaq_rpc.xx
+	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xxdr
+	$(RPCGEN)  -c  rcdaq_rpc.xxdr  > $@
+	rm rcdaq_rpc.xxdr
 
 
 rcdaq_rpc.h : $(srcdir)/rcdaq_rpc.x
-	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xx
-	$(RPCGEN)  -h  rcdaq_rpc.xx > $@
-	rm rcdaq_rpc.xx
+	cp  $(srcdir)/rcdaq_rpc.x ./rcdaq_rpc.xrpc
+	$(RPCGEN)  -h  rcdaq_rpc.xrpc > $@
+	rm rcdaq_rpc.xrpc
 
 
 clean-local:

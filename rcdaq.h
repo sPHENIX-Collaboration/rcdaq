@@ -4,6 +4,9 @@
 #include <iostream>
 #include <pthread.h>
 
+#define coutfl std::cout << __FILE__<< "  " << __LINE__ << " "
+#define cerrfl std::cerr << __FILE__<< "  " << __LINE__ << " "
+
 class daq_device;
 
 void sig_handler(int i);
