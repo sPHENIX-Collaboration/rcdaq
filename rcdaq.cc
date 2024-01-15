@@ -568,6 +568,30 @@ int open_file_on_server(const int run_number)
 }
 
 
+// this function can be called sirectly from daq_end_interactive, 
+// or we can make a thread for the "immediate" option 
+void *daq_end_thread (void *arg)
+{
+
+  std::ostream *os = (std::ostream *) arg;
+
+  // with an operator-induced daq_end, we make the event loop terminate
+  // and wait for it to be done.
+
+  disable_trigger();
+
+  // it is possible that we call daq_end before we ever started a run
+  if (ThreadEvt)   pthread_join(ThreadEvt, NULL);
+
+  daq_end(*os);
+  DAQ_ENDREQUESTED = 0;
+
+  return 0;
+
+}
+
+
+
 
 void *shutdown_thread (void *arg)
 {
@@ -1391,10 +1415,24 @@ int daq_end_immediate(std::ostream& os)
   os << MyHostName << "Run " << TheRun << " end requested" << endl;
   DAQ_ENDREQUESTED = 1;
 
-  cout << "ended run " << TheRun << " at " << time(0) << endl; 
+  pthread_t t;
+  
+  void * x = &os;
 
+  //cout << __FILE__ << " " << __LINE__ << " calling end_thread as thread" << endl; 
+  int status = pthread_create(&t, NULL,
+                          daq_end_thread,
+                          x);
+  if (status ) 
+    {
+
+      cout << "end_run failed " << status << endl;
+      os << "end_run failed " << status << endl;
+    }
+  //cout << __FILE__ << " " << __LINE__ << " done setting up  end_thread" << endl; 
   return 0;
 }
+
 
 // this function is to hold further interactions until a asynchronous begin-run is over 
 int daq_wait_for_begin_done()
@@ -1406,24 +1444,21 @@ int daq_wait_for_begin_done()
 // this function is to avoid a race condition with the asynchronous "end requested" feature
 int daq_wait_for_actual_end()
 {
+
   while ( DAQ_ENDREQUESTED ) 
     {
       usleep(10000);
     }
-    return 0;
+
+  return 0;
 }
 
 int daq_end_interactive(std::ostream& os)
 {
-  // with an operator-induced daq_end, we make the event loop terminate
-  // and wait for it to be done.
 
-  disable_trigger();
-
-  // it is possible that we call daq_end before we ever started a run
-  if (ThreadEvt)   pthread_join(ThreadEvt, NULL);
-
-  return daq_end(os);
+  void *x = &os;
+  daq_end_thread (x);
+  return 0;
 }
 
   
@@ -1472,21 +1507,11 @@ int daq_end(std::ostream& os)
 	}
       file_is_open = 0;
 
-      // int sfd = get_sqlfd();
-      // if ( sfd && RunControlMode == 0)
-      // 	{
-      // 	  std::ostringstream out;
-      // 	  out << "update $RUNTABLE set eventsinrun=" << Event_number << " where runnumber=" << TheRun << ";" << std::endl;
-      // 	  write (sfd, out.str().c_str(), out.str().size());
-      // 	}
 
     } 
 
 
   
-  os << MyHostName <<  "Run " << TheRun << " ended" << endl;
-  cout << "ended run " << TheRun << " at " << time(0) << endl; 
-
   unsetenv ("DAQ_RUNNUMBER");
   unsetenv ("DAQ_FILENAME");
   unsetenv ("DAQ_STARTTIME");
@@ -1511,6 +1536,8 @@ int daq_end(std::ostream& os)
 
   DAQ_ENDREQUESTED = 0;
   
+  os << MyHostName <<  "Run " << TheRun << " ended" << endl;
+
   return 0;
 }
 
@@ -1537,7 +1564,7 @@ void * EventLoop( void *arg)
 {
 
   // pthread_mutex_lock(&M_cout);
-  // std::cout << __FILE__ << " " << __LINE__ << " event loop starting...   " << std::endl;
+  //  std::cout << __FILE__ << " " << __LINE__ << " event loop starting...   " << std::endl;
   // pthread_mutex_unlock(&M_cout);
 
   int rstatus;
@@ -1545,9 +1572,6 @@ void * EventLoop( void *arg)
   while (TriggerControl)
     {
 
-      //pthread_mutex_lock ( &TriggerSem );
-      //cout << __LINE__ << "  " << __FILE__ << " unlocked by TriggerSem"  << endl;
-      
       // let's see if we have a TriggerHelper object
       if (TriggerH)
 	{
@@ -1556,41 +1580,29 @@ void * EventLoop( void *arg)
       else // we auto-generate a few triggers
 	{
 	  CurrentEventType = 1;
-      	  usleep (100000);
-      	}
-
-
+	  usleep (100000);
+	}
+      
+      
       if (CurrentEventType) 
 	{
 	  
 	  if ( DAQ_RUNNING ) 
 	    {
-
-	      if ( DAQ_ENDREQUESTED )
+	      
+	      rstatus = readout(CurrentEventType);
+	      
+	      if (  rstatus)    // we got an endrun signal
 		{
-		  cout << " asynchronous end requested, run " << TheRun  << endl;
 		  TriggerControl = 0;
+		  //reset_deadtime();
+		  cout << __LINE__ << " calling daq_end" << endl;
 		  daq_end ( std::cout);
 		}
-
 	      else
 		{
-		  rstatus = readout(CurrentEventType);
-		  // cout << __LINE__ << "  " << __FILE__ << " readout status: " << rstatus << endl;
-		  
-		  if (  rstatus)    // we got an endrun signal
-		    {
-		      cout << __LINE__ << "  " << __FILE__ << " readout status: " << rstatus << " run nr " << TheRun << endl;
-		      TriggerControl = 0;
-		      //reset_deadtime();
-		      cout << __LINE__ << " calling daq_end" << endl;
-		      daq_end ( std::cout);
-		    }
-		  else
-		    {
-		      rearm(DATAEVENT);
-		      reset_deadtime();
-		    }
+		  rearm(DATAEVENT);
+		  reset_deadtime();
 		}
 	    }
 	  else  // no, we are not running
@@ -1601,10 +1613,6 @@ void * EventLoop( void *arg)
 	    }
 	}
     }
-
-  // pthread_mutex_lock(&M_cout);
-  // std::cout << __FILE__ << " " << __LINE__ << " event loop ends...   " << std::endl;
-  // pthread_mutex_unlock(&M_cout);
 
   return 0;
   
