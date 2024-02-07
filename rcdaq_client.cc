@@ -17,7 +17,7 @@ CLIENT *clnt;
 int  verbose_flag = 0;
 
 void
-rcdaq_client_Init(char *host, const int servernumber)
+rcdaq_client_Init(const char *host, const int servernumber)
 {
 
 
@@ -229,23 +229,31 @@ int command_execute( int argc, char **argv)
     }
 
   
-  char lh[] = "localhost";
-  char *host = lh;
+  std::string rcdaqhost;
+  std::string host = "localhost";
     
   if ( getenv("RCDAQHOST")  )
     {
-      host = getenv("RCDAQHOST");
+      rcdaqhost = getenv("RCDAQHOST");
+      istringstream ss(rcdaqhost);
+      string token;
+      std::getline(ss, token, ':');
+      if ( token.size())
+	{
+	  host = token;
+	}
+
+      std::getline(ss, token, ':');
+      if ( token.size())
+	{
+	  servernumber=std::stoi(token);
+	}
     }
 
-  if ( getenv("RCDAQSERVERNUMBER")  )
-    {
-      servernumber = atoi(getenv("RCDAQSERVERNUMBER"));
-    }
-
-  //  std::cout << "Server number is " << servernumber << std::endl;
+  //  std::cout << "hoat " << host << " Server number is " << servernumber << std::endl;
 
   
-  rcdaq_client_Init (host,servernumber);
+  rcdaq_client_Init (host.c_str(),servernumber);
   
   ab.action = 0;
   ab.value  = 0;

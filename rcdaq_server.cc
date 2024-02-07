@@ -65,12 +65,6 @@ void sig_handler(int i)
 
 //-------------------------------------------------------------
 
-int server_setup(int argc, char **argv)
-{
-  return 0;
-}
-
-//-------------------------------------------------------------
 
 void plugin_register(RCDAQPlugin * p )
 {
@@ -1022,11 +1016,7 @@ main (int argc, char **argv)
   
   pthread_mutex_init(&M_output, 0); 
 
-  rcdaq_init( M_output);
-
-
-  server_setup(argc, argv);
-
+  rcdaq_init( servernumber, M_output);
 
   my_servernumber = RCDAQ+servernumber;  // remember who we are for later
 
@@ -1044,9 +1034,9 @@ main (int argc, char **argv)
     exit(1);
   }
 
-  char hostname[1024];
-  gethostname(hostname, 1024);
-  daq_set_name(hostname);
+  // char hostname[1024];
+  // gethostname(hostname, 1024);
+  // daq_set_name(hostname);
 
   svc_run ();
   fprintf (stderr, "%s", "svc_run returned");
