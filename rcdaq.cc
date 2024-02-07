@@ -85,6 +85,8 @@ char pidfilename[128];
 // those are the "todo" definitions. DAQ can be woken up by a trigger
 // and read something, or by a command and change its status.
 
+int servernumber = 0;
+
 #define DAQ_TRIGGER 0x01
 #define DAQ_COMMAND 0x02
 #define DAQ_SPECIAL 0x04
@@ -638,7 +640,7 @@ void *monitorRequestwatcher_thread (void *arg)
   bzero( (char*)&server_addr, sizeof(server_addr));
   server_addr.sin_family = PF_INET;
   server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-  server_addr.sin_port = htons(MONITORINGPORT);
+  server_addr.sin_port = htons(MONITORINGPORT + servernumber);
 
 
   int status = bind(sockfd, (struct sockaddr*) &server_addr, sizeof(server_addr));
@@ -648,7 +650,7 @@ void *monitorRequestwatcher_thread (void *arg)
     }
 	
   pthread_mutex_lock(&M_cout);
-  cout  << "Listening for monitoring requests on port " << MONITORINGPORT << endl;
+  cout  << "Listening for monitoring requests on port " << MONITORINGPORT + servernumber << endl;
   pthread_mutex_unlock(&M_cout);
 
   listen(sockfd, 16);
@@ -973,6 +975,10 @@ int daq_set_filerule(const char *rule)
 int daq_set_name(const char *name)
 {
   MyName = name;
+  if (servernumber)
+    {
+      MyName = MyName + ":" + to_string(servernumber);
+    }
   request_mg_update (MG_REQUEST_NAME);
   return 0;
 }
@@ -1976,20 +1982,28 @@ int daq_clear_readlist(std::ostream& os)
 }
 
 
-int rcdaq_init( pthread_mutex_t &M)
+int rcdaq_init( const int snumber, pthread_mutex_t &M)
 {
 
   int status;
 
+  servernumber = snumber;
+  ThePort += servernumber;
+    
   char hostname[HOST_NAME_MAX];
   status = gethostname(hostname, HOST_NAME_MAX);
   if (!status)
     {
       shortHostName = hostname;
       MyHostName = hostname;
-      MyHostName += ": ";
+      if (servernumber)
+	{
+	  shortHostName = shortHostName + ":" + to_string(servernumber);
+	  MyHostName = MyHostName + ":" + to_string(servernumber);
+	}
+      MyHostName += " - ";
     }
-
+  MyName = shortHostName;
 
   //  pthread_mutex_init(&M_cout, 0); 
   M_cout = M;
@@ -2363,7 +2377,7 @@ int daq_webcontrol(const int port, std::ostream& os)
 
   if (  port ==0)
     {
-      ThePort=8899;
+      ThePort=8899 + servernumber;
     }
   else
     {

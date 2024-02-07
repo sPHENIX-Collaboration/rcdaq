@@ -24,7 +24,7 @@ int device_init();
 int device_endrun();
 int readout(const int etype);
 int rearm(const int etype);
-int rcdaq_init(pthread_mutex_t &M );
+int rcdaq_init(const int, pthread_mutex_t &M );
 int add_readoutdevice( daq_device *d);
 
 int daq_begin(const int irun,std::ostream& os = std::cout );
