@@ -237,20 +237,21 @@ int command_execute( int argc, char **argv)
       rcdaqhost = getenv("RCDAQHOST");
       istringstream ss(rcdaqhost);
       string token;
-      std::getline(ss, token, ':');
-      if ( token.size())
+      if ( std::getline(ss, token, ':'))
 	{
-	  host = token;
+	  if ( token.size())
+	    {
+	      host = token;
+	    }
 	}
-
-      std::getline(ss, token, ':');
-      if ( token.size())
+      if ( std::getline(ss, token, ':') )
 	{
-	  servernumber=std::stoi(token);
+	  if ( token.size())
+	    {
+	      servernumber=std::stoi(token);
+	    }
 	}
     }
-
-  //  std::cout << "hoat " << host << " Server number is " << servernumber << std::endl;
 
   
   rcdaq_client_Init (host.c_str(),servernumber);
