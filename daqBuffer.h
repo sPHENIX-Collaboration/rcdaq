@@ -72,6 +72,7 @@ public:
   // and the query
   int getBufSeq () const { return bptr->Bufseq; } ;
   unsigned int getLength () const { return bptr->Length; } ;
+  unsigned int getBufferCcounter () const { return _my_buffernr; } ;
 
   int setEventFormat(const int f);
   int getEventFormat() const {return format;};
@@ -85,8 +86,12 @@ public:
   int getID() const {return _my_number;};
   
   // this allows others to wait for me to finish writing
-  int Wait_for_Completion() const;
+  int Wait_for_Completion(const int other_buffer) const;
+  int Wait_for_free() const;
 
+  static void reset_count();
+  static void init_mutex();
+  
 protected:
 
   // now the compress routine
@@ -95,8 +100,11 @@ protected:
   // now the write routine
   static void * writeout_thread ( void * me);
 
-
+  static unsigned int _buffer_count;
+  int _my_buffernr;
   
+  static pthread_mutex_t M_buffercnt;
+
   typedef struct 
   { 
     unsigned int Length;

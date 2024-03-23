@@ -56,7 +56,7 @@
 #include "MQTTConnection.h"
 #endif
 
-#define NR_THREADS 4
+#define NR_THREADS 2
 
 int open_file_on_server(const int run_number);
 int server_open_Connection();
@@ -780,7 +780,7 @@ void *writebuffers ( void * arg)
       last_bufferwritetime  = time(0);
       if ( daq_open_flag &&  outfile_fd) 
 	{
-	  coutfl << "starting write thread on buffer " << transportBuffer->getID() << endl;
+	  coutfl << "starting write thread on buffer " << transportBuffer->getID() << " with bufferctr " << transportBuffer->getBufferCcounter() << endl;
 	  unsigned int bytecount = transportBuffer->start_writeout_thread(outfile_fd);
 	  NumberWritten++;
 	  BytesInThisRun += bytecount;
@@ -829,8 +829,8 @@ int switch_buffer()
     }
   fillBuffer = daqBufferVector[currentFillBuffernr];
   
-  coutfl << " transportBuffer " << transportBuffer->getID() << " asking if complete " << endl; 
-  transportBuffer->Wait_for_Completion();
+  coutfl << " asking transportBuffer " << transportBuffer->getID() << " if complete " << endl; 
+  transportBuffer->Wait_for_free();
   coutfl << " transportBuffer " << transportBuffer->getID() << " ready to go " << endl; 
 
   
@@ -1349,6 +1349,8 @@ int daq_begin(const int irun, std::ostream& os)
   cout << "starting run " << TheRun << " at " << time(0) << endl; 
   set_eventsizes();
 
+
+  
   // a safety check: see that the buffers haven't been adjusted 
   // to a smaller value than the event size
   int wantedmaxsize = 0;
@@ -1395,6 +1397,7 @@ int daq_begin(const int irun, std::ostream& os)
       setenv ( "DAQ_FILENAME", CurrentFilename.c_str() , 1);
     }
 
+  daqBuffer::reset_count();
 
   // we are opening a new file here, so we restart the MD5 calculation 
   md5_init(&md5state);
@@ -1485,7 +1488,8 @@ int daq_end(std::ostream& os)
 
   for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
     {
-      (*it)->Wait_for_Completion();
+      std::cout << __FILE__ << " " << __LINE__ << " checking completion on buffer  " << (*it)->getID() << std::endl;
+      (*it)->Wait_for_free();
     }
 
   
@@ -2036,6 +2040,9 @@ int rcdaq_init( pthread_mutex_t &M)
       MyHostName = hostname;
       MyHostName += ": ";
     }
+
+  daqBuffer::init_mutex();
+  daqBuffer::reset_count();
 
   // we give the buffers our state variable
   Buffer1.setMD5State(&md5state);
