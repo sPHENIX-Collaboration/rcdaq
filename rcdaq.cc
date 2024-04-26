@@ -1378,6 +1378,12 @@ int daq_begin(const int irun, std::ostream& os)
   // RUNNUMBER
   sprintf( str, "%d", TheRun);
   setenv ( "DAQ_RUNNUMBER", str, 1);
+
+  sprintf( str, "%d", Event_number);
+  setenv ( "DAQ_EVENTNUMBER", str, 1);
+
+
+  
   setenv ( "DAQ_FILERULE", TheFileRule.c_str() , 1);
 
   sprintf( str, "%ld", StartTime);
@@ -1686,6 +1692,11 @@ int readout(const int etype)
     }
   Event_number++;
   Event_number_at_last_end = Event_number;
+
+  char str[128];
+  sprintf( str, "%d", Event_number);
+  setenv ( "DAQ_EVENTNUMBER", str, 1);
+
 
   for ( d_it = DeviceList.begin(); d_it != DeviceList.end(); ++d_it)
     {
