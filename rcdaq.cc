@@ -56,7 +56,7 @@
 #include "MQTTConnection.h"
 #endif
 
-#define NR_THREADS 2
+#define NR_THREADS 5
 
 int open_file_on_server(const int run_number);
 int server_open_Connection();
@@ -2056,6 +2056,7 @@ int rcdaq_init( pthread_mutex_t &M)
       daqBufferVector.push_back(x);
     }
 
+  // now we create a circular chain of buffers that we rotate around
   for (int i = 1; i < NR_THREADS; i++)
     {
       daqBufferVector[i]->setPreviousBuffer(daqBufferVector[i-1]);
