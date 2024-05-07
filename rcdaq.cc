@@ -81,6 +81,7 @@ pthread_mutex_t SendProtectSem;
 pthread_mutex_t FdManagementSem;
 
 char pidfilename[128];
+char daq_event_env_string[128];
 
 // those are the "todo" definitions. DAQ can be woken up by a trigger
 // and read something, or by a command and change its status.
@@ -1376,13 +1377,11 @@ int daq_begin(const int irun, std::ostream& os)
   // here we sucessfully start a run. So now we set the env. variables
   char str[128];
   // RUNNUMBER
-  sprintf( str, "%d", TheRun);
-  setenv ( "DAQ_RUNNUMBER", str, 1);
+  sprintf(str, "%d", TheRun);
+  setenv ( "DAQ_RUNNUMBER", str , 1);
 
-  sprintf( str, "%d", Event_number);
-  setenv ( "DAQ_EVENTNUMBER", str, 1);
-
-
+  // sprintf( str, "%d", Event_number);
+  // setenv ( "DAQ_EVENTNUMBER", str , 1);
   
   setenv ( "DAQ_FILERULE", TheFileRule.c_str() , 1);
 
@@ -1683,6 +1682,8 @@ int readout(const int etype)
 
   deviceiterator d_it;
 
+  sprintf( daq_event_env_string, "DAQ_EVENTNUMBER=%d", Event_number);
+
 
   int status = fillBuffer->nextEvent(etype,Event_number, Eventsize[etype]);
   if (status != 0) 
@@ -1690,18 +1691,15 @@ int readout(const int etype)
       switch_buffer();
       status = fillBuffer->nextEvent(etype,Event_number,  Eventsize[etype]);
     }
-  Event_number++;
-  Event_number_at_last_end = Event_number;
-
-  char str[128];
-  sprintf( str, "%d", Event_number);
-  setenv ( "DAQ_EVENTNUMBER", str, 1);
-
 
   for ( d_it = DeviceList.begin(); d_it != DeviceList.end(); ++d_it)
     {
       len += fillBuffer->addSubevent ( (*d_it) );
     }
+
+  Event_number++;
+  Event_number_at_last_end = Event_number;
+
 
   run_volume += 4*len;
 
@@ -2015,6 +2013,11 @@ int rcdaq_init( const int snumber, pthread_mutex_t &M)
       MyHostName += " - ";
     }
   MyName = shortHostName;
+
+  sprintf( daq_event_env_string, "DAQ_EVENTNUMBER=%d", -1);
+  putenv(daq_event_env_string);
+
+
 
   //  pthread_mutex_init(&M_cout, 0); 
   M_cout = M;
