@@ -32,7 +32,7 @@ public:
 
   //** Constructors
 
-  daqBuffer(const int irun = 1, const unsigned int length = 1016*1024*1024 // I leave some room..
+  daqBuffer(const int irun = 1, const unsigned int length = 508*1024*1024 // I leave some room..
 	    , const int iseq = 1,   md5_state_t *md5state = 0);
 
   virtual ~daqBuffer();
