@@ -32,7 +32,7 @@ public:
 
   //** Constructors
 
-  daqBuffer(const int irun = 1, const int length = 8*1024*1024+2*8192
+  daqBuffer(const int irun = 1, const int length = 8*1024*1024*1024+2*8192
 	    , const int iseq = 1,   md5_state_t *md5state = 0);
 
   virtual ~daqBuffer();
