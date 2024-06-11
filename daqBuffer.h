@@ -32,7 +32,7 @@ public:
 
   //** Constructors
 
-  daqBuffer(const int irun = 1, const unsigned int length = 508*1024*1024 // I leave some room..
+  daqBuffer(const int irun = 1, const int length = 8*1024*1024+2*8192
 	    , const int iseq = 1,   md5_state_t *md5state = 0);
 
   virtual ~daqBuffer();
@@ -61,10 +61,10 @@ public:
   unsigned int sendData ( int fd, const int max_length);
 
   // now the re-sizing of buffer
-  unsigned int setMaxSize( const unsigned int size);
+  int setMaxSize( const int size);
 
   // and the query
-  unsigned int getMaxSize() const ;
+  int getMaxSize() const ;
 
   // and the query
   int getBufSeq () const { return bptr->Bufseq; } ;
@@ -95,9 +95,9 @@ protected:
   buffer_ptr bptr;
   int *data_ptr;
   int current_index;
-  unsigned int max_length;
-  unsigned int max_size;
-  unsigned int left;
+  int max_length;
+  int max_size;
+  int left;
   daqEvent *current_event;
   int current_etype;
   int has_end;
