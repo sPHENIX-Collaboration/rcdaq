@@ -327,7 +327,7 @@ int daqBuffer::setMaxSize(const int size)
 }
 
 // ----------------------------------------------------------
-int daqBuffer::getMaxSize() const 
+unsigned int daqBuffer::getMaxSize() const 
 {
   return max_size*4;
 }
