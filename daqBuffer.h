@@ -61,7 +61,7 @@ public:
   unsigned int sendData ( int fd, const int max_length);
 
   // now the re-sizing of buffer
-  int setMaxSize( const int size);
+  unsigned int setMaxSize( const unsigned int size);
 
   // and the query
   unsigned int getMaxSize() const ;
