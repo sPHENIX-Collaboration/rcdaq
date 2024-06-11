@@ -21,7 +21,7 @@ int writen (int fd, char *ptr, const int nbytes);
 
 
 // the constructor first ----------------
-daqBuffer::daqBuffer (const int irun, const int length
+daqBuffer::daqBuffer (const int irun, const unsigned int length
 		      , const int iseq, md5_state_t *md5state)
 {
   int *b = new int [length];
@@ -162,8 +162,8 @@ unsigned int daqBuffer::writeout ( int fd)
 
   if ( ! wants_compression)
     {
-      int blockcount = ( getLength() + 8192 -1)/8192;
-      int bytecount = blockcount*8192;
+      unsigned int blockcount = ( getLength() + 8192 -1)/8192;
+      unsigned int bytecount = blockcount*8192;
       bytes = writen ( fd, (char *) bptr , bytecount );
       if ( _md5state)
 	{
@@ -175,8 +175,8 @@ unsigned int daqBuffer::writeout ( int fd)
   else // we want compression
     {
       compress();
-      int blockcount = ( outputarray[0] + 8192 -1)/8192;
-      int bytecount = blockcount*8192;
+      unsigned int blockcount = ( outputarray[0] + 8192 -1)/8192;
+      unsigned int bytecount = blockcount*8192;
       bytes = writen ( fd, (char *) outputarray , bytecount );
       if ( _md5state)
 	{
@@ -308,9 +308,9 @@ int daqBuffer::compress ()
 
 
 // ----------------------------------------------------------
-int daqBuffer::setMaxSize(const int size)
+unsigned int daqBuffer::setMaxSize(const unsigned int size)
 {
-  if (size < 0) return -1;
+  //  if (size < 0) return -1;
   if (size == 0) max_size = max_length;
   else
     {
@@ -327,7 +327,7 @@ int daqBuffer::setMaxSize(const int size)
 }
 
 // ----------------------------------------------------------
-int daqBuffer::getMaxSize() const 
+unsigned int daqBuffer::getMaxSize() const 
 {
   return max_size*4;
 }
