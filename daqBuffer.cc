@@ -21,7 +21,7 @@ int writen (int fd, char *ptr, const int nbytes);
 
 
 // the constructor first ----------------
-daqBuffer::daqBuffer (const int irun, const int length
+daqBuffer::daqBuffer (const int irun, const unsigned int length
 		      , const int iseq, md5_state_t *md5state)
 {
   int *b = new int [length];
