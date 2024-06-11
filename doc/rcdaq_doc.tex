@@ -2026,10 +2026,10 @@ The device records both the current clock value, as well as the same
 value from the last event where the ``device'' was read out. This
 makes it easy to compute the relative timing of events.
 
-Here is an example how to set up such a pseude device in a data event:
+Here is an example how to set up such a pseudo device in a data event:
 
 \begin{verbatim}
-rcdaq_client create_device device_deadtime 1 1010
+rcdaq_client create_device device_rtclock 1 1010
 \end{verbatim}
 
 It does not take any configuration parameters, only the event type and
