@@ -967,8 +967,14 @@ int getRunNumberFromApp()
 
 
 
-int daq_set_filerule(const char *rule)
+int daq_set_filerule(const char *rule , std::ostream& os)
 {
+  if ( DAQ_RUNNING ) 
+    {
+      os << MyHostName << "Run is active" << endl;;
+      return -1;
+    }
+
   TheFileRule = rule;
   return 0;
 }
@@ -1033,6 +1039,13 @@ int daq_get_mqtt_host(std::ostream& os)
 // this is selecting from any of the existing run types 
 int daq_setruntype(const char *type, std::ostream& os )
 {
+
+  if ( DAQ_RUNNING ) 
+    {
+      os << MyHostName << "Run is active" << endl;;
+      return -1;
+    }
+
   std::string _type = type;
   std::map <string,string>::const_iterator iter = RunTypes.begin();
   for ( ; iter != RunTypes.end(); ++iter)
