@@ -34,6 +34,7 @@ int daq_device_rtclock::put_data(const int etype, int * adr, const int length )
 
 
   struct timespec clk;
+  struct timespec clk2;
 
 
   if ( daq_getEventFormat() ) // we are writing PRDF
@@ -48,10 +49,11 @@ int daq_device_rtclock::put_data(const int etype, int * adr, const int length )
       
       int  *d = (int *) &sevt->data;
       int s = clock_gettime(CLOCK_MONOTONIC_RAW, &clk);
+      int sm = clock_gettime(CLOCK_REALTIME, &clk2);
       
       if  (s)  // error, set everything to 0
 	{
-	  for ( int i = 0; i < 6; i++)  *d++ = 0;
+	  for ( int i = 0; i < 9; i++)  *d++ = 0;
 	}
       else
 	{
@@ -61,10 +63,13 @@ int daq_device_rtclock::put_data(const int etype, int * adr, const int length )
 	  *d++ = previous_clk.tv_sec;
 	  memcpy(d, &previous_clk.tv_nsec, sizeof(previous_clk.tv_nsec));
 	  d+=2;
+	  *d++ = clk2.tv_sec;
+	  memcpy(d, &clk2.tv_nsec, sizeof(clk2.tv_nsec));
+	  d+=2;
 	}
       previous_clk = clk;
 
-      sevt->sub_length += 6;
+      sevt->sub_length += 9;
       return  sevt->sub_length;
     }
 
@@ -84,6 +89,7 @@ int daq_device_rtclock::put_data(const int etype, int * adr, const int length )
       
       int  *d = (int *) &sevt->data;
       int s = clock_gettime(CLOCK_MONOTONIC_RAW, &clk);
+      int sm = clock_gettime(CLOCK_MONOTONIC, &clk2);
       
       if  (s)  // error, set everything to 0
 	{
@@ -97,11 +103,14 @@ int daq_device_rtclock::put_data(const int etype, int * adr, const int length )
 	  *d++ = previous_clk.tv_sec;
 	  memcpy(d, &previous_clk.tv_nsec, sizeof(previous_clk.tv_nsec));
 	  d+=2;
+	  *d++ = clk2.tv_sec;
+	  memcpy(d, &clk2.tv_nsec, sizeof(clk2.tv_nsec));
+	  d+=2;
 	}
       previous_clk = clk;
 
-      sevt->sub_padding = 0;
-      sevt->sub_length += 6;
+      sevt->sub_padding = 1;
+      sevt->sub_length += 10;
       return  sevt->sub_length;
     }
 }
