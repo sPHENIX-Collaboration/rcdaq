@@ -86,7 +86,7 @@ int daqBuffer::prepare_next( const int iseq
   pthread_mutex_lock(&M_buffercnt);
   _buffer_count++;
   _my_buffernr = _buffer_count;
-  coutfl << "absolute buffer number now " << _my_buffernr << endl;
+  //coutfl << "prepare_next called on buffer " << getID() << " absolute buffer number now " << _my_buffernr << endl;
   pthread_mutex_unlock(&M_buffercnt);
 
   
@@ -185,6 +185,7 @@ int daqBuffer::start_writeout_thread (int fd)
   _ta.fd =fd;
   _ta.me =this;
   _busy = 1;
+  _dirty =1;
   int status = pthread_create(&_writeout_thread_t, NULL, 
 			       daqBuffer::writeout_thread, 
 			      (void *) &_ta);
@@ -209,8 +210,10 @@ unsigned int daqBuffer::writeout ( int fd)
   if ( _broken) return 0;
   if (!has_end) addEoB();
 
-  coutfl << " in writeout for buffer " << getID() << " size " <<  getLength() << endl;
+  //coutfl << " in writeout for buffer " << getID() << " size " <<  getLength() << " with fd " << fd << " busy_state: " << _busy <<endl;
 
+  //sleep(20);
+  
   unsigned int bytes = 0;
 
   if ( ! wants_compression)
@@ -218,30 +221,38 @@ unsigned int daqBuffer::writeout ( int fd)
       int blockcount = ( getLength() + 8192 -1)/8192;
       int bytecount = blockcount*8192;
 
-      //coutfl << "buffer " << getID() << " calling wait on prev id " << previousBuffer->getID() << endl;
-      if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
-      //coutfl << "buffer " << getID() << " finished wait on prev id " << previousBuffer->getID() << endl;
+      if ( previousBuffer->getBufferNumber() < getBufferNumber()) // ok, we need to wait for the other buffer b/c it nees to come first
+	{
+	  //coutfl << "buffer " << getID() << " with buffernr " << getBufferNumber() 
+	  //	 << " calling wait on prev id " << previousBuffer->getID() << " with buffernr " << previousBuffer->getBufferNumber() << endl;
+	  if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
+	  //coutfl << "buffer " << getID() << " finished wait on prev id " << previousBuffer->getID() << endl;
+	}
+      // else
+      // 	{
+      // 	  coutfl << "buffer " << getID() << " with buffernr " << getBufferNumber() << " it\'s my turn to be written out" << endl;
+      // 	}
       
       bytes = writen ( fd, (char *) bptr , bytecount );
       if ( _md5state)
 	{
-	  //cout << __FILE__ << " " << __LINE__ << " updating md5  with " << bytes << " bytes" << endl; 
+	  //coutfl << "updating md5  with " << bytes << " bytes for buffer " << getID() << endl; 
 	  md5_append(_md5state, (const md5_byte_t *)bptr,bytes );
 	}
-      usleep(2000);
+      //usleep(2000);
       //coutfl << "Finishing write for buffer " << getID() << endl;
     }
   else // we want compression
     {
-      coutfl << "starting compression " << getID() << endl;
+      //coutfl << "starting compression " << getID() << endl;
       compress();
-      coutfl << "finished compression " << getID() << endl;
+      //coutfl << "finished compression " << getID() << endl;
       int blockcount = ( outputarray[0] + 8192 -1)/8192;
       int bytecount = blockcount*8192;
 
-      coutfl << "buffer " << getID() << " calling wait on prev id " << previousBuffer->getID() << endl;
+      //coutfl << "buffer " << getID() << " calling wait on prev id " << previousBuffer->getID() << endl;
       if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
-      coutfl << "buffer " << getID() << " finished wait on prev id " << previousBuffer->getID() << endl;
+      //coutfl << "buffer " << getID() << " finished wait on prev id " << previousBuffer->getID() << endl;
       
       bytes = writen ( fd, (char *) outputarray , bytecount );
       if ( _md5state)
@@ -251,8 +262,9 @@ unsigned int daqBuffer::writeout ( int fd)
 	}
       //sleep(20);
     }
-  coutfl << "Finishing write for buffer " << getID() << " " << time(0) << endl;
+  //  coutfl << "Finishing write for buffer " << getID() << " " << time(0) << " busy_state: " << _busy << endl;
   _busy = 0;
+  _dirty = 0;
   return bytes;
 }
 
@@ -362,32 +374,32 @@ int daqBuffer::compress ()
 {
   if ( _broken) return -1;
   
-  // lzo_uint outputlength_in_bytes = outputarraylength*4-16;
-  // lzo_uint in_len = getLength(); 
+  lzo_uint outputlength_in_bytes = outputarraylength*4-16;
+  lzo_uint in_len = getLength(); 
 
-  // lzo1x_1_12_compress( (lzo_byte *) bptr,
-  // 			in_len,  
-  // 		       (lzo_byte *)&outputarray[4],
-  // 			&outputlength_in_bytes,wrkmem);
+  lzo1x_1_12_compress( (lzo_byte *) bptr,
+			in_len,  
+		       (lzo_byte *)&outputarray[4],
+			&outputlength_in_bytes,wrkmem);
 
-  // lzo1x_999_compress( (lzo_byte *) bptr,
-  // 			in_len,  
-  // 		       (lzo_byte *)&outputarray[4],
-  // 			&outputlength_in_bytes,wrkmem);
+  lzo1x_999_compress( (lzo_byte *) bptr,
+			in_len,  
+		       (lzo_byte *)&outputarray[4],
+			&outputlength_in_bytes,wrkmem);
 
-  unsigned int outputlength_in_bytes = outputarraylength*4-16;
-  int result = BZ2_bzBuffToBuffCompress((char *) &outputarray[4], &outputlength_in_bytes,
-					(char *) bptr, getLength(),
-                                          9, // Compression level: 1 (fastest) to 9 (best compression)
-                                          0, // Verbosity: 0 is quiet
-                                          0); // Work factor: 0 is default
+  // unsigned int outputlength_in_bytes = outputarraylength*4-16;
+  // int result = BZ2_bzBuffToBuffCompress((char *) &outputarray[4], &outputlength_in_bytes,
+  // 					(char *) bptr, getLength(),
+  //                                         9, // Compression level: 1 (fastest) to 9 (best compression)
+  //                                         0, // Verbosity: 0 is quiet
+  //                                         0); // Work factor: 0 is default
 
-  if (result != BZ_OK) {
-    std::cerr << "Compression failed with error code: " << result << std::endl;
-    return 1;
-  }
+  // if (result != BZ_OK) {
+  //   std::cerr << "Compression failed with error code: " << result << std::endl;
+  //   return 1;
+  // }
 
-  coutfl << "orig, new size for buffer " << getID() << " " << getLength() << " " << outputlength_in_bytes << endl;
+  //coutfl << "orig, new size for buffer " << getID() << " " << getLength() << " " << outputlength_in_bytes << endl;
   
   outputarray[0] = outputlength_in_bytes +4*BUFFERHEADERLENGTH;
   outputarray[1] = LZO1XBUFFERMARKER;
@@ -459,6 +471,7 @@ int daqBuffer::Wait_for_Completion( const int other_buffernumber) const
 
 int daqBuffer::Wait_for_free() const
  { 
+   //coutfl << "Buffer " << _my_number  << " busy_state: " << _busy << endl;
    while ( _busy ) usleep(100);
    // //   coutfl << "Waiting for buffer " << _my_number << endl;
    // if (! _writeout_thread_t)
@@ -467,7 +480,8 @@ int daqBuffer::Wait_for_free() const
    //     return 0;
    //   }
    // pthread_join(_writeout_thread_t, NULL);
-   coutfl << "finished waiting buffer " << _my_number << endl;
+
+
    return 0;
  }
 

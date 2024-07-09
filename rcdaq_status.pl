@@ -2,8 +2,8 @@
 
 use Tk;
 
-use Getopt::Long;
-GetOptions('help','display:s','geometry:s','large');
+use Getopt::Long qw(:config no_ignore_case);
+GetOptions('help','display:s','geometry:s','small','large', 'Large','huge','Huge');
 
 if ($opt_help)
 {
@@ -12,7 +12,8 @@ if ($opt_help)
     --help                      this text
     --display=<remote_display>  display on the remote display, e.g over.head.display:0.
     --geometry=<geometry>       set a geometry, e.g. +200+400
-    --large                     size suitable for showing on an overhead display
+    --small                     make the display small if you want it to just sit unobtrusively on your desktop
+    --large --Large --{hH}uge   size increases suitable for showing on an overhead display (following the Latex conventions)
 
 \n";
     exit(0);
@@ -65,10 +66,47 @@ $neutralcolor = "khaki";
 
 $old_run = -1;
 
-
-if ($opt_large)
+if ($opt_Huge)
 {
+    $ipadx='90m';
+    $ipady='45m';
+    $padx='15m';
+    $pady='15m';
 
+
+    $titlefontsize=90;
+    $fontsize=60;
+    $subtitlefontsize=50;
+
+}
+elsif ($opt_huge)
+{
+    $ipadx='70m';
+    $ipady='35m';
+    $padx='12m';
+    $pady='12m';
+
+
+    $titlefontsize=70;
+    $fontsize=50;
+    $subtitlefontsize=40;
+
+}
+elsif ($opt_Large)
+{
+    $ipadx='50m';
+    $ipady='24m';
+    $padx='8m';
+    $pady='8m';
+
+
+    $titlefontsize=50;
+    $fontsize=35;
+    $subtitlefontsize=30;
+
+}
+elsif ($opt_large)
+{
     $ipadx='35m';
     $ipady='18m';
     $padx='5m';
@@ -78,9 +116,19 @@ if ($opt_large)
     $titlefontsize=30;
     $fontsize=27;
     $subtitlefontsize=22;
-    $smallfont = ['arial', $subtitlefontsize];
-    $normalfont = ['arial', $fontsize];
-    $bigfont = ['arial', $titlefontsize, 'bold'];
+
+}
+elsif ($opt_small)
+{
+    $ipadx='10m';
+    $ipady='5m';
+    $padx='1m';
+    $pady='1m';
+
+
+    $titlefontsize=8;
+    $fontsize=7;
+    $subtitlefontsize=6;
 
 }
 else
@@ -93,13 +141,12 @@ else
     $titlefontsize=13;
     $fontsize=12;
     $subtitlefontsize=10;
-    $smallfont = ['arial', $subtitlefontsize];
-    $normalfont = ['arial', $fontsize];
-    $bigfont = ['arial', $titlefontsize, 'bold'];
-
 }
 
 
+$smallfont = ['arial', $subtitlefontsize];
+$normalfont = ['arial', $fontsize];
+$bigfont = ['arial', $titlefontsize, 'bold'];
 
 
 $mw = MainWindow->new();

@@ -81,9 +81,15 @@ pthread_mutex_t SendProtectSem;
 pthread_mutex_t FdManagementSem;
 
 char pidfilename[128];
+char daq_event_env_string[128];
 
 // those are the "todo" definitions. DAQ can be woken up by a trigger
 // and read something, or by a command and change its status.
+
+int servernumber = 0;
+
+#define coutfl std::cout << __FILE__<< "  " << __LINE__ << " "
+#define cerrfl std::cout << __FILE__<< "  " << __LINE__ << " "
 
 #define DAQ_TRIGGER 0x01
 #define DAQ_COMMAND 0x02
@@ -170,8 +176,8 @@ int  DAQ_RUNNING = 0;
 int  DAQ_ENDREQUESTED = 0;
 int  DAQ_BEGININPROGRESS =0;
 
-static daqBuffer Buffer1;
-static daqBuffer Buffer2;
+//static daqBuffer Buffer1;
+//static daqBuffer Buffer2;
 
 std::vector<daqBuffer *> daqBufferVector;
 
@@ -370,8 +376,8 @@ int daq_setmaxbuffersize (const int n_kb, std::ostream& os)
       return -1;
     }
 
-  Buffer1.setMaxSize(n_kb*1024);
-  Buffer2.setMaxSize(n_kb*1024);
+  //Buffer1.setMaxSize(n_kb*1024);
+  //Buffer2.setMaxSize(n_kb*1024);
   for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
     {
       (*it)->setMaxSize(n_kb*1024);
@@ -401,9 +407,10 @@ int daq_setEventFormat(const int f, std::ostream& os )
       os << "Cannot switch format after devices are defined" << endl;
       return -1;
     }
-  int status =  Buffer1.setEventFormat(f);
-  status |= Buffer2.setEventFormat(f);
+  //  int status =  Buffer1.setEventFormat(f);
+  //status |= Buffer2.setEventFormat(f);
 
+  int status =0;
   for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
     {
       status |= (*it)->setEventFormat(f);
@@ -537,6 +544,9 @@ int open_file(const int run_number, int *fd)
       return -1;
     }
 
+  cout << __LINE__ << "  " << __FILE__ << " opened file " << d << " fd nr " << ifd<< endl;
+
+  
   *fd = ifd;
   CurrentFilename = d;
   PreviousFilename = CurrentFilename;
@@ -586,6 +596,27 @@ int open_file_on_server(const int run_number)
   return 0;
 }
 
+// this function can be called sirectly from daq_end_interactive, 
+// or we can make a thread for the "immediate" option 
+void *daq_end_thread (void *arg)
+{
+
+  std::ostream *os = (std::ostream *) arg;
+
+  // with an operator-induced daq_end, we make the event loop terminate
+  // and wait for it to be done.
+
+  disable_trigger();
+
+  // it is possible that we call daq_end before we ever started a run
+  if (ThreadEvt)   pthread_join(ThreadEvt, NULL);
+
+  daq_end(*os);
+  DAQ_ENDREQUESTED = 0;
+
+  return 0;
+
+}
 
 
 void *shutdown_thread (void *arg)
@@ -595,7 +626,7 @@ void *shutdown_thread (void *arg)
 
   
   pthread_mutex_lock(&M_cout);
-  cout << "shutting down... " <<  t_args[0] << "  " <<  t_args[1] << endl;
+  cout << "shutting down... " << endl; // <<  t_args[0] << "  " <<  t_args[1] << endl;
   int pid_fd = t_args[2];
   TriggerControl = 0;
   if ( TriggerH) delete TriggerH;
@@ -633,7 +664,7 @@ void *monitorRequestwatcher_thread (void *arg)
   bzero( (char*)&server_addr, sizeof(server_addr));
   server_addr.sin_family = PF_INET;
   server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-  server_addr.sin_port = htons(MONITORINGPORT);
+  server_addr.sin_port = htons(MONITORINGPORT + servernumber);
 
 
   int status = bind(sockfd, (struct sockaddr*) &server_addr, sizeof(server_addr));
@@ -643,7 +674,7 @@ void *monitorRequestwatcher_thread (void *arg)
     }
 	
   pthread_mutex_lock(&M_cout);
-  cout  << "Listening for monitoring requests on port " << MONITORINGPORT << endl;
+  cout  << "Listening for monitoring requests on port " << MONITORINGPORT + servernumber<< endl;
   pthread_mutex_unlock(&M_cout);
 
   listen(sockfd, 16);
@@ -780,8 +811,10 @@ void *writebuffers ( void * arg)
       last_bufferwritetime  = time(0);
       if ( daq_open_flag &&  outfile_fd) 
 	{
-	  coutfl << "starting write thread on buffer " << transportBuffer->getID() << " with bufferctr " << transportBuffer->getBufferCcounter() << endl;
-	  unsigned int bytecount = transportBuffer->start_writeout_thread(outfile_fd);
+	  //coutfl << "starting write thread on buffer " << transportBuffer->getID() << " with bufferctr " << transportBuffer->getBufferNumber() << endl;
+	  unsigned int bytecount = transportBuffer->getLength();
+
+	  transportBuffer->start_writeout_thread(outfile_fd);
 	  NumberWritten++;
 	  BytesInThisRun += bytecount;
 	  BytesInThisFile += bytecount;
@@ -805,7 +838,7 @@ int switch_buffer()
 {
 
    // pthread_mutex_lock(&M_cout);
-  cout << __LINE__ << "  " << __FILE__ << " switching buffer" << endl;
+  //cout << __LINE__ << "  " << __FILE__ << " switching buffer" << endl;
    // pthread_mutex_unlock(&M_cout);
 
   //daqBuffer *spare;
@@ -814,30 +847,34 @@ int switch_buffer()
   pthread_mutex_lock(&SendProtectSem);
 
   fillBuffer->addEoB();
+  fillBuffer->setDirty(1);
 
   //switch buffers
   // spare = transportBuffer;
 
   currentTransportBuffernr = currentFillBuffernr;
   transportBuffer = fillBuffer;
-  coutfl << " transportBuffer is now " << transportBuffer->getID()  << endl; 
+  //  coutfl << "** now scheduling buffer " << transportBuffer->getID()  << " for write" << endl; 
 
+  // here we are implementing the ring with the daqBuffers 
   currentFillBuffernr++;
   if ( currentFillBuffernr >= daqBufferVector.size())
     {
       currentFillBuffernr = 0;
     }
   fillBuffer = daqBufferVector[currentFillBuffernr];
-  
-  coutfl << " asking transportBuffer " << transportBuffer->getID() << " if complete " << endl; 
-  transportBuffer->Wait_for_free();
-  coutfl << " transportBuffer " << transportBuffer->getID() << " ready to go " << endl; 
 
   
+  // coutfl << " asking transportBuffer " << transportBuffer->getID() << " if complete " << endl; 
+  // transportBuffer->Wait_for_free();
+  //coutfl << " transportBuffer " << transportBuffer->getID() << " ready to go " << endl; 
+
+  
+  //coutfl << " asking new fillBuffer " << fillBuffer->getID() << " if complete " << endl; 
+  fillBuffer->Wait_for_free();
+  //coutfl << " transportBuffer " << fillBuffer->getID() << " ready to go " << endl; 
 
   fillBuffer->prepare_next(++Buffer_number, TheRun);
-
-
 
   // let's see if we need to roll over
     if ( daq_open_flag && RolloverLimit)
@@ -862,6 +899,7 @@ int switch_buffer()
 	    }
 	  else   // not server
 	    {
+	      coutfl << " closing output file   with fd " << outfile_fd <<endl;
 	      close(outfile_fd);
 	      file_is_open = 0;
 
@@ -973,9 +1011,14 @@ int getRunNumberFromApp()
 }
 
 
-
-int daq_set_filerule(const char *rule)
+int daq_set_filerule(const char *rule , std::ostream& os)
 {
+  if ( DAQ_RUNNING ) 
+    {
+      os << MyHostName << "Run is active" << endl;;
+      return -1;
+    }
+
   TheFileRule = rule;
   return 0;
 }
@@ -983,9 +1026,14 @@ int daq_set_filerule(const char *rule)
 int daq_set_name(const char *name)
 {
   MyName = name;
+  if (servernumber)
+    {
+      MyName = MyName + ":" + to_string(servernumber);
+    }
   request_mg_update (MG_REQUEST_NAME);
   return 0;
 }
+
 
 #ifdef HAVE_MOSQUITTO_H
 int daq_set_mqtt_host(const char * host, const int port, std::ostream& os)
@@ -1036,6 +1084,13 @@ int daq_get_mqtt_host(std::ostream& os)
 // this is selecting from any of the existing run types 
 int daq_setruntype(const char *type, std::ostream& os )
 {
+
+  if ( DAQ_RUNNING ) 
+    {
+      os << MyHostName << "Run is active" << endl;;
+      return -1;
+    }
+  
   std::string _type = type;
   std::map <string,string>::const_iterator iter = RunTypes.begin();
   for ( ; iter != RunTypes.end(); ++iter)
@@ -1431,8 +1486,21 @@ int daq_end_immediate(std::ostream& os)
   os << MyHostName << "Run " << TheRun << " end requested" << endl;
   DAQ_ENDREQUESTED = 1;
 
-  cout << "ended run " << TheRun << " at " << time(0) << endl; 
+  pthread_t t;
+  
+  void * x = &os;
 
+  //cout << __FILE__ << " " << __LINE__ << " calling end_thread as thread" << endl; 
+  int status = pthread_create(&t, NULL,
+                          daq_end_thread,
+                          x);
+  if (status ) 
+    {
+
+      cout << "end_run failed " << status << endl;
+      os << "end_run failed " << status << endl;
+    }
+  //cout << __FILE__ << " " << __LINE__ << " done setting up  end_thread" << endl; 
   return 0;
 }
 
@@ -1455,18 +1523,11 @@ int daq_wait_for_actual_end()
 
 int daq_end_interactive(std::ostream& os)
 {
-  // with an operator-induced daq_end, we make the event loop terminate
-  // and wait for it to be done.
 
-  disable_trigger();
-
-  // it is possible that we call daq_end before we ever started a run
-  if (ThreadEvt)   pthread_join(ThreadEvt, NULL);
-
-  return daq_end(os);
+  void *x = &os;
+  daq_end_thread (x);
+  return 0;
 }
-
-  
 
 int daq_end(std::ostream& os)
 {
@@ -1481,18 +1542,19 @@ int daq_end(std::ostream& os)
   device_endrun();
 
   readout(ENDRUNEVENT);
-  coutfl << "forcing a buffer flush " << endl;
+  
+  // coutfl << "forcing a buffer flush " << endl;
   switch_buffer();  // we force a buffer flush
-
-  //  transportBuffer->Wait_for_Completion(); 
 
   for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
     {
-      std::cout << __FILE__ << " " << __LINE__ << " checking completion on buffer  " << (*it)->getID() << std::endl;
-      (*it)->Wait_for_free();
+      //coutfl << "checking completion on buffer  " << (*it)->getID() << std::endl;
+      while ( (*it)->getDirty() )
+	{
+	  usleep(200);
+	}
     }
 
-  
   if ( file_is_open  )
     {
 
@@ -1537,6 +1599,8 @@ int daq_end(std::ostream& os)
   os << MyHostName <<  "Run " << TheRun << " ended" << endl;
   cout << "ended run " << TheRun << " at " << time(0) << endl; 
 
+  coutfl << MyHostName <<  "Run " << TheRun << " ended at " << time(0) << " with " << get_eventnumber() -1 << " events " << endl; 
+
   unsetenv ("DAQ_RUNNUMBER");
   unsetenv ("DAQ_FILENAME");
   unsetenv ("DAQ_STARTTIME");
@@ -1560,7 +1624,10 @@ int daq_end(std::ostream& os)
   request_mg_update (MG_REQUEST_SPEED);
 
   DAQ_ENDREQUESTED = 0;
-  
+
+  os << MyHostName <<  "Run " << TheRun << " ended" << endl;
+
+
   return 0;
 }
 
@@ -1587,7 +1654,7 @@ void * EventLoop( void *arg)
 {
 
   // pthread_mutex_lock(&M_cout);
-  // std::cout << __FILE__ << " " << __LINE__ << " event loop starting...   " << std::endl;
+  //  std::cout << __FILE__ << " " << __LINE__ << " event loop starting...   " << std::endl;
   // pthread_mutex_unlock(&M_cout);
 
   int rstatus;
@@ -1595,9 +1662,6 @@ void * EventLoop( void *arg)
   while (TriggerControl)
     {
 
-      //pthread_mutex_lock ( &TriggerSem );
-      //cout << __LINE__ << "  " << __FILE__ << " unlocked by TriggerSem"  << endl;
-      
       // let's see if we have a TriggerHelper object
       if (TriggerH)
 	{
@@ -1606,41 +1670,29 @@ void * EventLoop( void *arg)
       else // we auto-generate a few triggers
 	{
 	  CurrentEventType = 1;
-      	  usleep (100000);
-      	}
-
-
+	  usleep (100000);
+	}
+      
+      
       if (CurrentEventType) 
 	{
 	  
 	  if ( DAQ_RUNNING ) 
 	    {
-
-	      if ( DAQ_ENDREQUESTED )
+	      
+	      rstatus = readout(CurrentEventType);
+	      
+	      if (  rstatus)    // we got an endrun signal
 		{
-		  cout << " asynchronous end requested, run " << TheRun  << endl;
 		  TriggerControl = 0;
+		  //reset_deadtime();
+		  cout << __LINE__ << " calling daq_end" << endl;
 		  daq_end ( std::cout);
 		}
-
 	      else
 		{
-		  rstatus = readout(CurrentEventType);
-		  // cout << __LINE__ << "  " << __FILE__ << " readout status: " << rstatus << endl;
-		  
-		  if (  rstatus)    // we got an endrun signal
-		    {
-		      cout << __LINE__ << "  " << __FILE__ << " readout status: " << rstatus << " run nr " << TheRun << endl;
-		      TriggerControl = 0;
-		      //reset_deadtime();
-		      cout << __LINE__ << " calling daq_end" << endl;
-		      daq_end ( std::cout);
-		    }
-		  else
-		    {
-		      rearm(DATAEVENT);
-		      reset_deadtime();
-		    }
+		  rearm(DATAEVENT);
+		  reset_deadtime();
 		}
 	    }
 	  else  // no, we are not running
@@ -1651,10 +1703,6 @@ void * EventLoop( void *arg)
 	    }
 	}
     }
-
-  // pthread_mutex_lock(&M_cout);
-  // std::cout << __FILE__ << " " << __LINE__ << " event loop ends...   " << std::endl;
-  // pthread_mutex_unlock(&M_cout);
 
   return 0;
   
@@ -1713,7 +1761,9 @@ int readout(const int etype)
 
   deviceiterator d_it;
 
+  sprintf( daq_event_env_string, "DAQ_EVENTNUMBER=%d", Event_number);
 
+  
   int status = fillBuffer->nextEvent(etype,Event_number, Eventsize[etype]);
   if (status != 0) 
     {
@@ -1825,8 +1875,8 @@ int daq_set_compression (const int flag, std::ostream& os)
     }
   if (flag)
     {
-      Buffer1.setCompression(1);
-      Buffer2.setCompression(1);
+      //Buffer1.setCompression(1);
+      //Buffer2.setCompression(1);
       for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
 	{
 	  (*it)->setCompression(1);
@@ -1835,8 +1885,8 @@ int daq_set_compression (const int flag, std::ostream& os)
     }
   else
     {
-      Buffer1.setCompression(0);
-      Buffer2.setCompression(0);
+      //Buffer1.setCompression(0);
+      //Buffer2.setCompression(0);
       for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
 	{
 	  (*it)->setCompression(0);
@@ -1927,8 +1977,7 @@ int daq_shutdown(const unsigned long servernumber, const unsigned long versionnu
   t_args[0] = servernumber;
   t_args[1] = versionnumber;
   t_args[3] = pid_fd;
-
-  
+    
   pthread_t t;
 
   int status = pthread_create(&t, NULL, 
@@ -2027,43 +2076,34 @@ int daq_clear_readlist(std::ostream& os)
 }
 
 
-int rcdaq_init( pthread_mutex_t &M)
+int rcdaq_init( const int snumber, pthread_mutex_t &M)
 {
 
   int status;
 
+  servernumber = snumber;
+  ThePort += servernumber;
+    
   char hostname[HOST_NAME_MAX];
   status = gethostname(hostname, HOST_NAME_MAX);
   if (!status)
     {
       shortHostName = hostname;
       MyHostName = hostname;
-      MyHostName += ": ";
+      if (servernumber)
+	{
+	  shortHostName = shortHostName + ":" + to_string(servernumber);
+	  MyHostName = MyHostName + ":" + to_string(servernumber);
+	}
+      MyHostName += " - ";
     }
+  MyName = shortHostName;
 
-  daqBuffer::init_mutex();
-  daqBuffer::reset_count();
+  sprintf( daq_event_env_string, "DAQ_EVENTNUMBER=%d", -1);
+  putenv(daq_event_env_string);
 
-  // we give the buffers our state variable
-  Buffer1.setMD5State(&md5state);
-  Buffer2.setMD5State(&md5state);
-  
-  for (int i = 0; i < NR_THREADS; i++)
-    {
-      daqBuffer *x = new daqBuffer;
-      x->setID(i);
-      x->setMD5State(&md5state);
-      daqBufferVector.push_back(x);
-    }
 
-  // now we create a circular chain of buffers that we rotate around
-  for (int i = 1; i < NR_THREADS; i++)
-    {
-      daqBufferVector[i]->setPreviousBuffer(daqBufferVector[i-1]);
-    }
-  daqBufferVector[0]->setPreviousBuffer(daqBufferVector[NR_THREADS-1]);
 
-  
   //  pthread_mutex_init(&M_cout, 0); 
   M_cout = M;
 
@@ -2085,18 +2125,37 @@ int rcdaq_init( pthread_mutex_t &M)
 
   outfile_fd = 0;
 
-  //  fillBuffer = &Buffer1;
-  fillBuffer = daqBufferVector[0];
-  transportBuffer = daqBufferVector[1];
+  for (int i = 0; i < NR_THREADS; i++)
+    {
+      daqBufferVector.push_back(new daqBuffer);
+    }
+
+
+  for ( int i =0; i < daqBufferVector.size(); i++)
+    {
+      daqBufferVector[i]->setID(i);
+      daqBufferVector[i]->setMD5State(&md5state);
+    }
+
+  // generate the circular buffer, note the start at 1
+  for ( int i =1; i < daqBufferVector.size(); i++)
+    {
+      daqBufferVector[i]->setPreviousBuffer(daqBufferVector[i-1]);
+    }
+  daqBufferVector[0]->setPreviousBuffer(daqBufferVector[daqBufferVector.size()-1]);
+  
+  
+  // we give the buffers our state variable
+  // Buffer1.setMD5State(&md5state);
+  // Buffer2.setMD5State(&md5state);
+  
+  //fillBuffer = &Buffer1;
+  //transportBuffer = &Buffer2;
 
 
 #ifdef WRITEPRDF
   Buffer1.setEventFormat(DAQPRDFFORMAT);
   Buffer2.setEventFormat(DAQPRDFFORMAT);
-  for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
-    {
-      (*it)->setEventFormat(DAQPRDFFORMAT);
-    }
 #endif
 
 
@@ -2155,7 +2214,6 @@ int rcdaq_init( pthread_mutex_t &M)
   
   return 0;
 }
-
 
 int get_runnumber()
 {
@@ -2437,7 +2495,7 @@ int daq_webcontrol(const int port, std::ostream& os)
 
   if (  port ==0)
     {
-      ThePort=8899;
+      ThePort=8899 + servernumber;
     }
   else
     {
@@ -2741,6 +2799,8 @@ int daq_generate_json (const int flag)
 	}
       digest_string[32] = 0;
 
+      coutfl << "digest_string: " << digest_string << endl;
+      
       out << "{\"file\": [" << endl;
       out << "    { \"what\":\"" << "update"
 	  << "\", \"runnumber\":" << TheRun << ","

@@ -4,9 +4,6 @@
 #include <iostream>
 #include <pthread.h>
 
-#define coutfl std::cout << __FILE__<< "  " << __LINE__ << " "
-#define cerrfl std::cerr << __FILE__<< "  " << __LINE__ << " "
-
 class daq_device;
 
 void sig_handler(int i);
@@ -27,7 +24,7 @@ int device_init();
 int device_endrun();
 int readout(const int etype);
 int rearm(const int etype);
-int rcdaq_init(pthread_mutex_t &M );
+int rcdaq_init(const int, pthread_mutex_t &M );
 int add_readoutdevice( daq_device *d);
 
 int daq_begin(const int irun,std::ostream& os = std::cout );
@@ -46,7 +43,7 @@ int daq_write_runnumberfile(const int run);
 int daq_set_runnumberfile(const char *file, const int flag);
 int daq_set_runnumberApp(const char *file, const int flag);
 
-int daq_set_filerule(const char *rule);
+int daq_set_filerule(const char *rule, std::ostream& os = std::cout);
 
 int daq_setruntype(const char *type, std::ostream& os = std::cout);
 int daq_getruntype(const int flag, std::ostream& os = std::cout);

@@ -72,7 +72,8 @@ public:
   // and the query
   int getBufSeq () const { return bptr->Bufseq; } ;
   unsigned int getLength () const { return bptr->Length; } ;
-  unsigned int getBufferCcounter () const { return _my_buffernr; } ;
+
+  unsigned int getBufferNumber() const { return _my_buffernr; } ;
 
   int setEventFormat(const int f);
   int getEventFormat() const {return format;};
@@ -84,6 +85,9 @@ public:
   void setPreviousBuffer( daqBuffer *b) {previousBuffer = b;};
   void setID( const int i) {_my_number=i;};
   int getID() const {return _my_number;};
+
+  void setDirty( const int i) {if (i) _dirty=1;};
+  int getDirty() const {return _dirty;};
   
   // this allows others to wait for me to finish writing
   int Wait_for_Completion(const int other_buffer) const;
@@ -124,6 +128,7 @@ protected:
     
   int _my_number;
   int _busy;
+  int _dirty;
   
   daqBuffer * previousBuffer;
   
