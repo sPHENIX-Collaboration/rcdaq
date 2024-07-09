@@ -86,11 +86,9 @@ int daqBuffer::prepare_next( const int iseq
   pthread_mutex_lock(&M_buffercnt);
   _buffer_count++;
   _my_buffernr = _buffer_count;
-  //coutfl << "prepare_next called on buffer " << getID() << " absolute buffer number now " << _my_buffernr << endl;
   pthread_mutex_unlock(&M_buffercnt);
 
   
-  //  cout << __FILE__ << " " << __LINE__ << " bptr: " << bptr << endl;
   
   if ( current_event) delete current_event;
   current_event = 0;
@@ -189,14 +187,12 @@ int daqBuffer::start_writeout_thread (int fd)
   int status = pthread_create(&_writeout_thread_t, NULL, 
 			       daqBuffer::writeout_thread, 
 			      (void *) &_ta);
-  //coutfl << " thread created for buffer " << getID() << " id " << hex << _writeout_thread_t << dec << " " << time(0) << endl;
   return status;
 }
 
 
 void * daqBuffer::writeout_thread ( void * x)
 {
-  //coutfl << " in writeout_thread "<< endl;
   thread_argument * ta  = (thread_argument *) x;
   int fd = ta->fd;
   (ta->me)->writeout(fd);
@@ -210,9 +206,6 @@ unsigned int daqBuffer::writeout ( int fd)
   if ( _broken) return 0;
   if (!has_end) addEoB();
 
-  //coutfl << " in writeout for buffer " << getID() << " size " <<  getLength() << " with fd " << fd << " busy_state: " << _busy <<endl;
-
-  //sleep(20);
   
   unsigned int bytes = 0;
 
@@ -228,10 +221,6 @@ unsigned int daqBuffer::writeout ( int fd)
 	  if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
 	  //coutfl << "buffer " << getID() << " finished wait on prev id " << previousBuffer->getID() << endl;
 	}
-      // else
-      // 	{
-      // 	  coutfl << "buffer " << getID() << " with buffernr " << getBufferNumber() << " it\'s my turn to be written out" << endl;
-      // 	}
       
       bytes = writen ( fd, (char *) bptr , bytecount );
       if ( _md5state)
@@ -239,20 +228,17 @@ unsigned int daqBuffer::writeout ( int fd)
 	  //coutfl << "updating md5  with " << bytes << " bytes for buffer " << getID() << endl; 
 	  md5_append(_md5state, (const md5_byte_t *)bptr,bytes );
 	}
-      //usleep(2000);
       //coutfl << "Finishing write for buffer " << getID() << endl;
     }
   else // we want compression
     {
-      //coutfl << "starting compression " << getID() << endl;
+
       compress();
-      //coutfl << "finished compression " << getID() << endl;
+
       int blockcount = ( outputarray[0] + 8192 -1)/8192;
       int bytecount = blockcount*8192;
 
-      //coutfl << "buffer " << getID() << " calling wait on prev id " << previousBuffer->getID() << endl;
       if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
-      //coutfl << "buffer " << getID() << " finished wait on prev id " << previousBuffer->getID() << endl;
       
       bytes = writen ( fd, (char *) outputarray , bytecount );
       if ( _md5state)
@@ -260,9 +246,7 @@ unsigned int daqBuffer::writeout ( int fd)
 	  //cout << __FILE__ << " " << __LINE__ << " updating md5  with " << bytes << " bytes" << endl; 
 	  md5_append(_md5state, (const md5_byte_t *)outputarray,bytes );
 	}
-      //sleep(20);
     }
-  //  coutfl << "Finishing write for buffer " << getID() << " " << time(0) << " busy_state: " << _busy << endl;
   _busy = 0;
   _dirty = 0;
   return bytes;
@@ -454,18 +438,10 @@ int daqBuffer::setEventFormat(const int f)
 
 int daqBuffer::Wait_for_Completion( const int other_buffernumber) const
  { 
-   //   coutfl << "wait request " << _my_number << " other buffer " << other_buffernumber << " my buffer " << _my_buffernr << endl;
 
    if ( other_buffernumber < _my_buffernr ) return 0;
    while ( _busy  ) usleep(100);
-   // //   coutfl << "Waiting for buffer " << _my_number << endl;
-   // if (! _writeout_thread_t)
-   //   {
-   //     //  coutfl << "finished waiting buffer (no thread) " << _my_number << endl;
-   //     return 0;
-   //   }
-   // pthread_join(_writeout_thread_t, NULL);
-   // //coutfl << "finished waiting buffer " << _my_number << endl;
+
    return 0;
  }
 
@@ -473,14 +449,6 @@ int daqBuffer::Wait_for_free() const
  { 
    //coutfl << "Buffer " << _my_number  << " busy_state: " << _busy << endl;
    while ( _busy ) usleep(100);
-   // //   coutfl << "Waiting for buffer " << _my_number << endl;
-   // if (! _writeout_thread_t)
-   //   {
-   //     //  coutfl << "finished waiting buffer (no thread) " << _my_number << endl;
-   //     return 0;
-   //   }
-   // pthread_join(_writeout_thread_t, NULL);
-
 
    return 0;
  }

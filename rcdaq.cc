@@ -811,7 +811,6 @@ void *writebuffers ( void * arg)
       last_bufferwritetime  = time(0);
       if ( daq_open_flag &&  outfile_fd) 
 	{
-	  //coutfl << "starting write thread on buffer " << transportBuffer->getID() << " with bufferctr " << transportBuffer->getBufferNumber() << endl;
 	  unsigned int bytecount = transportBuffer->getLength();
 
 	  transportBuffer->start_writeout_thread(outfile_fd);
@@ -854,7 +853,6 @@ int switch_buffer()
 
   currentTransportBuffernr = currentFillBuffernr;
   transportBuffer = fillBuffer;
-  //  coutfl << "** now scheduling buffer " << transportBuffer->getID()  << " for write" << endl; 
 
   // here we are implementing the ring with the daqBuffers 
   currentFillBuffernr++;
@@ -865,15 +863,9 @@ int switch_buffer()
   fillBuffer = daqBufferVector[currentFillBuffernr];
 
   
-  // coutfl << " asking transportBuffer " << transportBuffer->getID() << " if complete " << endl; 
-  // transportBuffer->Wait_for_free();
-  //coutfl << " transportBuffer " << transportBuffer->getID() << " ready to go " << endl; 
-
   
-  //coutfl << " asking new fillBuffer " << fillBuffer->getID() << " if complete " << endl; 
   fillBuffer->Wait_for_free();
-  //coutfl << " transportBuffer " << fillBuffer->getID() << " ready to go " << endl; 
-
+  
   fillBuffer->prepare_next(++Buffer_number, TheRun);
 
   // let's see if we need to roll over
@@ -899,7 +891,6 @@ int switch_buffer()
 	    }
 	  else   // not server
 	    {
-	      coutfl << " closing output file   with fd " << outfile_fd <<endl;
 	      close(outfile_fd);
 	      file_is_open = 0;
 
@@ -1543,12 +1534,11 @@ int daq_end(std::ostream& os)
 
   readout(ENDRUNEVENT);
   
-  // coutfl << "forcing a buffer flush " << endl;
+
   switch_buffer();  // we force a buffer flush
 
   for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
     {
-      //coutfl << "checking completion on buffer  " << (*it)->getID() << std::endl;
       while ( (*it)->getDirty() )
 	{
 	  usleep(200);
