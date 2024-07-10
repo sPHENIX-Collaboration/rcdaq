@@ -56,7 +56,7 @@
 #include "MQTTConnection.h"
 #endif
 
-#define NR_THREADS 5
+#define NR_THREADS 85
 
 int open_file_on_server(const int run_number);
 int server_open_Connection();
@@ -1539,10 +1539,12 @@ int daq_end(std::ostream& os)
 
   for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
     {
+      //coutfl << "Waiting for " << (*it)->getID() << " status is " << (*it)-> getDirty() << endl;
       while ( (*it)->getDirty() )
 	{
 	  usleep(200);
 	}
+      //coutfl << "Done waiting for " << (*it)->getID() << endl;
     }
 
   if ( file_is_open  )
@@ -1550,6 +1552,9 @@ int daq_end(std::ostream& os)
 
       pthread_mutex_lock(&WriteProtectSem);
       pthread_mutex_unlock(&WriteProtectSem);
+
+      //coutfl << "moving on..."  << endl;
+
 
       double v = run_volume;
       v /= (1024*1024);
@@ -1568,6 +1573,8 @@ int daq_end(std::ostream& os)
 	}
       else
 	{
+	  coutfl << "closing outfile.. " << endl;
+
 	  close (outfile_fd);
 	  daq_generate_json(1);
 	  outfile_fd = 0;

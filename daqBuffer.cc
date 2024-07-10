@@ -42,6 +42,7 @@ daqBuffer::daqBuffer (const int irun, const int length
   previousBuffer = 0;
   _writeout_thread_t  = 0;
   _my_number = 0;
+  _dirty = 0;
   _busy = 0;
 
   current_event = 0;
@@ -203,6 +204,8 @@ void * daqBuffer::writeout_thread ( void * x)
 unsigned int daqBuffer::writeout ( int fd)
 {
 
+  //coutfl << " starting writeout for " << getID() << endl;
+
   if ( _broken) return 0;
   if (!has_end) addEoB();
 
@@ -228,7 +231,6 @@ unsigned int daqBuffer::writeout ( int fd)
 	  //coutfl << "updating md5  with " << bytes << " bytes for buffer " << getID() << endl; 
 	  md5_append(_md5state, (const md5_byte_t *)bptr,bytes );
 	}
-      //coutfl << "Finishing write for buffer " << getID() << endl;
     }
   else // we want compression
     {
@@ -247,6 +249,8 @@ unsigned int daqBuffer::writeout ( int fd)
 	  md5_append(_md5state, (const md5_byte_t *)outputarray,bytes );
 	}
     }
+  //coutfl << "Finishing write for buffer " << getID() << endl;
+ 
   _busy = 0;
   _dirty = 0;
   return bytes;
