@@ -138,6 +138,7 @@ static unsigned int currentTransportBuffernr = 0;
 
 const auto processor_count = std::thread::hardware_concurrency();
 static int nr_of_write_threads = 2;
+static int current_data_format = 0;
 
 static int file_is_open = 0;
 static int server_is_open = 0;
@@ -414,11 +415,11 @@ int daq_setEventFormat(const int f, std::ostream& os )
     }
   //  int status =  Buffer1.setEventFormat(f);
   //status |= Buffer2.setEventFormat(f);
-
+  current_data_format = f;
   int status =0;
   for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
     {
-      status |= (*it)->setEventFormat(f);
+      status |= (*it)->setEventFormat(current_data_format);
     }
 
   return status;
@@ -2252,6 +2253,7 @@ int daq_set_number_of_write_threads(const int n)
     {
       daqBufferVector[i]->setID(i);
       daqBufferVector[i]->setMD5State(&md5state);
+      daqBufferVector[i]->setEventFormat(current_data_format);
     }
 
   // generate the circular buffer, note the start at 1
