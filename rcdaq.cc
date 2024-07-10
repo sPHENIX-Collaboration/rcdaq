@@ -2156,10 +2156,10 @@ int rcdaq_init( const int snumber, pthread_mutex_t &M)
   daq_set_number_of_write_threads(2); // we start with 2 as we had before
   
 
-#ifdef WRITEPRDF
-  Buffer1.setEventFormat(DAQPRDFFORMAT);
-  Buffer2.setEventFormat(DAQPRDFFORMAT);
-#endif
+// #ifdef WRITEPRDF
+//   Buffer1.setEventFormat(DAQPRDFFORMAT);
+//   Buffer2.setEventFormat(DAQPRDFFORMAT);
+// #endif
 
 
   status = pthread_create(&ThreadId, NULL, 
