@@ -60,6 +60,10 @@
 #define DAQ_SETRUNNUMBERAPP    140
 
 #define DAQ_SET_COMPRESSION    141
+#define DAQ_GET_COMPRESSION    142
+
+#define DAQ_SET_NR_THREADS     143
+#define DAQ_GET_NR_THREADS     144
 
 
 

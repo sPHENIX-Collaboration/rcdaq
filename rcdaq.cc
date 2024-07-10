@@ -18,6 +18,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <thread>
 
 #include <errno.h>
 #include <string.h>
@@ -56,7 +57,8 @@
 #include "MQTTConnection.h"
 #endif
 
-#define NR_THREADS 85
+#define NR_THREADS 5
+
 
 int open_file_on_server(const int run_number);
 int server_open_Connection();
@@ -133,6 +135,9 @@ static std::string daq_server_name = "";  // our server, if any
 static unsigned int currentFillBuffernr = 0;
 static unsigned int currentTransportBuffernr = 0;
 
+
+const auto processor_count = std::thread::hardware_concurrency();
+static int nr_of_write_threads = 2;
 
 static int file_is_open = 0;
 static int server_is_open = 0;
@@ -807,7 +812,8 @@ void *writebuffers ( void * arg)
 
       pthread_mutex_lock( &WriteSem); // we wait for an unlock
 
-      
+      //coutfl << " writebuffers woken up for buffer " << transportBuffer->getID() << endl;
+
       last_bufferwritetime  = time(0);
       if ( daq_open_flag &&  outfile_fd) 
 	{
@@ -825,6 +831,11 @@ void *writebuffers ( void * arg)
           BytesInThisRun += bytecount;
 	  BytesInThisFile += bytecount;
         }
+      else // not logging at all
+	{
+	  //coutfl << " clearing buffer " << transportBuffer->getID() << endl;
+	  transportBuffer->setDirty(0);
+	}
 
       if ( end_thread) pthread_exit(0);
       
@@ -837,7 +848,6 @@ int switch_buffer()
 {
 
    // pthread_mutex_lock(&M_cout);
-  //cout << __LINE__ << "  " << __FILE__ << " switching buffer" << endl;
    // pthread_mutex_unlock(&M_cout);
 
   //daqBuffer *spare;
@@ -854,6 +864,10 @@ int switch_buffer()
   currentTransportBuffernr = currentFillBuffernr;
   transportBuffer = fillBuffer;
 
+  //  coutfl << "switching buffer to " << transportBuffer->getID() << " dirty state is " << transportBuffer->getDirty() << endl;
+
+
+  
   // here we are implementing the ring with the daqBuffers 
   currentFillBuffernr++;
   if ( currentFillBuffernr >= daqBufferVector.size())
@@ -1593,9 +1607,6 @@ int daq_end(std::ostream& os)
 
 
   
-  os << MyHostName <<  "Run " << TheRun << " ended" << endl;
-  cout << "ended run " << TheRun << " at " << time(0) << endl; 
-
   coutfl << MyHostName <<  "Run " << TheRun << " ended at " << time(0) << " with " << get_eventnumber() -1 << " events " << endl; 
 
   unsetenv ("DAQ_RUNNUMBER");
@@ -1893,6 +1904,23 @@ int daq_set_compression (const int flag, std::ostream& os)
   return 0;
 }
 
+int daq_set_nr_threads (const int n, std::ostream& os)
+{
+
+  if ( DAQ_RUNNING ) 
+    {
+      os << MyHostName << "Run is active" << endl;;
+      return -1;
+    }
+
+  int nr = daq_set_number_of_write_threads(n);
+  if ( nr != n)
+    {
+      os << "number of threads cannot be less than 2 or more than the number of cores-1 (" << processor_count -1 << ") -  set to "<<  nr << endl;
+    }
+  return 0;
+}
+
 
 int daq_set_server (const char *hostname, const int port, std::ostream& os)
 {
@@ -2076,6 +2104,8 @@ int daq_clear_readlist(std::ostream& os)
 int rcdaq_init( const int snumber, pthread_mutex_t &M)
 {
 
+  coutfl << " Number of cores: " << processor_count << endl;
+  
   int status;
 
   servernumber = snumber;
@@ -2122,33 +2152,8 @@ int rcdaq_init( const int snumber, pthread_mutex_t &M)
 
   outfile_fd = 0;
 
-  for (int i = 0; i < NR_THREADS; i++)
-    {
-      daqBufferVector.push_back(new daqBuffer);
-    }
-
-
-  for ( int i =0; i < daqBufferVector.size(); i++)
-    {
-      daqBufferVector[i]->setID(i);
-      daqBufferVector[i]->setMD5State(&md5state);
-    }
-
-  // generate the circular buffer, note the start at 1
-  for ( int i =1; i < daqBufferVector.size(); i++)
-    {
-      daqBufferVector[i]->setPreviousBuffer(daqBufferVector[i-1]);
-    }
-  daqBufferVector[0]->setPreviousBuffer(daqBufferVector[daqBufferVector.size()-1]);
+  daq_set_number_of_write_threads(2); // we start with 2 as we had before
   
-  
-  // we give the buffers our state variable
-  // Buffer1.setMD5State(&md5state);
-  // Buffer2.setMD5State(&md5state);
-  
-  //fillBuffer = &Buffer1;
-  //transportBuffer = &Buffer2;
-
 
 #ifdef WRITEPRDF
   Buffer1.setEventFormat(DAQPRDFFORMAT);
@@ -2211,6 +2216,54 @@ int rcdaq_init( const int snumber, pthread_mutex_t &M)
   
   return 0;
 }
+
+int daq_set_number_of_write_threads(const int n)
+{
+  // first, clear the buffer vector
+
+  for ( auto it :  daqBufferVector)
+    {
+      delete it;
+    }
+  daqBufferVector.clear();
+
+  nr_of_write_threads = n;
+
+  // sanity checks
+  if ( n < 2)
+    {
+      coutfl << " number of threads cannot be less than 2" << endl;
+      nr_of_write_threads = 2;
+    }
+  
+    if ( n > processor_count -1)
+      {
+	coutfl << " number of threads cannot be more than the number of cores -1 (" << processor_count -1 << ")" << endl;
+	nr_of_write_threads = processor_count -1;
+      }
+  
+  for (int i = 0; i < nr_of_write_threads ; i++)
+    {
+      daqBufferVector.push_back(new daqBuffer);
+    }
+
+
+  for ( int i =0; i < daqBufferVector.size(); i++)
+    {
+      daqBufferVector[i]->setID(i);
+      daqBufferVector[i]->setMD5State(&md5state);
+    }
+
+  // generate the circular buffer, note the start at 1
+  for ( int i =1; i < daqBufferVector.size(); i++)
+    {
+      daqBufferVector[i]->setPreviousBuffer(daqBufferVector[i-1]);
+    }
+  daqBufferVector[0]->setPreviousBuffer(daqBufferVector[daqBufferVector.size()-1]);
+
+  return nr_of_write_threads;
+}
+
 
 int get_runnumber()
 {
@@ -2289,59 +2342,36 @@ int daq_status( const int flag, std::ostream& os)
 	  os << MyHostName << "Run " << TheRun  
 	     << " Event: " << Event_number -1 
 	     << " Volume: " << volume;
-	  if ( daq_open_flag )
-	    {
-	      if ( daq_server_flag )
-		{
-		  os << "  Logging enabled via remote server " << daq_server_name << " Port " << daq_server_port;
-		}
-	      else
-		{
-		  os << "  Logging enabled";
-		  if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled";
-		}
-	    }
-	  else
-	    {
-	      os << "  Logging disabled";
-	    }
 	}
-      else   // not running
+      else
 	{
 	  os << MyHostName << "Stopped";
-	  if ( daq_open_flag )
+	}
+      
+      if ( daq_open_flag )
+	{
+	  if ( daq_server_flag )
 	    {
-	      if ( daq_server_flag )
-		{
-		  os << "  Logging enabled via remote server " << daq_server_name << " Port " << daq_server_port;
-		}
-	      else
-		{
-		  os << "  Logging enabled";
-		  if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled";
-		}
+	      os << "  Logging enabled via remote server " << daq_server_name << " Port " << daq_server_port;
 	    }
 	  else
 	    {
-	      if ( daq_server_flag )
-		{
-		  os << "  Logging disabled, remote server set " << daq_server_name << " Port " << daq_server_port;
-		}
-	      else
-		{
-		  os << "  Logging disabled";
-		}
-	    }	      
+	      os << "  Logging enabled";
+	      if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled";
+	    }
 	}
-
+      else
+	{
+	  os << "  Logging disabled";
+	}
+    
       if ( RolloverLimit)
 	{
 	  os << "  File rollover: " << RolloverLimit << "GB";
 	}
-
-
+      
       os<< endl;
-
+      
       break;
 
     default:  // flag 2++
@@ -2373,6 +2403,8 @@ int daq_status( const int flag, std::ostream& os)
 	      else
 		{
 		  os << "  Filename:      " << get_current_filename() << endl; 	  
+		  os << "  Number of buffers/write threads: " << nr_of_write_threads << endl;
+		  if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled";
 		}
 	    }
 
@@ -2398,9 +2430,9 @@ int daq_status( const int flag, std::ostream& os)
 		}
 	      else
 		{
-		  os << "  Logging enabled";
-		  if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled";
-		  os << endl;
+		  os << "  Logging enabled" << endl;
+		  os << "  Number of buffers/write threads: " << nr_of_write_threads << endl;
+		  if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled" << endl;
 		}
 	    }
 	  else

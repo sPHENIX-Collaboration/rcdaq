@@ -86,7 +86,7 @@ public:
   void setID( const int i) {_my_number=i;};
   int getID() const {return _my_number;};
 
-  void setDirty( const int i) {if (i) _dirty=1;};
+  void setDirty( const int i) {if (i) _dirty=1; else _dirty = 0;};
   int getDirty() const {return _dirty;};
   
   // this allows others to wait for me to finish writing
