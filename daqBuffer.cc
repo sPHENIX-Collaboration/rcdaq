@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <lzo/lzo1x.h>
-#include <bzlib.h>
+//#include <bzlib.h>
 
 using namespace std;
 
