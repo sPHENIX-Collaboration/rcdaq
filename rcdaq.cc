@@ -132,6 +132,9 @@ static int server_is_open = 0;
 static int current_filesequence = 0;
 static int outfile_fd;
 
+static int md5_enabled =1;
+static int md5_allow_turnoff = 0;
+
 #ifdef HAVE_MOSQUITTO_H
 MQTTConnection *mqtt = 0;
 std::string mqtt_host;
@@ -1823,6 +1826,50 @@ int daq_set_compression (const int flag, std::ostream& os)
   return 0;
 }
 
+int daq_set_md5enable (const int flag, std::ostream& os)
+{
+
+  if ( DAQ_RUNNING ) 
+    {
+      os << MyHostName << "Run is active" << endl;;
+      return -1;
+    }
+  if ( ! md5_allow_turnoff) 
+    {
+      os << MyHostName << " MD5 switchoff not enabled" << endl;;
+      return 0;
+    }
+
+  if (flag)
+    {
+      Buffer1.setMD5Enabled(1);
+      Buffer2.setMD5Enabled(1);
+      md5_enabled = 1;
+    }
+  else
+    {
+      Buffer1.setMD5Enabled(0);
+      Buffer2.setMD5Enabled(0);
+      md5_enabled = 0;
+    }
+
+  return 0;
+}
+
+int daq_set_md5allowturnoff (const int flag, std::ostream& os)
+{
+  if (flag)
+    {
+      md5_allow_turnoff = 1;
+      os << MyHostName << "MD5 turnoff allowed" << endl;
+    }
+  else 
+    {
+      md5_allow_turnoff = 0;
+      os << MyHostName << "MD5 turnoff not allowed" << endl;
+    }
+  return 0;
+}
 
 int daq_set_server (const char *hostname, const int port, std::ostream& os)
 {
@@ -2701,12 +2748,23 @@ int daq_generate_json (const int flag)
       md5_byte_t md5_digest[16];  
       char digest_string[33];
 
-      md5_finish(&md5state, md5_digest);
-      for ( int i=0; i< 16; i++) 
+      if ( md5_enabled) 
 	{
-	  sprintf ( &digest_string[2*i], "%02x",  md5_digest[i]);
+	  md5_finish(&md5state, md5_digest);
+	  for ( int i=0; i< 16; i++) 
+	    {
+	      sprintf ( &digest_string[2*i], "%02x",  md5_digest[i]);
+ 	    }
+	  digest_string[32] = 0;
 	}
-      digest_string[32] = 0;
+      else
+	{
+	  for ( int i=0; i< 16; i++) 
+	    {
+	      sprintf ( &digest_string[2*i], "ff");
+ 	    }
+	  digest_string[32] = 0;
+	}
 
       out << "{\"file\": [" << endl;
       out << "    { \"what\":\"" << "update"

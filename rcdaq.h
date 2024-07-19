@@ -65,6 +65,8 @@ int daq_server_close (std::ostream& os = std::cout);
 int get_serverflag();
 
 int daq_set_compression(const int flag, std::ostream& os = std::cout);
+int daq_set_md5enable (const int flag, std::ostream& os = std::cout);
+int daq_set_md5allowturnoff (const int flag, std::ostream& os = std::cout);
 
 
 int daq_set_name(const char *name);
