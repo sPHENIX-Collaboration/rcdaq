@@ -40,6 +40,7 @@ daqBuffer::daqBuffer (const int irun, const int length
   currentBufferID = ONCSBUFFERHEADER;
   _md5state = md5state;
   wants_compression = 0;
+  md5_enabled = 1;
   wrkmem = 0;
   outputarraylength = 0;
   outputarray = 0;
@@ -165,7 +166,7 @@ unsigned int daqBuffer::writeout ( int fd)
       int blockcount = ( getLength() + 8192 -1)/8192;
       int bytecount = blockcount*8192;
       bytes = writen ( fd, (char *) bptr , bytecount );
-      if ( _md5state)
+      if ( _md5state && md5_enabled)
 	{
 	  //cout << __FILE__ << " " << __LINE__ << " updating md5  with " << bytes << " bytes" << endl; 
 	  md5_append(_md5state, (const md5_byte_t *)bptr,bytes );
@@ -178,7 +179,7 @@ unsigned int daqBuffer::writeout ( int fd)
       int blockcount = ( outputarray[0] + 8192 -1)/8192;
       int bytecount = blockcount*8192;
       bytes = writen ( fd, (char *) outputarray , bytecount );
-      if ( _md5state)
+      if ( _md5state && md5_enabled)
 	{
 	  //cout << __FILE__ << " " << __LINE__ << " updating md5  with " << bytes << " bytes" << endl; 
 	  md5_append(_md5state, (const md5_byte_t *)outputarray,bytes );

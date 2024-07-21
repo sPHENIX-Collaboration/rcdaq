@@ -76,6 +76,8 @@ public:
   // MD5 checksum business
   void setMD5State( md5_state_t *md5state) {_md5state = md5state;};
   md5_state_t * getMD5State() const {return _md5state;};
+  void setMD5Enabled(const int x) { if(x) md5_enabled =1; else md5_enabled =0; }
+  int  getMD5Enabled() const { return md5_enabled; };
 
 protected:
 
@@ -107,6 +109,7 @@ protected:
   
   int currentBufferID;
 
+  int md5_enabled;
   md5_state_t *_md5state;
 
   static int lzo_initialized;

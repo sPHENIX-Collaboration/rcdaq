@@ -59,7 +59,9 @@
 
 #define DAQ_SETRUNNUMBERAPP    140
 
-#define DAQ_SET_COMPRESSION    141
+#define DAQ_SET_COMPRESSION        141
+#define DAQ_SET_MD5ENABLE          142
+#define DAQ_SET_MD5ALLOWTURNOFF    143
 
 
 
