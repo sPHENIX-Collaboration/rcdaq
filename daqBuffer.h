@@ -81,6 +81,8 @@ public:
   // MD5 checksum business
   void setMD5State( md5_state_t *md5state) {_md5state = md5state;};
   md5_state_t * getMD5State() const {return _md5state;};
+  void setMD5Enabled(const int x) { if(x) md5_enabled =1; else md5_enabled =0; }
+  int  getMD5Enabled() const { return md5_enabled; };
 
   void setPreviousBuffer( daqBuffer *b) {previousBuffer = b;};
   void setID( const int i) {_my_number=i;};
@@ -88,6 +90,7 @@ public:
 
   void setDirty( const int i) {if (i) _dirty=1; else _dirty = 0;};
   int getDirty() const {return _dirty;};
+  int getCompressing() const {return _compressing;};
   
   // this allows others to wait for me to finish writing
   int Wait_for_Completion(const int other_buffer) const;
@@ -129,6 +132,7 @@ protected:
   int _my_number;
   int _busy;
   int _dirty;
+  int _compressing;
   
   daqBuffer * previousBuffer;
   
@@ -151,7 +155,7 @@ protected:
   pthread_t _writeout_thread_t;
 
 
-  
+  int md5_enabled;  
   md5_state_t *_md5state;
 
   static int lzo_initialized;

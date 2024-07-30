@@ -139,11 +139,15 @@ static unsigned int currentTransportBuffernr = 0;
 const auto processor_count = std::thread::hardware_concurrency();
 static int nr_of_write_threads = 2;
 static int current_data_format = 0;
+static int compression_enabled = 0;
 
 static int file_is_open = 0;
 static int server_is_open = 0;
 static int current_filesequence = 0;
 static int outfile_fd;
+
+static int md5_enabled =1;
+static int md5_allow_turnoff = 0;
 
 #ifdef HAVE_MOSQUITTO_H
 MQTTConnection *mqtt = 0;
@@ -865,10 +869,19 @@ int switch_buffer()
   currentTransportBuffernr = currentFillBuffernr;
   transportBuffer = fillBuffer;
 
-  //  coutfl << "switching buffer to " << transportBuffer->getID() << " dirty state is " << transportBuffer->getDirty() << endl;
-
-
+  //  cout << "buffer status: ";
+  int dirtycount = 0;
+  int compressingcount = 0;
+  for (auto it: daqBufferVector)
+    {
+      if ( it->getDirty()) dirtycount++;
+      if ( it->getCompressing()) compressingcount++;
+      //      cout << it->getDirty() << " ";
+    }
+  //  cout << endl;
+  //coutfl << "switching buffer to " << transportBuffer->getID() << " dirty count = " << dirtycount << " compressing count " << compressingcount << endl;
   
+
   // here we are implementing the ring with the daqBuffers 
   currentFillBuffernr++;
   if ( currentFillBuffernr >= daqBufferVector.size())
@@ -1890,7 +1903,7 @@ int daq_set_compression (const int flag, std::ostream& os)
 	{
 	  (*it)->setCompression(1);
 	}
-
+      compression_enabled = 1;
     }
   else
     {
@@ -1900,6 +1913,7 @@ int daq_set_compression (const int flag, std::ostream& os)
 	{
 	  (*it)->setCompression(0);
 	}
+      compression_enabled = 0;
     }
 
   return 0;
@@ -1918,6 +1932,57 @@ int daq_set_nr_threads (const int n, std::ostream& os)
   if ( nr != n)
     {
       os << "number of threads cannot be less than 2 or more than the number of cores-1 (" << processor_count -1 << ") -  set to "<<  nr << endl;
+    }
+  return 0;
+}
+
+int daq_set_md5enable (const int flag, std::ostream& os)
+{
+
+  if ( DAQ_RUNNING ) 
+    {
+      os << MyHostName << "Run is active" << endl;;
+      return -1;
+    }
+  if ( ! md5_allow_turnoff) 
+    {
+      os << MyHostName << " MD5 switchoff not enabled" << endl;;
+      return 0;
+    }
+
+  if (flag)
+    {
+      for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
+	{
+	  (*it)->setMD5Enabled(1);
+	}
+      md5_enabled = 1;
+      os << MyHostName << " MD5  enabled " << daqBufferVector[0]->getMD5Enabled() << endl;;
+    }
+  else
+    {
+      for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
+	{
+	  (*it)->setMD5Enabled(0);
+	}
+      md5_enabled = 0;
+      os << MyHostName << " MD5  disabled " << daqBufferVector[0]->getMD5Enabled() << endl;;
+    }
+
+  return 0;
+}
+
+int daq_set_md5allowturnoff (const int flag, std::ostream& os)
+{
+  if (flag)
+    {
+      md5_allow_turnoff = 1;
+      os << MyHostName << "MD5 turnoff allowed" << endl;
+    }
+  else 
+    {
+      md5_allow_turnoff = 0;
+      os << MyHostName << "MD5 turnoff not allowed" << endl;
     }
   return 0;
 }
@@ -2254,6 +2319,8 @@ int daq_set_number_of_write_threads(const int n)
       daqBufferVector[i]->setID(i);
       daqBufferVector[i]->setMD5State(&md5state);
       daqBufferVector[i]->setEventFormat(current_data_format);
+      daqBufferVector[i]->setMD5Enabled(md5_enabled);
+      daqBufferVector[i]->setCompression(compression_enabled);
     }
 
   // generate the circular buffer, note the start at 1
@@ -2359,7 +2426,8 @@ int daq_status( const int flag, std::ostream& os)
 	  else
 	    {
 	      os << "  Logging enabled";
-	      if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled";
+	      if ( daqBufferVector[0]->getCompression() ) os << " compression enabled" << endl;
+	      if ( daqBufferVector[0]->getMD5Enabled() ==0 ) os << " MD5 calculation disabled" << endl;
 	    }
 	}
       else
@@ -2406,7 +2474,8 @@ int daq_status( const int flag, std::ostream& os)
 		{
 		  os << "  Filename:      " << get_current_filename() << endl; 	  
 		  os << "  Number of buffers/write threads: " << nr_of_write_threads << endl;
-		  if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled";
+		  if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled" << endl;
+		  if ( daqBufferVector[0]->getMD5Enabled() ==0 ) os << " MD5 calculation disabled" << endl;
 		}
 	    }
 

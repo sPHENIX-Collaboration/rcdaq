@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <lzo/lzo1x.h>
+#include <lzo/lzo1c.h>
+
 //#include <bzlib.h>
 
 using namespace std;
@@ -44,7 +46,7 @@ daqBuffer::daqBuffer (const int irun, const int length
   _my_number = 0;
   _dirty = 0;
   _busy = 0;
-
+  _compressing = 0;
   current_event = 0;
   current_etype = -1;
 
@@ -53,6 +55,7 @@ daqBuffer::daqBuffer (const int irun, const int length
   currentBufferID = ONCSBUFFERHEADER;
   _md5state = md5state;
   wants_compression = 0;
+  md5_enabled = 1;
   wrkmem = 0;
   outputarraylength = 0;
   outputarray = 0;
@@ -226,7 +229,7 @@ unsigned int daqBuffer::writeout ( int fd)
 	}
       
       bytes = writen ( fd, (char *) bptr , bytecount );
-      if ( _md5state)
+      if ( _md5state && md5_enabled)
 	{
 	  //coutfl << "updating md5  with " << bytes << " bytes for buffer " << getID() << endl; 
 	  md5_append(_md5state, (const md5_byte_t *)bptr,bytes );
@@ -235,7 +238,9 @@ unsigned int daqBuffer::writeout ( int fd)
   else // we want compression
     {
 
+      _compressing = 1;
       compress();
+      _compressing = 0;
 
       int blockcount = ( outputarray[0] + 8192 -1)/8192;
       int bytecount = blockcount*8192;
@@ -243,7 +248,7 @@ unsigned int daqBuffer::writeout ( int fd)
       if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
       
       bytes = writen ( fd, (char *) outputarray , bytecount );
-      if ( _md5state)
+      if ( _md5state && md5_enabled)
 	{
 	  //cout << __FILE__ << " " << __LINE__ << " updating md5  with " << bytes << " bytes" << endl; 
 	  md5_append(_md5state, (const md5_byte_t *)outputarray,bytes );
@@ -337,11 +342,13 @@ int daqBuffer::setCompression(const int flag)
       if ( !wrkmem)
 	{
 	  //	  wrkmem = (lzo_bytep) lzo_malloc(LZO1X_1_12_MEM_COMPRESS);
-	  wrkmem = (lzo_bytep) lzo_malloc(LZO1X_999_MEM_COMPRESS);
+	  int memsize=LZO1X_999_MEM_COMPRESS;
+	  //int memsize=LZO1X_1_15_MEM_COMPRESS;
+	  wrkmem = (lzo_bytep) lzo_malloc(memsize);
 	  if (wrkmem)
 	    {
 	      // memset(wrkmem, 0, LZO1X_1_12_MEM_COMPRESS);
-	      memset(wrkmem, 0, LZO1X_999_MEM_COMPRESS);
+	      memset(wrkmem, 0, memsize);
 	    }
 	  else
 	    {
@@ -365,15 +372,24 @@ int daqBuffer::compress ()
   lzo_uint outputlength_in_bytes = outputarraylength*4-16;
   lzo_uint in_len = getLength(); 
 
-  lzo1x_1_12_compress( (lzo_byte *) bptr,
-			in_len,  
-		       (lzo_byte *)&outputarray[4],
-			&outputlength_in_bytes,wrkmem);
+  // lzo1x_1_15_compress( (lzo_byte *) bptr,
+  // 			in_len,  
+  // 		       (lzo_byte *)&outputarray[4],
+  // 			&outputlength_in_bytes,wrkmem);
 
-  lzo1x_999_compress( (lzo_byte *) bptr,
-			in_len,  
-		       (lzo_byte *)&outputarray[4],
-			&outputlength_in_bytes,wrkmem);
+
+
+  //  LZO_EXTERN(int)
+    lzo1c_compress( (lzo_byte *) bptr,
+		    in_len,  
+		    (lzo_byte *)&outputarray[4],
+    		    &outputlength_in_bytes,wrkmem, 9);
+    
+
+  // lzo1x_999_compress( (lzo_byte *) bptr,
+  // 			in_len,  
+  // 		       (lzo_byte *)&outputarray[4],
+  // 			&outputlength_in_bytes,wrkmem);
 
   // unsigned int outputlength_in_bytes = outputarraylength*4-16;
   // int result = BZ2_bzBuffToBuffCompress((char *) &outputarray[4], &outputlength_in_bytes,
@@ -390,7 +406,7 @@ int daqBuffer::compress ()
   //coutfl << "orig, new size for buffer " << getID() << " " << getLength() << " " << outputlength_in_bytes << endl;
   
   outputarray[0] = outputlength_in_bytes +4*BUFFERHEADERLENGTH;
-  outputarray[1] = LZO1XBUFFERMARKER;
+  outputarray[1] = LZO1CBUFFERMARKER;
   outputarray[2] = bptr->Bufseq;
   outputarray[3] = getLength();
 
