@@ -1899,21 +1899,21 @@ int daq_set_compression (const int flag, std::ostream& os)
     {
       //Buffer1.setCompression(1);
       //Buffer2.setCompression(1);
+      compression_enabled = 1;
       for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
 	{
-	  (*it)->setCompression(1);
+	  (*it)->setCompression(compression_enabled);
 	}
-      compression_enabled = 1;
     }
   else
     {
       //Buffer1.setCompression(0);
       //Buffer2.setCompression(0);
+      compression_enabled = 0;
       for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
 	{
-	  (*it)->setCompression(0);
+	  (*it)->setCompression(compression_enabled);
 	}
-      compression_enabled = 0;
     }
 
   return 0;
@@ -2427,6 +2427,7 @@ int daq_status( const int flag, std::ostream& os)
 	    {
 	      os << "  Logging enabled";
 	      if ( daqBufferVector[0]->getCompression() ) os << " compression enabled" << endl;
+	      os << "daqBufferVector[0]->getMD5Enabled()  " << daqBufferVector[0]->getMD5Enabled() << endl;
 	      if ( daqBufferVector[0]->getMD5Enabled() ==0 ) os << " MD5 calculation disabled" << endl;
 	    }
 	}
@@ -2475,7 +2476,10 @@ int daq_status( const int flag, std::ostream& os)
 		  os << "  Filename:      " << get_current_filename() << endl; 	  
 		  os << "  Number of buffers/write threads: " << nr_of_write_threads << endl;
 		  if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled" << endl;
-		  if ( daqBufferVector[0]->getMD5Enabled() ==0 ) os << " MD5 calculation disabled" << endl;
+		  else  os << "  compression disabled" << endl;
+		  if ( daqBufferVector[0]->getMD5Enabled() ==0 ) os << "  MD5 calculation disabled" << endl;
+		  else os << "  MD5 calculation enabled" << endl;
+
 		}
 	    }
 
@@ -2504,6 +2508,9 @@ int daq_status( const int flag, std::ostream& os)
 		  os << "  Logging enabled" << endl;
 		  os << "  Number of buffers/write threads: " << nr_of_write_threads << endl;
 		  if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled" << endl;
+		  else  os << "  compression disabled" << endl;
+		  if ( daqBufferVector[0]->getMD5Enabled() ==0 ) os << "  MD5 calculation disabled" << endl;
+		  else os << "  MD5 calculation enabled" << endl;
 		}
 	    }
 	  else
