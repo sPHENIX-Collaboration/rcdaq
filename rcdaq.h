@@ -27,6 +27,9 @@ int rearm(const int etype);
 int rcdaq_init(const int, pthread_mutex_t &M );
 int add_readoutdevice( daq_device *d);
 
+int register_fd_use (const int fd, const int flag);
+
+
 int daq_set_nr_threads (const int n, std::ostream& os);
 int daq_set_number_of_write_threads(const int n);
   

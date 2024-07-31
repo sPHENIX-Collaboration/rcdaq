@@ -10,7 +10,7 @@
 #include <daqEvent.h>
 #include <BufferConstants.h>
 #include "md5.h"
-
+#include "rcdaq.h"
 #include <arpa/inet.h>
 
 

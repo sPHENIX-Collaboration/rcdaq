@@ -145,6 +145,11 @@ static int file_is_open = 0;
 static int server_is_open = 0;
 static int current_filesequence = 0;
 static int outfile_fd;
+static int previous_outfile_fd;
+
+pthread_mutex_t OutfileManagementSem;
+
+
 
 static int md5_enabled =1;
 static int md5_allow_turnoff = 0;
@@ -265,6 +270,56 @@ int persistentErrorCondition = 0;
 
 std::string MyHostName;
 std::string shortHostName;
+
+
+std::map<int, int> fd_map;
+
+// 
+int register_fd_use( const int fd, const int flag)
+{ 
+  pthread_mutex_lock( &OutfileManagementSem);
+
+  auto ifd = fd_map.find(fd);
+  if ( ifd == fd_map.end()) // not yet seen
+    {
+      if (flag) fd_map[fd] =1;
+      else coutfl << "**** impossible free-up of fd " << fd << endl;
+    }
+  else
+    {
+      if (flag)  fd_map[fd]++;
+      else  fd_map[fd]--;
+    }
+
+  //coutfl << "fd " << fd << " use is " << fd_map[fd] << endl;
+
+  pthread_mutex_unlock( &OutfileManagementSem);
+
+   return 0;
+
+}
+
+// 
+int close_fd_except_active( const int fd)
+{ 
+  pthread_mutex_lock( &OutfileManagementSem);
+
+  for ( auto ifd = fd_map.begin(); ifd != fd_map.end(); ifd++)
+    {
+      //coutfl << "fd " << (*ifd).first << " has " <<  (*ifd).second << " users"  << endl;
+      if ( (*ifd).first != fd && (*ifd).second == 0)
+	{
+	  //coutfl << "removed fd " << (*ifd).first << endl;
+	  close ( (*ifd).first );
+	  ifd = fd_map.erase(ifd);
+	}
+    }
+  pthread_mutex_unlock( &OutfileManagementSem);
+  
+  return 0;
+
+}
+
 
 char *obtain_pidfilename()
 {
@@ -554,7 +609,7 @@ int open_file(const int run_number, int *fd)
       return -1;
     }
 
-  cout << __LINE__ << "  " << __FILE__ << " opened file " << d << " fd nr " << ifd<< endl;
+  coutfl << "opened file " << d << " fd nr " << ifd<< endl;
 
   
   *fd = ifd;
@@ -919,7 +974,8 @@ int switch_buffer()
 	    }
 	  else   // not server
 	    {
-	      close(outfile_fd);
+	      //close(outfile_fd);
+	      close_fd_except_active(outfile_fd);
 	      file_is_open = 0;
 
 	      current_filesequence++;
@@ -2208,6 +2264,7 @@ int rcdaq_init( const int snumber, pthread_mutex_t &M)
   pthread_mutex_init( &SendSem, 0);
   pthread_mutex_init( &SendProtectSem, 0);
   pthread_mutex_init( &FdManagementSem,0);
+  pthread_mutex_init( &OutfileManagementSem, 0);
 
   // pre-lock them except the "protect" ones
   pthread_mutex_lock( &MonitoringRequestSem);
@@ -2906,7 +2963,7 @@ int daq_generate_json (const int flag)
 	}
       digest_string[32] = 0;
 
-      coutfl << "digest_string: " << digest_string << endl;
+      //coutfl << "digest_string: " << digest_string << endl;
       
       out << "{\"file\": [" << endl;
       out << "    { \"what\":\"" << "update"

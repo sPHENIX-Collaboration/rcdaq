@@ -188,6 +188,7 @@ int daqBuffer::start_writeout_thread (int fd)
   _ta.me =this;
   _busy = 1;
   _dirty =1;
+  
   int status = pthread_create(&_writeout_thread_t, NULL, 
 			       daqBuffer::writeout_thread, 
 			      (void *) &_ta);
@@ -198,8 +199,10 @@ int daqBuffer::start_writeout_thread (int fd)
 void * daqBuffer::writeout_thread ( void * x)
 {
   thread_argument * ta  = (thread_argument *) x;
+  register_fd_use(ta->fd,1);
   int fd = ta->fd;
   (ta->me)->writeout(fd);
+  register_fd_use(ta->fd,0);
   return 0;
 }
 
@@ -220,13 +223,13 @@ unsigned int daqBuffer::writeout ( int fd)
       int blockcount = ( getLength() + 8192 -1)/8192;
       int bytecount = blockcount*8192;
 
-      if ( previousBuffer->getBufferNumber() < getBufferNumber()) // ok, we need to wait for the other buffer b/c it nees to come first
-	{
-	  //coutfl << "buffer " << getID() << " with buffernr " << getBufferNumber() 
-	  //	 << " calling wait on prev id " << previousBuffer->getID() << " with buffernr " << previousBuffer->getBufferNumber() << endl;
-	  if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
-	  //coutfl << "buffer " << getID() << " finished wait on prev id " << previousBuffer->getID() << endl;
-	}
+      //      if ( previousBuffer->getBufferNumber() < getBufferNumber()) // ok, we need to wait for the other buffer b/c it nees to come first
+      //	{
+      //coutfl << "buffer " << getID() << " with buffernr " << getBufferNumber() 
+      //	 << " calling wait on prev id " << previousBuffer->getID() << " with buffernr " << previousBuffer->getBufferNumber() << endl;
+      if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
+      //coutfl << "buffer " << getID() << " finished wait on prev id " << previousBuffer->getID() << endl;
+      //	}
       
       bytes = writen ( fd, (char *) bptr , bytecount );
       if ( _md5state && md5_enabled)
@@ -246,7 +249,7 @@ unsigned int daqBuffer::writeout ( int fd)
       int bytecount = blockcount*8192;
 
       if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
-      
+
       bytes = writen ( fd, (char *) outputarray , bytecount );
       if ( _md5state && md5_enabled)
 	{
