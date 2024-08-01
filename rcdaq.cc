@@ -2483,9 +2483,8 @@ int daq_status( const int flag, std::ostream& os)
 	  else
 	    {
 	      os << "  Logging enabled";
-	      if ( daqBufferVector[0]->getCompression() ) os << " compression enabled" << endl;
-	      os << "daqBufferVector[0]->getMD5Enabled()  " << daqBufferVector[0]->getMD5Enabled() << endl;
-	      if ( daqBufferVector[0]->getMD5Enabled() ==0 ) os << " MD5 calculation disabled" << endl;
+	      //if ( daqBufferVector[0]->getCompression() ) os << " compression enabled" << endl;
+	      //if ( daqBufferVector[0]->getMD5Enabled() ==0 ) os << " MD5 calculation disabled" << endl;
 	    }
 	}
       else
@@ -2493,10 +2492,10 @@ int daq_status( const int flag, std::ostream& os)
 	  os << "  Logging disabled";
 	}
     
-      if ( RolloverLimit)
-	{
-	  os << "  File rollover: " << RolloverLimit << "GB";
-	}
+      // if ( RolloverLimit)
+      // 	{
+      // 	  os << "  File rollover: " << RolloverLimit << "GB";
+      // 	}
       
       os<< endl;
       
