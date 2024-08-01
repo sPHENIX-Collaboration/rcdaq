@@ -209,7 +209,7 @@ int command_execute( int argc, char **argv)
   optind = 0; // tell getopt to start over
   int servernumber=0;
 
-  while ((c = getopt(argc, argv, "vlsi")) != EOF)
+  while ((c = getopt(argc, argv, "vlsij")) != EOF)
     {
       switch (c) 
 	{
@@ -228,6 +228,10 @@ int command_execute( int argc, char **argv)
 
 	case 'i': // set the "immediate" flag; onoy used in daq_end to request an asynchronous end
 	  immediate_flag=1;
+	  break;
+
+	case 'j': // special case for daq_status to give json output
+	  long_flag=100;
 	  break;
 
 	}

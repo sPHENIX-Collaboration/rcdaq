@@ -47,6 +47,8 @@ daqBuffer::daqBuffer (const int irun, const int length
   _dirty = 0;
   _busy = 0;
   _compressing = 0;
+  _statusword = 0;
+
   current_event = 0;
   current_etype = -1;
 
@@ -188,7 +190,8 @@ int daqBuffer::start_writeout_thread (int fd)
   _ta.me =this;
   _busy = 1;
   _dirty =1;
-  
+  _statusword |= 0x3;  // dirty and busy
+
   int status = pthread_create(&_writeout_thread_t, NULL, 
 			       daqBuffer::writeout_thread, 
 			      (void *) &_ta);
@@ -242,15 +245,22 @@ unsigned int daqBuffer::writeout ( int fd)
     {
 
       _compressing = 1;
+      _statusword |= 0x4;
       compress();
       _compressing = 0;
+      _statusword &= ~0x4;
 
       int blockcount = ( outputarray[0] + 8192 -1)/8192;
       int bytecount = blockcount*8192;
 
+      _statusword |= 0x8;
       if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
+      _statusword &= ~0x8;
 
+      _statusword |= 0x10;
       bytes = writen ( fd, (char *) outputarray , bytecount );
+      _statusword &= ~0x10;
+
       if ( _md5state && md5_enabled)
 	{
 	  //cout << __FILE__ << " " << __LINE__ << " updating md5  with " << bytes << " bytes" << endl; 
@@ -261,6 +271,8 @@ unsigned int daqBuffer::writeout ( int fd)
  
   _busy = 0;
   _dirty = 0;
+  _statusword &= ~0x3;
+
   return bytes;
 }
 

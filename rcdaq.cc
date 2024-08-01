@@ -927,14 +927,15 @@ int switch_buffer()
   //  cout << "buffer status: ";
   int dirtycount = 0;
   int compressingcount = 0;
+  cout << " buffer status: ";
   for (auto it: daqBufferVector)
     {
       if ( it->getDirty()) dirtycount++;
       if ( it->getCompressing()) compressingcount++;
-      //      cout << it->getDirty() << " ";
+      cout << hex << "0x" << it->getStatus() << dec << " ";
     }
-  //  cout << endl;
-  //coutfl << "switching buffer to " << transportBuffer->getID() << " dirty count = " << dirtycount << " compressing count " << compressingcount << endl;
+    cout << endl;
+    coutfl << "switching buffer to " << transportBuffer->getID() << " dirty count = " << dirtycount << " compressing count " << compressingcount << endl;
   
 
   // here we are implementing the ring with the daqBuffers 
@@ -948,6 +949,7 @@ int switch_buffer()
   
   
   fillBuffer->Wait_for_free();
+  coutfl << "After Wait_for_free on buffer " << fillBuffer->getID() << endl;
   
   fillBuffer->prepare_next(++Buffer_number, TheRun);
 
@@ -2437,6 +2439,75 @@ int daq_status( const int flag, std::ostream& os)
 
   switch (flag)
     {
+
+    case 100: // special case - make json output 
+      
+      if ( DAQ_RUNNING ) 
+	{
+	  os << "{\"state\":\"running\" ,";
+	}
+      else
+	{
+	  os << "{\"state\":\"stopped\" ,";
+	}
+
+
+      os << " \"runnumber\":" << TheRun << ","
+	 << " \"host\":\"" << shortHostName << "\","
+	 << " \"runtype\":\"" << TheRunType << "\","
+	 << " \"event\":\"" << Event_number -1 << "\","
+	 << " \"volume\":\"" << volume << "\","
+	 << " \"Filerule\":\"" << daq_get_filerule() << "\","
+	 << " \"Filename\":\"" << get_current_filename() << "\","
+	 << " \"Rolloverlimit\":\"" << RolloverLimit << "\","
+	 << " \"nr_write_threads\":\"" << nr_of_write_threads << "\"," ;
+
+      if ( daqBufferVector[0]->getCompression() )
+	{
+	  os << "\"compresssion\":\"enabled\" ,";
+	}
+      else
+	{
+	  os << "\"compresssion\":\"disabled\" ,";
+	}
+
+      if ( daqBufferVector[0]->getMD5Enabled() )
+	{
+	  os << "\"MD5\":\"enabled\" ,";
+	}
+      else
+	{
+	  os << "\"MD5\":\"disabled\" ,";
+	}
+
+      
+
+      if ( DAQ_RUNNING ) 
+	{
+	  os << " \"Duration\":\"" << time(0) - StartTime << "\",";
+	}
+      else
+	{
+	  os << " \"Duration\":\"" << 0 << "\",";
+	}
+      os << " \"VolumeLimit\":\"" << max_volume /(1024 *1024) << "\","
+	 << " \"EventLimit\":\"" << max_events << "\",";
+
+      os << " \"Bufferstatus\":[";
+
+      { // to keep the def localized
+	auto bitr = daqBufferVector.begin();
+	os << "\"0x" << hex << (*bitr)->getStatus()<< dec <<"\"";
+	
+	for (; bitr != daqBufferVector.end(); bitr++)
+	  {
+	    os << ",\"0x" << hex << (*bitr)->getStatus()<< dec <<"\"";
+	  }
+	
+	os << "] }" << endl;
+      }
+
+      break;
 
     case STATUSFORMAT_SHORT:    // "short format"
       

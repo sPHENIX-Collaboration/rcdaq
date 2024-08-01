@@ -91,6 +91,15 @@ public:
   void setDirty( const int i) {if (i) _dirty=1; else _dirty = 0;};
   int getDirty() const {return _dirty;};
   int getCompressing() const {return _compressing;};
+
+  int getStatus() const {return _statusword;};
+  // bit meaning
+  // 0 dirty
+  // 1 busy
+  // 2 compressing
+  // 3 waiting for write
+  // 4 writing
+
   
   // this allows others to wait for me to finish writing
   int Wait_for_Completion(const int other_buffer) const;
@@ -133,6 +142,7 @@ protected:
   int _busy;
   int _dirty;
   int _compressing;
+  int _statusword;
   
   daqBuffer * previousBuffer;
   
