@@ -3001,15 +3001,24 @@ int daq_generate_json (const int flag)
       md5_byte_t md5_digest[16];  
       char digest_string[33];
 
-      md5_finish(&md5state, md5_digest);
-      for ( int i=0; i< 16; i++) 
+      if ( md5_enabled) 
 	{
-	  sprintf ( &digest_string[2*i], "%02x",  md5_digest[i]);
+	  md5_finish(&md5state, md5_digest);
+	  for ( int i=0; i< 16; i++) 
+	    {
+	      sprintf ( &digest_string[2*i], "%02x",  md5_digest[i]);
+ 	    }
+	  digest_string[32] = 0;
 	}
-      digest_string[32] = 0;
+      else
+	{
+	  for ( int i=0; i< 16; i++) 
+	    {
+	      sprintf ( &digest_string[2*i], "ff");
+ 	    }
+	  digest_string[32] = 0;
+	}
 
-      //coutfl << "digest_string: " << digest_string << endl;
-      
       out << "{\"file\": [" << endl;
       out << "    { \"what\":\"" << "update"
 	  << "\", \"runnumber\":" << TheRun << ","
