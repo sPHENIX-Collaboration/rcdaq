@@ -73,8 +73,8 @@ int mg_end();
 int request_mg_update(const int what);
 
 
-pthread_mutex_t WriteSem;
-pthread_mutex_t WriteProtectSem;
+//pthread_mutex_t WriteSem;
+//pthread_mutex_t WriteProtectSem;
 
 pthread_mutex_t MonitoringRequestSem;
 pthread_mutex_t SendSem;
@@ -863,46 +863,6 @@ void *sendMonitorData( void *arg)
   return 0;
 }
 
-void *writebuffers ( void * arg)
-{
-
-
-  while(1)
-    {
-
-      pthread_mutex_lock( &WriteSem); // we wait for an unlock
-
-      //coutfl << " writebuffers woken up for buffer " << transportBuffer->getID() << endl;
-
-      last_bufferwritetime  = time(0);
-      if ( daq_open_flag &&  outfile_fd) 
-	{
-	  unsigned int bytecount = transportBuffer->getLength();
-
-	  transportBuffer->start_writeout_thread(outfile_fd);
-	  NumberWritten++;
-	  BytesInThisRun += bytecount;
-	  BytesInThisFile += bytecount;
-	}
-      else if ( daq_server_flag &&  TheServerFD)
-	{
-	  unsigned int bytecount = transportBuffer->sendout(TheServerFD);
-          NumberWritten++;
-          BytesInThisRun += bytecount;
-	  BytesInThisFile += bytecount;
-        }
-      else // not logging at all
-	{
-	  //coutfl << " clearing buffer " << transportBuffer->getID() << endl;
-	  transportBuffer->setDirty(0);
-	}
-
-      if ( end_thread) pthread_exit(0);
-      
-      pthread_mutex_unlock(&WriteProtectSem);
-    }
-  return 0;
-}
 
 int switch_buffer()
 {
@@ -912,7 +872,7 @@ int switch_buffer()
 
   //daqBuffer *spare;
   
-  pthread_mutex_lock(&WriteProtectSem);
+  //pthread_mutex_lock(&WriteProtectSem);
   pthread_mutex_lock(&SendProtectSem);
 
   fillBuffer->addEoB();
@@ -925,17 +885,29 @@ int switch_buffer()
   transportBuffer = fillBuffer;
 
   //  cout << "buffer status: ";
-  int dirtycount = 0;
-  int compressingcount = 0;
-  cout << " buffer status: ";
-  for (auto it: daqBufferVector)
-    {
-      if ( it->getDirty()) dirtycount++;
-      if ( it->getCompressing()) compressingcount++;
-      cout << hex << "0x" << it->getStatus() << dec << " ";
-    }
-    cout << endl;
-    coutfl << "switching buffer to " << transportBuffer->getID() << " dirty count = " << dirtycount << " compressing count " << compressingcount << endl;
+  // int dirtycount = 0;
+  // int compressingcount = 0;
+
+  // cout << " buffer numbers: ";
+  // for (auto it: daqBufferVector)
+  //   {
+  //     //  if ( it->getDirty()) dirtycount++;
+  //     //if ( it->getCompressing()) compressingcount++;
+  //     cout << setw(10) << it->getBufferNumber()  << " ";
+  //   }
+  //   cout << endl;
+
+  // cout << " buffer status: ";
+  // for (auto it: daqBufferVector)
+  //   {
+  //     //  if ( it->getDirty()) dirtycount++;
+  //     //if ( it->getCompressing()) compressingcount++;
+  //     cout << hex << "0x" << it->getStatus() << dec << " ";
+  //   }
+  //   cout << endl;
+
+  //   coutfl << "switching transport buffer to " << transportBuffer->getID() << " status is 0x" << hex << transportBuffer->getStatus() << dec << " buffernr " << transportBuffer->getBufferNumber() << endl;
+  //     // << " dirty count = " << dirtycount << " compressing count " << compressingcount << endl;
   
 
   // here we are implementing the ring with the daqBuffers 
@@ -946,10 +918,11 @@ int switch_buffer()
     }
   fillBuffer = daqBufferVector[currentFillBuffernr];
 
+  //coutfl << "before wait_for free " << fillBuffer->getID() << " status is 0x" << hex << fillBuffer->getStatus() << dec << endl;
   
   
   fillBuffer->Wait_for_free();
-  coutfl << "After Wait_for_free on buffer " << fillBuffer->getID() << endl;
+  //coutfl << "After Wait_for_free on buffer " << fillBuffer->getID() << endl;
   
   fillBuffer->prepare_next(++Buffer_number, TheRun);
 
@@ -1001,7 +974,31 @@ int switch_buffer()
     }
   
   Event_number_at_last_write = Event_number;
-  pthread_mutex_unlock(&WriteSem);
+
+  last_bufferwritetime  = time(0);
+  if ( daq_open_flag &&  outfile_fd) 
+    {
+      unsigned int bytecount = transportBuffer->getLength();
+      
+      transportBuffer->start_writeout_thread(outfile_fd);
+      NumberWritten++;
+      BytesInThisRun += bytecount;
+      BytesInThisFile += bytecount;
+    }
+  else if ( daq_server_flag &&  TheServerFD)
+    {
+      unsigned int bytecount = transportBuffer->sendout(TheServerFD);
+      NumberWritten++;
+      BytesInThisRun += bytecount;
+      BytesInThisFile += bytecount;
+    }
+  else // not logging at all
+    {
+      //coutfl << " clearing buffer " << transportBuffer->getID() << endl;
+      transportBuffer->setDirty(0);
+    }
+
+  //pthread_mutex_unlock(&WriteSem);
   pthread_mutex_unlock(&SendSem);
   return 0;
 
@@ -1636,8 +1633,8 @@ int daq_end(std::ostream& os)
   if ( file_is_open  )
     {
 
-      pthread_mutex_lock(&WriteProtectSem);
-      pthread_mutex_unlock(&WriteProtectSem);
+      //      pthread_mutex_lock(&WriteProtectSem);
+      // pthread_mutex_unlock(&WriteProtectSem);
 
       //coutfl << "moving on..."  << endl;
 
@@ -1659,6 +1656,17 @@ int daq_end(std::ostream& os)
 	}
       else
 	{
+	  while (1)
+	    {
+	      int dirtycount = 0;
+	      for (auto it: daqBufferVector)
+		{
+		  if ( it->getDirty()) dirtycount++;
+		}
+	      if ( dirtycount == 0) break;
+	    }
+
+
 	  coutfl << "closing outfile.. " << endl;
 
 	  close (outfile_fd);
@@ -1667,13 +1675,6 @@ int daq_end(std::ostream& os)
 	}
       file_is_open = 0;
 
-      // int sfd = get_sqlfd();
-      // if ( sfd && RunControlMode == 0)
-      // 	{
-      // 	  std::ostringstream out;
-      // 	  out << "update $RUNTABLE set eventsinrun=" << Event_number << " where runnumber=" << TheRun << ";" << std::endl;
-      // 	  write (sfd, out.str().c_str(), out.str().size());
-      // 	}
 
     } 
 
@@ -2258,9 +2259,6 @@ int rcdaq_init( const int snumber, pthread_mutex_t &M)
   //  pthread_mutex_init(&M_cout, 0); 
   M_cout = M;
 
-  pthread_mutex_init( &WriteSem, 0);
-  pthread_mutex_init( &WriteProtectSem, 0);
-
   
   pthread_mutex_init( &MonitoringRequestSem, 0);
   pthread_mutex_init( &SendSem, 0);
@@ -2270,7 +2268,6 @@ int rcdaq_init( const int snumber, pthread_mutex_t &M)
 
   // pre-lock them except the "protect" ones
   pthread_mutex_lock( &MonitoringRequestSem);
-  pthread_mutex_lock( &WriteSem);
   pthread_mutex_lock( &SendSem);
 
   ThreadEvt = 0;
@@ -2279,28 +2276,6 @@ int rcdaq_init( const int snumber, pthread_mutex_t &M)
 
   daq_set_number_of_write_threads(2); // we start with 2 as we had before
   
-
-// #ifdef WRITEPRDF
-//   Buffer1.setEventFormat(DAQPRDFFORMAT);
-//   Buffer2.setEventFormat(DAQPRDFFORMAT);
-// #endif
-
-
-  status = pthread_create(&ThreadId, NULL, 
-			  writebuffers, 
-			  (void *) 0);
-   
-  if (status ) 
-    {
-      cout << "error in write thread create " << status << endl;
-      exit(0);
-    }
-  else
-    {
-      pthread_mutex_lock(&M_cout); 
-      cout << "write thread created" << endl;
-      pthread_mutex_unlock(&M_cout);
-    }
 
   status = pthread_create(&ThreadMon, NULL, 
 			  sendMonitorData, 

@@ -186,15 +186,37 @@ unsigned int daqBuffer::addEoB()
 
 int daqBuffer::start_writeout_thread (int fd)
 {
+
+
+  int status;
+ 
+  if (_writeout_thread_t) 
+    {
+      status= pthread_join(_writeout_thread_t, NULL);
+      if (status)
+	{
+	  perror ("start_writeout_thread join");
+	  cerrfl << "buffer id " << getID() << endl;
+	}
+    }
   _ta.fd =fd;
   _ta.me =this;
   _busy = 1;
   _dirty =1;
-  _statusword |= 0x3;  // dirty and busy
 
-  int status = pthread_create(&_writeout_thread_t, NULL, 
+  //  coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
+  _statusword |= 0x3;  // dirty and busy
+  //cout << " to " << _statusword << dec << endl;
+
+  status = pthread_create(&_writeout_thread_t, NULL, 
 			       daqBuffer::writeout_thread, 
 			      (void *) &_ta);
+  if (status)
+    {
+      perror ("start_writeout_thread");
+      cerrfl << "buffer id " << getID() << endl;
+    }
+
   return status;
 }
 
@@ -213,7 +235,7 @@ void * daqBuffer::writeout_thread ( void * x)
 unsigned int daqBuffer::writeout ( int fd)
 {
 
-  //coutfl << " starting writeout for " << getID() << endl;
+  //coutfl << " starting compression and writeout for buffer " << getID() << endl;
 
   if ( _broken) return 0;
   if (!has_end) addEoB();
@@ -226,15 +248,30 @@ unsigned int daqBuffer::writeout ( int fd)
       int blockcount = ( getLength() + 8192 -1)/8192;
       int bytecount = blockcount*8192;
 
-      //      if ( previousBuffer->getBufferNumber() < getBufferNumber()) // ok, we need to wait for the other buffer b/c it nees to come first
-      //	{
-      //coutfl << "buffer " << getID() << " with buffernr " << getBufferNumber() 
-      //	 << " calling wait on prev id " << previousBuffer->getID() << " with buffernr " << previousBuffer->getBufferNumber() << endl;
+
+      coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
+      _statusword |= 0x8;
+      cout << " to " << _statusword << dec << endl;
+
       if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
+
+      coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
+      _statusword &= ~0x8;
+      cout << " to " << _statusword << dec << endl;
+
       //coutfl << "buffer " << getID() << " finished wait on prev id " << previousBuffer->getID() << endl;
       //	}
       
+      coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
+      _statusword |= 0x10;
+      cout << " to " << _statusword << dec << endl;
+
       bytes = writen ( fd, (char *) bptr , bytecount );
+
+      coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
+      _statusword &= ~0x10;
+      cout << " to " << _statusword << dec << endl;
+
       if ( _md5state && md5_enabled)
 	{
 	  //coutfl << "updating md5  with " << bytes << " bytes for buffer " << getID() << endl; 
@@ -253,13 +290,25 @@ unsigned int daqBuffer::writeout ( int fd)
       int blockcount = ( outputarray[0] + 8192 -1)/8192;
       int bytecount = blockcount*8192;
 
+      //      coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
       _statusword |= 0x8;
-      if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
-      _statusword &= ~0x8;
+      //cout << " to " << _statusword << dec << endl;
 
+      if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
+
+      //coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
+      _statusword &= ~0x8;
+      //cout << " to " << _statusword << dec << endl;
+
+      //coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
       _statusword |= 0x10;
+      //cout << " to " << _statusword << dec << endl;
+
       bytes = writen ( fd, (char *) outputarray , bytecount );
+
+      //coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
       _statusword &= ~0x10;
+      //cout << " to " << _statusword << dec << endl;
 
       if ( _md5state && md5_enabled)
 	{
@@ -271,7 +320,12 @@ unsigned int daqBuffer::writeout ( int fd)
  
   _busy = 0;
   _dirty = 0;
-  _statusword &= ~0x3;
+
+  //coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
+  _statusword = 0;
+  //cout << " to " << _statusword << dec << endl;
+
+  //coutfl << "buffer " << getID() << " finished write, status= " << getStatus() << endl;
 
   return bytes;
 }
