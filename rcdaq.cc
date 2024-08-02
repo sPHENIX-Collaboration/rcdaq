@@ -2016,7 +2016,7 @@ int daq_set_md5enable (const int flag, std::ostream& os)
 	  (*it)->setMD5Enabled(1);
 	}
       md5_enabled = 1;
-      os << MyHostName << " MD5  enabled " << daqBufferVector[0]->getMD5Enabled() << endl;;
+      os << MyHostName << " MD5 enabled " << endl;;
     }
   else
     {
@@ -2025,7 +2025,7 @@ int daq_set_md5enable (const int flag, std::ostream& os)
 	  (*it)->setMD5Enabled(0);
 	}
       md5_enabled = 0;
-      os << MyHostName << " MD5  disabled " << daqBufferVector[0]->getMD5Enabled() << endl;;
+      os << MyHostName << " MD5 disabled " << endl;;
     }
 
   return 0;
