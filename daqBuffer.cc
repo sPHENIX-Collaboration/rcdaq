@@ -202,7 +202,7 @@ int daqBuffer::start_writeout_thread (int fd)
   _ta.fd =fd;
   _ta.me =this;
   _busy = 1;
-  _dirty =1;
+  //  _dirty =1;
 
   //  coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
   _statusword |= 0x3;  // dirty and busy
@@ -224,6 +224,7 @@ int daqBuffer::start_writeout_thread (int fd)
 void * daqBuffer::writeout_thread ( void * x)
 {
   thread_argument * ta  = (thread_argument *) x;
+  (ta->me)->setDirty(1);
   register_fd_use(ta->fd,1);
   int fd = ta->fd;
   (ta->me)->writeout(fd);
@@ -249,28 +250,28 @@ unsigned int daqBuffer::writeout ( int fd)
       int bytecount = blockcount*8192;
 
 
-      coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
+      //      coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
       _statusword |= 0x8;
-      cout << " to " << _statusword << dec << endl;
+      // cout << " to " << _statusword << dec << endl;
 
       if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
 
-      coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
+      //coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
       _statusword &= ~0x8;
-      cout << " to " << _statusword << dec << endl;
+      //cout << " to " << _statusword << dec << endl;
 
       //coutfl << "buffer " << getID() << " finished wait on prev id " << previousBuffer->getID() << endl;
       //	}
       
-      coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
+      //coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
       _statusword |= 0x10;
-      cout << " to " << _statusword << dec << endl;
+      //cout << " to " << _statusword << dec << endl;
 
       bytes = writen ( fd, (char *) bptr , bytecount );
 
-      coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
+      //coutfl << "status change in buffer " << getID() << " from " << hex <<_statusword;
       _statusword &= ~0x10;
-      cout << " to " << _statusword << dec << endl;
+      //cout << " to " << _statusword << dec << endl;
 
       if ( _md5state && md5_enabled)
 	{
