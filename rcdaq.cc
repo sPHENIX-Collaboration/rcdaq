@@ -304,12 +304,14 @@ int close_fd_except_active( const int fd)
 { 
   pthread_mutex_lock( &OutfileManagementSem);
 
+  coutfl << "in close_fd_except_active for fd " << fd << endl;
+  
   for ( auto ifd = fd_map.begin(); ifd != fd_map.end(); ifd++)
     {
-      //coutfl << "fd " << (*ifd).first << " has " <<  (*ifd).second << " users"  << endl;
+      coutfl << "fd " << (*ifd).first << " has " <<  (*ifd).second << " users"  << endl;
       if ( (*ifd).first != fd && (*ifd).second == 0)
 	{
-	  //coutfl << "removed fd " << (*ifd).first << endl;
+	  coutfl << "removed fd " << (*ifd).first << endl;
 	  close ( (*ifd).first );
 	  ifd = fd_map.erase(ifd);
 	}
@@ -918,11 +920,11 @@ int switch_buffer()
     }
   fillBuffer = daqBufferVector[currentFillBuffernr];
 
-  //coutfl << "before wait_for free " << fillBuffer->getID() << " status is 0x" << hex << fillBuffer->getStatus() << dec << endl;
+  coutfl << "before wait_for free " << fillBuffer->getID() << " status is 0x" << hex << fillBuffer->getStatus() << dec << endl;
   
   
   fillBuffer->Wait_for_free();
-  //coutfl << "After Wait_for_free on buffer " << fillBuffer->getID() << endl;
+  coutfl << "After Wait_for_free on buffer " << fillBuffer->getID() << endl;
   
   fillBuffer->prepare_next(++Buffer_number, TheRun);
 
@@ -942,7 +944,7 @@ int switch_buffer()
 	      sprintf( d, TheFileRule.c_str(),
 		       TheRun, current_filesequence);
 	      
-	      cout << __FILE__ << " " << __LINE__ << " rolling over " << d << endl;
+	      coutfl << " rolling over " << d << endl;
 
 	      int status = server_send_rollover_sequence(d,TheServerFD);
 	      CurrentFilename = d;
@@ -1112,7 +1114,7 @@ int daq_set_name(const char *name)
 #ifdef HAVE_MOSQUITTO_H
 int daq_set_mqtt_host(const char * host, const int port, std::ostream& os)
 {
-  std::cout << __FILE__ << "  " << __LINE__ <<  " mqtt host " << host << " port " << port << endl;
+  coutfl <<  " mqtt host " << host << " port " << port << endl;
   if (mqtt) delete mqtt;
 
   if (strcasecmp(host, "None") == 0) // delete existing def
@@ -1308,7 +1310,7 @@ void * daq_begin_thread( void *arg)
   if (status)
     {
       // not sure what to do exactly
-      cout << __FILE__ << " " << __LINE__ << " asynchronous begin run failed" << endl;
+      coutfl << " asynchronous begin run failed" << endl;
     }
 
   DAQ_BEGININPROGRESS = 0;
@@ -1374,6 +1376,12 @@ int daq_begin(const int irun, std::ostream& os)
     }
     
   if (ThreadEvt) pthread_join(ThreadEvt, NULL);
+
+
+  for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
+    {
+      (*it)->setVerbosity(0);
+    }
 
   
   // set the status to "running"
@@ -1564,7 +1572,7 @@ int daq_end_immediate(std::ostream& os)
   
   void * x = &os;
 
-  //cout << __FILE__ << " " << __LINE__ << " calling end_thread as thread" << endl; 
+  //coutfl << " calling end_thread as thread" << endl; 
   int status = pthread_create(&t, NULL,
                           daq_end_thread,
                           x);
@@ -1574,7 +1582,7 @@ int daq_end_immediate(std::ostream& os)
       cout << "end_run failed " << status << endl;
       os << "end_run failed " << status << endl;
     }
-  //cout << __FILE__ << " " << __LINE__ << " done setting up  end_thread" << endl; 
+  //coutfl << " done setting up  end_thread" << endl; 
   return 0;
 }
 
@@ -1617,7 +1625,12 @@ int daq_end(std::ostream& os)
 
   readout(ENDRUNEVENT);
   
-
+  for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
+    {
+      (*it)->setVerbosity(1);
+    }
+  
+  
   switch_buffer();  // we force a buffer flush
 
   for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
@@ -1649,7 +1662,7 @@ int daq_end(std::ostream& os)
 	  server_send_endrun_sequence(TheServerFD);
 	  if ( server_send_close_sequence(TheServerFD) )
 	    {
-	      std::cout << __FILE__ << " " << __LINE__ << " error in closing connection...   " << std::endl;
+	      coutfl << " error in closing connection...   " << std::endl;
 	    }
 	  close(TheServerFD);
 	  TheServerFD = 0;
@@ -1668,7 +1681,8 @@ int daq_end(std::ostream& os)
 
 
 	  coutfl << "closing outfile.. " << endl;
-
+	  close_fd_except_active(outfile_fd);
+	  
 	  close (outfile_fd);
 	  daq_generate_json(1);
 	  outfile_fd = 0;
@@ -2179,7 +2193,7 @@ int daq_server_close (std::ostream& os)
     }
   if ( server_send_close_sequence(TheServerFD) )
     {
-      std::cout << __FILE__ << " " << __LINE__ << " error in closing connection...   " << std::endl;
+      coutfl << " error in closing connection...   " << std::endl;
     }
   close(TheServerFD);
   TheServerFD = 0;
@@ -2804,7 +2818,7 @@ int open_serverSocket(const char * hostname, const int port)
 
   if ( sockfd < 0)
       {
-	std::cout << __FILE__ << " " << __LINE__ << " error in socket" << std::endl;
+	cerrfl << " error in socket" << std::endl;
 	perror("socket");
 	freeaddrinfo(result);
 	return -1;
@@ -2817,7 +2831,7 @@ int open_serverSocket(const char * hostname, const int port)
 
   if ( connect(sockfd, rp->ai_addr, rp->ai_addrlen) < 0 ) 
     {
-      std::cout << __FILE__ << " " << __LINE__ << " error in connect" << std::endl;
+      cerrfl << " error in connect" << std::endl;
       perror("connect");
       freeaddrinfo(result);
       return -1;

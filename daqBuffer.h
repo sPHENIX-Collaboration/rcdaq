@@ -100,7 +100,9 @@ public:
   // 3 waiting for write
   // 4 writing
 
-  
+  void setVerbosity(const int v) { verbosity = v;};
+  int getVerbosity() const {return verbosity;};
+
   // this allows others to wait for me to finish writing
   int Wait_for_Completion(const int other_buffer) const;
   int Wait_for_free() const;
@@ -159,6 +161,8 @@ protected:
   
   int format;
   int wants_compression;
+
+  int verbosity;
   
   int currentBufferID;
 
