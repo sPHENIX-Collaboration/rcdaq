@@ -306,15 +306,19 @@ int close_fd_except_active( const int fd)
 
   coutfl << "in close_fd_except_active for fd " << fd << endl;
   
-  for ( auto ifd = fd_map.begin(); ifd != fd_map.end(); ifd++)
+  for ( auto ifd = fd_map.begin(); ifd != fd_map.end(); )
     {
       coutfl << "fd " << (*ifd).first << " has " <<  (*ifd).second << " users"  << endl;
       if ( (*ifd).first != fd && (*ifd).second == 0)
-	{
-	  coutfl << "removed fd " << (*ifd).first << endl;
-	  close ( (*ifd).first );
-	  ifd = fd_map.erase(ifd);
-	}
+      {
+        coutfl << "removed fd " << (*ifd).first << endl;
+        close ( (*ifd).first );
+        ifd = fd_map.erase(ifd);
+      }
+      else
+      {
+        ++ifd;
+      }
     }
   pthread_mutex_unlock( &OutfileManagementSem);
   
@@ -1681,11 +1685,9 @@ int daq_end(std::ostream& os)
 
 
 	  coutfl << "closing outfile.. " << endl;
+	  outfile_fd = 0; // mark all files inactive
 	  close_fd_except_active(outfile_fd);
-	  
-	  close (outfile_fd);
 	  daq_generate_json(1);
-	  outfile_fd = 0;
 	}
       file_is_open = 0;
 
