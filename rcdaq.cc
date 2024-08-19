@@ -924,11 +924,11 @@ int switch_buffer()
     }
   fillBuffer = daqBufferVector[currentFillBuffernr];
 
-  coutfl << "before wait_for free " << fillBuffer->getID() << " status is 0x" << hex << fillBuffer->getStatus() << dec << endl;
+  //coutfl << "before wait_for free " << fillBuffer->getID() << " status is 0x" << hex << fillBuffer->getStatus() << dec << endl;
   
   
   fillBuffer->Wait_for_free();
-  coutfl << "After Wait_for_free on buffer " << fillBuffer->getID() << endl;
+  //coutfl << "After Wait_for_free on buffer " << fillBuffer->getID() << endl;
   
   fillBuffer->prepare_next(++Buffer_number, TheRun);
 
