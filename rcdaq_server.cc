@@ -706,6 +706,17 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       return &result;
       break;
 
+    case DAQ_SET_NR_THREADS:
+      result.status = 0; //daq_set_nr_threads (  ab->ipar[0], outputstream);
+      // outputstream.str().copy(resultstring,outputstream.str().size());
+      // resultstring[outputstream.str().size()] = 0;
+      // result.str = resultstring;
+      // result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
+
     case DAQ_SET_MD5ENABLE:
       result.status = daq_set_md5enable (  ab->ipar[0], outputstream);
       outputstream.str().copy(resultstring,outputstream.str().size());
