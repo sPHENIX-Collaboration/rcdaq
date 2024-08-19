@@ -32,7 +32,8 @@ public:
 
   //** Constructors
 
-  daqBuffer(const int irun = 1, const int length = 16*1024*1024
+  // 3*64*1024*1024 in words = 3 * 256MBytes
+  daqBuffer(const int irun = 1, const int length = 3*64*1024*1024
 	    , const int iseq = 1,   md5_state_t *md5state = 0);
 
   virtual ~daqBuffer();
