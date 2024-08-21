@@ -109,6 +109,8 @@ public:
 
   static void reset_count();
   static void init_mutex();
+
+  static int getAbsoluteMaxBuffersize()  { return  AbsoluteMaxSize; };
   
 protected:
 
@@ -176,6 +178,8 @@ protected:
   lzo_byte *wrkmem;
   lzo_uint  outputarraylength;
   unsigned int *outputarray;
+
+  const static int AbsoluteMaxSize = 2*64*1024*1024;
 
 };
 

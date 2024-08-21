@@ -76,6 +76,8 @@ int request_mg_update(const int what);
 //pthread_mutex_t WriteSem;
 //pthread_mutex_t WriteProtectSem;
 
+pthread_mutex_t SizeUpdateSem;
+
 pthread_mutex_t MonitoringRequestSem;
 pthread_mutex_t SendSem;
 pthread_mutex_t SendProtectSem;
@@ -136,10 +138,14 @@ static unsigned int currentFillBuffernr = 0;
 static unsigned int currentTransportBuffernr = 0;
 
 
+// variables governing our write buffers
 const auto processor_count = std::thread::hardware_concurrency();
 static int nr_of_write_threads = 2;
 static int current_data_format = 0;
 static int compression_enabled = 0;
+// the buffersize is in words, so 64MB
+static int currentBufferSize = 16*1024*1024;  
+
 
 static int file_is_open = 0;
 static int server_is_open = 0;
@@ -195,6 +201,7 @@ int  DAQ_BEGININPROGRESS =0;
 //static daqBuffer Buffer2;
 
 std::vector<daqBuffer *> daqBufferVector;
+
 
 int Trigger_Todo;
 int Command_Todo;
@@ -273,6 +280,21 @@ std::string shortHostName;
 
 
 std::map<int, int> fd_map;
+
+
+int UpdateFileSizes (const unsigned long long size)
+{
+  pthread_mutex_lock( &SizeUpdateSem);
+
+  BytesInThisRun += size;
+  BytesInThisFile += size;
+
+  pthread_mutex_unlock( &SizeUpdateSem);
+  return 0;
+}
+
+
+
 
 // 
 int register_fd_use( const int fd, const int flag)
@@ -456,6 +478,34 @@ int daq_setmaxbuffersize (const int n_kb, std::ostream& os)
 
   return 0;
 }
+
+int daq_define_buffersize (const int n_mb, std::ostream& os)
+{
+  if ( DAQ_RUNNING ) 
+    {
+      os << "Run is active" << endl;
+      return -1;
+    }
+
+  int iret = 0;
+
+  // the parameter means MB but we need units , so we need to divide by 4 to get what we need
+  currentBufferSize = n_mb * 256* 1024;
+
+
+  if ( currentBufferSize > daqBuffer::getAbsoluteMaxBuffersize() )
+    {
+      currentBufferSize = daqBuffer::getAbsoluteMaxBuffersize();
+      os << "size " << n_mb << "MB too large, set to the max value " << currentBufferSize/(256* 1024) << "MB" <<  endl;
+      //      coutfl  << "size " << n_mb << " too large, set to the max value " << currentBufferSize/(256* 1024) <<  endl;
+      iret =1;
+    }
+
+  daq_set_number_of_write_threads ( daqBufferVector.size() );
+
+  return iret;
+}
+
 
 int daq_setadaptivebuffering (const int usecs, std::ostream& os)
 {
@@ -984,12 +1034,12 @@ int switch_buffer()
   last_bufferwritetime  = time(0);
   if ( daq_open_flag &&  outfile_fd) 
     {
-      unsigned int bytecount = transportBuffer->getLength();
+      //unsigned int bytecount = transportBuffer->getLength();
       
       transportBuffer->start_writeout_thread(outfile_fd);
       NumberWritten++;
-      BytesInThisRun += bytecount;
-      BytesInThisFile += bytecount;
+      //BytesInThisRun += bytecount;
+      //BytesInThisFile += bytecount;
     }
   else if ( daq_server_flag &&  TheServerFD)
     {
@@ -2275,7 +2325,8 @@ int rcdaq_init( const int snumber, pthread_mutex_t &M)
   //  pthread_mutex_init(&M_cout, 0); 
   M_cout = M;
 
-  
+  pthread_mutex_init( &SizeUpdateSem, 0);
+
   pthread_mutex_init( &MonitoringRequestSem, 0);
   pthread_mutex_init( &SendSem, 0);
   pthread_mutex_init( &SendProtectSem, 0);
@@ -2360,7 +2411,7 @@ int daq_set_number_of_write_threads(const int n)
   
   for (int i = 0; i < nr_of_write_threads ; i++)
     {
-      daqBufferVector.push_back(new daqBuffer);
+      daqBufferVector.push_back(new daqBuffer (1, currentBufferSize) );
     }
 
 
@@ -2489,7 +2540,7 @@ int daq_status( const int flag, std::ostream& os)
       { // to keep the def localized
 	auto bitr = daqBufferVector.begin();
 	os << "\"0x" << hex << (*bitr)->getStatus()<< dec <<"\"";
-	
+	bitr++;
 	for (; bitr != daqBufferVector.end(); bitr++)
 	  {
 	    os << ",\"0x" << hex << (*bitr)->getStatus()<< dec <<"\"";

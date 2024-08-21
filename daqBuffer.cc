@@ -24,6 +24,7 @@ pthread_mutex_t daqBuffer::M_buffercnt  = PTHREAD_MUTEX_INITIALIZER;
 
 int daqBuffer::lzo_initialized = 0;
 
+int UpdateFileSizes (const unsigned long long size);
 
 int readn (int fd, char *ptr, const int nbytes);
 int writen (int fd, char *ptr, const int nbytes);
@@ -271,6 +272,8 @@ unsigned int daqBuffer::writeout ( int fd)
 
       bytes = writen ( fd, (char *) bptr , bytecount );
 
+      UpdateFileSizes(getLength() );
+
       if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
       _statusword &= ~0x10;
       if (verbosity) cout << " to 0x" << _statusword << dec << endl;
@@ -309,6 +312,7 @@ unsigned int daqBuffer::writeout ( int fd)
 
       //usleep(1000000);
       bytes = writen ( fd, (char *) outputarray , bytecount );
+      UpdateFileSizes( bytes );
 
       if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
       _statusword &= ~0x10;

@@ -823,6 +823,19 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       return &result;
       break;
 
+    case DAQ_DEFINE_BUFFERSIZE:
+      result.status = daq_define_buffersize (  ab->ipar[0], outputstream);
+      if (result.status) 
+	{
+	  outputstream.str().copy(resultstring,outputstream.str().size());
+	  resultstring[outputstream.str().size()] = 0;
+	  result.str = resultstring;
+	  result.content = 1;
+	}
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
     case DAQ_SETADAPTIVEBUFFER:
       result.status = daq_setadaptivebuffering (  ab->ipar[0], outputstream);
       if (result.status) 

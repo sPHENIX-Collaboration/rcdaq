@@ -105,6 +105,7 @@ int daq_setmaxvolume (const int n_mb, std::ostream& os);
 int daq_setrolloverlimit (const int n_gb, std::ostream& os);
 
 int daq_setmaxbuffersize (const int n_mb, std::ostream& os);
+int daq_define_buffersize (const int n_mb, std::ostream& os);
 
 int daq_setadaptivebuffering (const int usecs, std::ostream& os);
 
