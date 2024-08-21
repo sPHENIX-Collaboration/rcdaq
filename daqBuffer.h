@@ -52,10 +52,10 @@ public:
   int getCompression() const {return wants_compression;} ;
 
   // now the write routine
-  int start_writeout_thread (int fd);
+  int start_writeout_thread ();
   
   // now the write routine
-  unsigned int writeout ( int fd);
+  unsigned int writeout ();
 
   // now the "send buffer to a server" routine
   unsigned int sendout ( int fd );

@@ -25,6 +25,9 @@ pthread_mutex_t daqBuffer::M_buffercnt  = PTHREAD_MUTEX_INITIALIZER;
 int daqBuffer::lzo_initialized = 0;
 
 int UpdateFileSizes (const unsigned long long size);
+int getCurrentOutputFD();
+void releaseOutputFD();
+
 
 int readn (int fd, char *ptr, const int nbytes);
 int writen (int fd, char *ptr, const int nbytes);
@@ -186,7 +189,7 @@ unsigned int daqBuffer::addEoB()
 // }
 
 
-int daqBuffer::start_writeout_thread (int fd)
+int daqBuffer::start_writeout_thread ()
 {
 
 
@@ -201,7 +204,7 @@ int daqBuffer::start_writeout_thread (int fd)
 	  cerrfl << "buffer id " << getID() << endl;
 	}
     }
-  _ta.fd =fd;
+  //_ta.fd =fd;
   _ta.me =this;
   _busy = 1;
   //  _dirty =1;
@@ -227,15 +230,15 @@ void * daqBuffer::writeout_thread ( void * x)
 {
   thread_argument * ta  = (thread_argument *) x;
   (ta->me)->setDirty(1);
-  register_fd_use(ta->fd,1);
-  int fd = ta->fd;
-  (ta->me)->writeout(fd);
-  register_fd_use(ta->fd,0);
+  //register_fd_use(ta->fd,1);
+  //int fd = ta->fd;
+  (ta->me)->writeout();
+  //register_fd_use(ta->fd,0);
   return 0;
 }
 
 
-unsigned int daqBuffer::writeout ( int fd)
+unsigned int daqBuffer::writeout ()
 {
 
   if (verbosity) coutfl << " starting compression and writeout for buffer " << getID() << endl;
@@ -270,7 +273,13 @@ unsigned int daqBuffer::writeout ( int fd)
       if (verbosity) cout << " to 0x" << _statusword << dec << endl;
       //usleep(1000000);
 
+      int fd = getCurrentOutputFD();
+
       bytes = writen ( fd, (char *) bptr , bytecount );
+
+      releaseOutputFD();
+
+      
 
       UpdateFileSizes(getLength() );
 
@@ -311,7 +320,14 @@ unsigned int daqBuffer::writeout ( int fd)
       if (verbosity) cout << " to 0x" << _statusword << dec << endl;
 
       //usleep(1000000);
+
+      int fd = getCurrentOutputFD();
+
       bytes = writen ( fd, (char *) outputarray , bytecount );
+
+      releaseOutputFD();
+
+
       UpdateFileSizes( bytes );
 
       if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;

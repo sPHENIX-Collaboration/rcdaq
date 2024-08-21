@@ -293,6 +293,19 @@ int UpdateFileSizes (const unsigned long long size)
   return 0;
 }
 
+int getCurrentOutputFD ()
+{
+  pthread_mutex_lock( &FdManagementSem);
+  return outfile_fd;
+
+}
+
+void releaseOutputFD ()
+{
+  pthread_mutex_unlock( &FdManagementSem);
+
+}
+
 
 
 
@@ -1002,11 +1015,17 @@ int switch_buffer()
 
 	      int status = server_send_rollover_sequence(d,TheServerFD);
 	      CurrentFilename = d;
+	      BytesInThisFile = 0;
 	    }
 	  else   // not server
 	    {
-	      //close(outfile_fd);
-	      close_fd_except_active(outfile_fd);
+	      
+	      // we wait until no one is using the open FD
+	      pthread_mutex_lock( &FdManagementSem);
+	      close(outfile_fd);
+	      
+
+	      //close_fd_except_active(outfile_fd);
 	      file_is_open = 0;
 
 	      current_filesequence++;
@@ -1018,6 +1037,8 @@ int switch_buffer()
 		{
 		  cout << MyHostName << "Could not open output file - Run " << TheRun << "  file sequence " << current_filesequence<< endl;
 		}
+	      BytesInThisFile = 0;
+	      pthread_mutex_lock( &FdManagementSem);
 	    }
 	  // cout << MyHostName << " -- Rolling output file over at "
 	  //      << transportBuffer->getLength() + BytesInThisFile
@@ -1025,7 +1046,6 @@ int switch_buffer()
 	  //      << " limit: " << RolloverLimit
 	  //      << " now: " << CurrentFilename 
 	  //      << endl;
-	  BytesInThisFile = 0;
 	}
     }
   
@@ -1036,7 +1056,7 @@ int switch_buffer()
     {
       //unsigned int bytecount = transportBuffer->getLength();
       
-      transportBuffer->start_writeout_thread(outfile_fd);
+      transportBuffer->start_writeout_thread();
       NumberWritten++;
       //BytesInThisRun += bytecount;
       //BytesInThisFile += bytecount;
@@ -1735,8 +1755,22 @@ int daq_end(std::ostream& os)
 
 
 	  coutfl << "closing outfile.. " << endl;
-	  outfile_fd = 0; // mark all files inactive
-	  close_fd_except_active(outfile_fd);
+	  //outfile_fd = 0; // mark all files inactive
+	  //close_fd_except_active(outfile_fd);
+
+	  
+	  int still_dirty = 1;
+	  while ( still_dirty)
+	    {
+	      still_dirty = 0;
+	      for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
+		{
+		  if ( (*it)->getDirty() ) still_dirty=1; 
+		}
+	    }
+	  close(outfile_fd);
+	  outfile_fd = 0;
+
 	  daq_generate_json(1);
 	}
       file_is_open = 0;
