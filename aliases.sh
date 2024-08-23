@@ -19,7 +19,12 @@ alias daq_status='rcdaq_client  daq_status'
 alias daq_set_maxevents='rcdaq_client  daq_set_maxevents'
 alias daq_set_maxvolume='rcdaq_client  daq_set_maxvolume'
 alias daq_set_maxbuffersize='rcdaq_client  daq_set_maxbuffersize'
+alias daq_define_buffersize='rcdaq_client  daq_define_buffersize'
 alias daq_set_rolloverlimit='rcdaq_client  daq_set_rolloverlimit'
+alias daq_set_eventformat="rcdaq_client  daq_set_eventformat"
+alias daq_set_compression="rcdaq_client  daq_set_compression"
+alias daq_set_md5enable="rcdaq_client  daq_set_md5enable"
+alias daq_allow_md5turnoff="rcdaq_client  daq_allow_md5turnoff"
 alias daq_setname='rcdaq_client  daq_setname'
 alias daq_set_adaptivebuffering='rcdaq_client  daq_set_adaptivebuffering'
 alias daq_shutdown='rcdaq_client  daq_shutdown'
@@ -31,3 +36,4 @@ alias daq_get_mqtt_host="rcdaq_client daq_get_mqtt_host"
 alias daq_set_runcontrolmode="rcdaq_client  daq_set_runcontrolmode"
 alias daq_get_runcontrolmode="rcdaq_client  daq_get_runcontrolmode"
 alias daq_sync="rcdaq_client  daq_sync"
+
