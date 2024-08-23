@@ -201,6 +201,8 @@ int  DAQ_BEGININPROGRESS =0;
 //static daqBuffer Buffer2;
 
 std::vector<daqBuffer *> daqBufferVector;
+int last_written_buffernr = 0;
+int last_bufferwritetime  = 0;
 
 
 int Trigger_Todo;
@@ -212,8 +214,8 @@ int Buffer_number;
 
 int Event_number;
 int Event_number_at_last_open = 0;
-int Event_number_at_last_write = 0;
 int Event_number_at_last_end = 0;
+
 
 
 int update_delta;
@@ -271,7 +273,6 @@ int packetid = 1001;
 int max_buffers=0;
 
 int adaptivebuffering = 15;
-int last_bufferwritetime  = 0;
 
 int persistentErrorCondition = 0;
 
@@ -280,6 +281,12 @@ std::string shortHostName;
 
 
 std::map<int, int> fd_map;
+
+int UpdateLastWrittenBuffernr (const int n)
+{
+  last_written_buffernr = n;
+  return 0;
+}
 
 
 int UpdateFileSizes (const unsigned long long size)
@@ -303,61 +310,6 @@ int getCurrentOutputFD ()
 void releaseOutputFD ()
 {
   pthread_mutex_unlock( &FdManagementSem);
-
-}
-
-
-
-
-// 
-int register_fd_use( const int fd, const int flag)
-{ 
-  pthread_mutex_lock( &OutfileManagementSem);
-
-  auto ifd = fd_map.find(fd);
-  if ( ifd == fd_map.end()) // not yet seen
-    {
-      if (flag) fd_map[fd] =1;
-      else coutfl << "**** impossible free-up of fd " << fd << endl;
-    }
-  else
-    {
-      if (flag)  fd_map[fd]++;
-      else  fd_map[fd]--;
-    }
-
-  //coutfl << "fd " << fd << " use is " << fd_map[fd] << endl;
-
-  pthread_mutex_unlock( &OutfileManagementSem);
-
-   return 0;
-
-}
-
-// 
-int close_fd_except_active( const int fd)
-{ 
-  pthread_mutex_lock( &OutfileManagementSem);
-
-  coutfl << "in close_fd_except_active for fd " << fd << endl;
-  
-  for ( auto ifd = fd_map.begin(); ifd != fd_map.end(); )
-    {
-      coutfl << "fd " << (*ifd).first << " has " <<  (*ifd).second << " users"  << endl;
-      if ( (*ifd).first != fd && (*ifd).second == 0)
-      {
-        coutfl << "removed fd " << (*ifd).first << endl;
-        close ( (*ifd).first );
-        ifd = fd_map.erase(ifd);
-      }
-      else
-      {
-        ++ifd;
-      }
-    }
-  pthread_mutex_unlock( &OutfileManagementSem);
-  
-  return 0;
 
 }
 
@@ -678,7 +630,7 @@ int open_file(const int run_number, int *fd)
       return -1;
     }
 
-  coutfl << "opened file " << d << " fd nr " << ifd<< endl;
+  cout << "opened file " << d << " fd nr " << ifd<< endl;
 
   
   *fd = ifd;
@@ -695,7 +647,6 @@ int open_file(const int run_number, int *fd)
   if (current_filesequence == 0)
     {
       Event_number_at_last_open = Event_number;
-      Event_number_at_last_write = Event_number;
     }
 
 
@@ -953,30 +904,6 @@ int switch_buffer()
   currentTransportBuffernr = currentFillBuffernr;
   transportBuffer = fillBuffer;
 
-  //  cout << "buffer status: ";
-  // int dirtycount = 0;
-  // int compressingcount = 0;
-
-  // cout << " buffer numbers: ";
-  // for (auto it: daqBufferVector)
-  //   {
-  //     //  if ( it->getDirty()) dirtycount++;
-  //     //if ( it->getCompressing()) compressingcount++;
-  //     cout << setw(10) << it->getBufferNumber()  << " ";
-  //   }
-  //   cout << endl;
-
-  // cout << " buffer status: ";
-  // for (auto it: daqBufferVector)
-  //   {
-  //     //  if ( it->getDirty()) dirtycount++;
-  //     //if ( it->getCompressing()) compressingcount++;
-  //     cout << hex << "0x" << it->getStatus() << dec << " ";
-  //   }
-  //   cout << endl;
-
-  //   coutfl << "switching transport buffer to " << transportBuffer->getID() << " status is 0x" << hex << transportBuffer->getStatus() << dec << " buffernr " << transportBuffer->getBufferNumber() << endl;
-  //     // << " dirty count = " << dirtycount << " compressing count " << compressingcount << endl;
   
 
   // here we are implementing the ring with the daqBuffers 
@@ -999,7 +926,8 @@ int switch_buffer()
     if ( daq_open_flag && RolloverLimit)
     {
       unsigned int blength = transportBuffer->getLength();
-      
+      //      coutfl << "Bytes in this fie " << BytesInThisFile << endl;
+
       if ( blength + BytesInThisFile > RolloverLimit * 1024 * 1024 * 1024) 
 	{
 
@@ -1020,8 +948,10 @@ int switch_buffer()
 	  else   // not server
 	    {
 	      
+	      //coutfl << "  rolling over now " << endl;
 	      // we wait until no one is using the open FD
 	      pthread_mutex_lock( &FdManagementSem);
+	      //coutfl << "  safe to close the file " << endl;
 	      close(outfile_fd);
 	      
 
@@ -1030,15 +960,15 @@ int switch_buffer()
 
 	      current_filesequence++;
 	      daq_generate_json(1);
-
-	      Event_number_at_last_open = Event_number_at_last_write;
+	      
+	      Event_number_at_last_open = daqBufferVector[last_written_buffernr]->getLastEventNumber() +1;
 	      int status = open_file ( TheRun, &outfile_fd);
 	      if (status)
 		{
-		  cout << MyHostName << "Could not open output file - Run " << TheRun << "  file sequence " << current_filesequence<< endl;
+		  cout << MyHostName << "Could not open output file - Run " << TheRun << "  file sequence " << current_filesequence<< "  outfile_fd = " << outfile_fd << endl;
 		}
 	      BytesInThisFile = 0;
-	      pthread_mutex_lock( &FdManagementSem);
+	      pthread_mutex_unlock( &FdManagementSem);
 	    }
 	  // cout << MyHostName << " -- Rolling output file over at "
 	  //      << transportBuffer->getLength() + BytesInThisFile
@@ -1049,7 +979,6 @@ int switch_buffer()
 	}
     }
   
-  Event_number_at_last_write = Event_number;
 
   last_bufferwritetime  = time(0);
   if ( daq_open_flag &&  outfile_fd) 
@@ -1452,10 +1381,10 @@ int daq_begin(const int irun, std::ostream& os)
   if (ThreadEvt) pthread_join(ThreadEvt, NULL);
 
 
-  for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
-    {
-      (*it)->setVerbosity(0);
-    }
+  // for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
+  //   {
+  //     (*it)->setVerbosity(0);
+  //   }
 
   
   // set the status to "running"
@@ -1490,7 +1419,6 @@ int daq_begin(const int irun, std::ostream& os)
   //initialize the Buffer and event number
   Buffer_number = 1;
   Event_number  = 1;
-  Event_number_at_last_write = 0;
   Event_number_at_last_open = 0;
   Event_number_at_last_end = 0;
 
@@ -1699,10 +1627,10 @@ int daq_end(std::ostream& os)
 
   readout(ENDRUNEVENT);
   
-  for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
-    {
-      (*it)->setVerbosity(1);
-    }
+  // for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
+  //   {
+  //     (*it)->setVerbosity(1);
+  //   }
   
   
   switch_buffer();  // we force a buffer flush
@@ -1754,7 +1682,7 @@ int daq_end(std::ostream& os)
 	    }
 
 
-	  coutfl << "closing outfile.. " << endl;
+	  cout << "closing outfile.. " << endl;
 	  //outfile_fd = 0; // mark all files inactive
 	  //close_fd_except_active(outfile_fd);
 
@@ -1780,7 +1708,7 @@ int daq_end(std::ostream& os)
 
 
   
-  coutfl << MyHostName <<  "Run " << TheRun << " ended at " << time(0) << " with " << get_eventnumber() -1 << " events " << endl; 
+  cout << MyHostName <<  "Run " << TheRun << " ended at " << time(0) << " with " << get_eventnumber() -1 << " events " << endl; 
 
   unsetenv ("DAQ_RUNNUMBER");
   unsetenv ("DAQ_FILENAME");
@@ -1788,7 +1716,6 @@ int daq_end(std::ostream& os)
 
   Event_number_at_last_end = Event_number;
   Event_number = 0;
-  Event_number_at_last_write = 0;
   run_volume = 0;    // volume in longwords 
   BytesInThisRun = 0;    // bytes actually written
   BytesInThisFile = 0;
@@ -1867,7 +1794,6 @@ void * EventLoop( void *arg)
 		{
 		  TriggerControl = 0;
 		  //reset_deadtime();
-		  cout << __LINE__ << " calling daq_end" << endl;
 		  daq_end ( std::cout);
 		}
 	      else
@@ -3046,35 +2972,7 @@ int server_send_close_sequence(int fd)
   return 0;
 }
 
-// int update_fileSQLinfo()
-// {
-//   int sfd = get_sqlfd();
-//   md5_byte_t md5_digest[16];  
-//   char digest_string[33];
 
-//   if ( sfd)
-//     {
-//       md5_finish(&md5state, md5_digest);
-//       for ( int i=0; i< 16; i++) 
-// 	{
-// 	  sprintf ( &digest_string[2*i], "%02x",  md5_digest[i]);
-// 	}
-//       digest_string[32] = 0;
-  
-//       std::ostringstream out;
-//       out << "update $FILETABLE set md5sum=\'" << digest_string << "\'"
-// 	  << ",lastevent=" << Event_number_at_last_write -1
-// 	  << ",events=" << Event_number_at_last_write - Event_number_at_last_open  
-// 	  << " where runnumber=" << TheRun
-// 	  << " and filename=\'" << CurrentFilename << "\';" << std::endl;
-//       write (sfd, out.str().c_str(), out.str().size());
-//     }
-  
-//   return 0;
-// }
-
-// "what" refers to the various phases, new, update, end
-//int daq_generate_json (const int flag, const std::string what, const std::string type, std::ostream& os)
 int daq_generate_json (const int flag)
 {
 #ifdef HAVE_MOSQUITTO_H
@@ -3119,15 +3017,14 @@ int daq_generate_json (const int flag)
  	    }
 	  digest_string[32] = 0;
 	}
-
       out << "{\"file\": [" << endl;
       out << "    { \"what\":\"" << "update"
 	  << "\", \"runnumber\":" << TheRun << ","
 	  << " \"host\":\"" << shortHostName << "\","
 	  << " \"CurrentFileName\":\"" << CurrentFilename << "\","
 	  << " \"MD5\":\"" << digest_string << "\","
-	  << " \"LastEventNr\":" << Event_number_at_last_write -1 << ","
-	  << " \"NrEvents\":" <<  Event_number_at_last_write - Event_number_at_last_open << ","
+	  << " \"LastEventNr\":" << daqBufferVector[last_written_buffernr]->getLastEventNumber() << ","
+	  << " \"NrEvents\":" << daqBufferVector[last_written_buffernr]->getLastEventNumber() - Event_number_at_last_open +1 << ","
 	  << " \"time\":" << time(0)  << " }" << endl;
       out << "] }" << endl;
     }

@@ -74,6 +74,7 @@ public:
   unsigned int getLength () const { return bptr->Length; } ;
 
   unsigned int getBufferNumber() const { return _my_buffernr; } ;
+  int getLastEventNumber() const { return _lastEventNumber; };
 
   int setEventFormat(const int f);
   int getEventFormat() const {return format;};
@@ -122,8 +123,11 @@ protected:
 
   static unsigned int _buffer_count;
   int _my_buffernr;
+
+  int _lastEventNumber;
   
   static pthread_mutex_t M_buffercnt;
+  pthread_mutex_t M_eob;  // makes setEoB thread-safe
 
   typedef struct 
   { 
