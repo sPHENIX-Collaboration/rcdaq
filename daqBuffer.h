@@ -121,6 +121,8 @@ protected:
   // now the write routine
   static void * writeout_thread ( void * me);
 
+  static unsigned long long timespec_subtract(struct timespec *end, struct timespec *start);
+
   static unsigned int _buffer_count;
   int _my_buffernr;
 

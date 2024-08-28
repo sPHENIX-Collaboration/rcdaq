@@ -9,10 +9,20 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <lzo/lzo1x.h>
-#include <lzo/lzo1c.h>
+#include <time.h>
 
-//#include <bzlib.h>
+#include <lzo/lzo1.h>
+
+#include <lzo/lzo1b.h>
+#include <lzo/lzo1c.h>
+#include <lzo/lzo1f.h>
+#include <lzo/lzo1x.h>
+#include <lzo/lzo1y.h>
+#include <lzo/lzo1z.h>
+
+#include <lzo/lzo2a.h>
+
+#include <bzlib.h>
 
 using namespace std;
 
@@ -84,6 +94,25 @@ daqBuffer::~daqBuffer ()
   if (outputarray) delete []  outputarray;
   if (wrkmem) delete [] wrkmem;
 }
+
+unsigned long long daqBuffer::timespec_subtract(struct timespec *end, struct timespec *start) 
+{
+  
+  struct timespec result;
+
+  if ((end->tv_nsec - start->tv_nsec) < 0) 
+    {
+      result.tv_sec = end->tv_sec - start->tv_sec - 1;
+      result.tv_nsec = end->tv_nsec - start->tv_nsec + 1000000000L;
+    } 
+  else 
+    {
+      result.tv_sec = end->tv_sec - start->tv_sec;
+      result.tv_nsec = end->tv_nsec - start->tv_nsec;
+    }
+  return result.tv_sec* 1000000000L + result.tv_nsec;
+}
+
 
 void daqBuffer::reset_count()
 {
@@ -289,7 +318,7 @@ unsigned int daqBuffer::writeout ()
 
       bytes = writen ( fd, (char *) bptr , bytecount );      
 
-      UpdateFileSizes(getLength() );
+      UpdateFileSizes( bytes );
       UpdateLastWrittenBuffernr (getID());
 
       // if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
@@ -304,12 +333,17 @@ unsigned int daqBuffer::writeout ()
       releaseOutputFD();
 
     }
+
   else // we want compression
     {
 
       _compressing = 1;
       _statusword |= 0x4;
-      compress();
+
+//      struct timespec t_before, t_after;
+
+      int s = compress();
+
       _compressing = 0;
       _statusword &= ~0x4;
 
@@ -334,9 +368,16 @@ unsigned int daqBuffer::writeout ()
 
       int fd = getCurrentOutputFD();
 
-      bytes = writen ( fd, (char *) outputarray , bytecount );
-
-
+      if (s) // we had a compression error earlier nd write the original instead
+	{
+	  blockcount = ( getLength() + 8192 -1)/8192;
+	  bytecount = blockcount*8192;
+	  bytes = writen ( fd, (char *) bptr , bytecount );      
+	}
+      else
+	{
+	  bytes = writen ( fd, (char *) outputarray , bytecount );
+	}
 
       UpdateFileSizes( bytes );
       UpdateLastWrittenBuffernr (getID());
@@ -347,7 +388,14 @@ unsigned int daqBuffer::writeout ()
 
       if ( _md5state && md5_enabled)
 	{
-	  md5_append(_md5state, (const md5_byte_t *)outputarray,bytes );
+	  if (s)
+	    {
+	      md5_append(_md5state, (const md5_byte_t *)bptr,bytes );
+	    }
+	  else
+	    {
+	      md5_append(_md5state, (const md5_byte_t *)outputarray,bytes );
+	    }
 	}
       releaseOutputFD();
 
@@ -427,12 +475,24 @@ unsigned int daqBuffer::sendData ( int fd, const int max_length)
 
 int daqBuffer::setCompression(const int flag)
 {
-  if ( !flag)
+  wants_compression = flag;
+
+  // 0 no compression
+  // 1 lzo1c
+  // 2 lzo2a
+  // 3 bz2
+
+  if ( wants_compression < 0 ) wants_compression = 0; 
+  if ( wants_compression > 3 ) wants_compression = 3; 
+
+  //coutfl << " compression level " << wants_compression << " set fpor buffer " << getID() << " " << endl;
+  
+  if ( flag == 0)
     {
-      wants_compression = 0;
       return 0;
     }
-  else
+  // we initialize the work mem if it's LZO
+  else if ( wants_compression == 1 || wants_compression == 2) 
     {
       if ( !  lzo_initialized )
 	{
@@ -464,58 +524,67 @@ int daqBuffer::setCompression(const int flag)
 	  outputarraylength = max_length + 10*8192;
 	  outputarray = new unsigned int[outputarraylength];
 	}
-      wants_compression = 1;
       //cout << " LZO compression enabled" << endl;
-      return 0;
     }
+  else // bz2
+    {
+      outputarraylength = max_length + 10*8192;
+      outputarray = new unsigned int[outputarraylength];
+    }
+  return 0;
 }
 
 int daqBuffer::compress ()
 {
   if ( _broken) return -1;
-  
-  lzo_uint outputlength_in_bytes = outputarraylength*4-16;
-  lzo_uint in_len = getLength(); 
 
-  // lzo1x_1_15_compress( (lzo_byte *) bptr,
-  // 			in_len,  
-  // 		       (lzo_byte *)&outputarray[4],
-  // 			&outputlength_in_bytes,wrkmem);
+  int result;
 
+  if ( wants_compression == 1 || wants_compression == 2) // LZO-type
+    {
+      lzo_uint outputlength_in_bytes = outputarraylength*4-16;
+      lzo_uint in_len = getLength(); 
+      if ( wants_compression == 1 )
+	{
+	  //LZO_EXTERN(int)
+	  result = lzo1c_compress( (lzo_byte *) bptr,
+			  in_len,  
+			  (lzo_byte *)&outputarray[4],
+			  &outputlength_in_bytes,wrkmem, 9);
+	  outputarray[0] = outputlength_in_bytes +4*BUFFERHEADERLENGTH;
+	  outputarray[1] = LZO1CBUFFERMARKER;
+	}
+      else
+	{
+	  result = lzo2a_999_compress( (lzo_byte *) bptr,
+			      in_len,  
+			      (lzo_byte *)&outputarray[4],
+			      &outputlength_in_bytes,wrkmem);
+	  outputarray[0] = outputlength_in_bytes +4*BUFFERHEADERLENGTH;
+	  outputarray[1] = LZO2ABUFFERMARKER;
+	}
+    }
+  else  // bz2
+    {
+      unsigned int outputlength_in_bytes = outputarraylength*4-16;
+      result = BZ2_bzBuffToBuffCompress((char *) &outputarray[4], &outputlength_in_bytes,
+					    (char *) bptr, getLength(),
+					    1, // Compression level: 1 (fastest) to 9 (best compression)
+					    0, // Verbosity: 0 is quiet
+					    0); // Work factor: 0 is default
+      outputarray[0] = outputlength_in_bytes +4*BUFFERHEADERLENGTH;
+      outputarray[1] = BZ2BUFFERMARKER;
 
-
-  //  LZO_EXTERN(int)
-    lzo1c_compress( (lzo_byte *) bptr,
-		    in_len,  
-		    (lzo_byte *)&outputarray[4],
-    		    &outputlength_in_bytes,wrkmem, 9);
-    
-
-  // lzo1x_999_compress( (lzo_byte *) bptr,
-  // 			in_len,  
-  // 		       (lzo_byte *)&outputarray[4],
-  // 			&outputlength_in_bytes,wrkmem);
-
-  // unsigned int outputlength_in_bytes = outputarraylength*4-16;
-  // int result = BZ2_bzBuffToBuffCompress((char *) &outputarray[4], &outputlength_in_bytes,
-  // 					(char *) bptr, getLength(),
-  //                                         9, // Compression level: 1 (fastest) to 9 (best compression)
-  //                                         0, // Verbosity: 0 is quiet
-  //                                         0); // Work factor: 0 is default
-
-  // if (result != BZ_OK) {
-  //   std::cerr << "Compression failed with error code: " << result << std::endl;
-  //   return 1;
-  // }
+    }
 
   //coutfl << "orig, new size for buffer " << getID() << " " << getLength() << " " << outputlength_in_bytes << endl;
   
-  outputarray[0] = outputlength_in_bytes +4*BUFFERHEADERLENGTH;
-  outputarray[1] = LZO1CBUFFERMARKER;
   outputarray[2] = bptr->Bufseq;
   outputarray[3] = getLength();
 
-  return 0;
+  if (result) cerrfl << "Compression failed with error code: " << result << std::endl;
+
+  return result;
 }
 
 

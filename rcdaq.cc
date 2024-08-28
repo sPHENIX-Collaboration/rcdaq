@@ -142,7 +142,7 @@ static unsigned int currentTransportBuffernr = 0;
 const auto processor_count = std::thread::hardware_concurrency();
 static int nr_of_write_threads = 2;
 static int current_data_format = 0;
-static int compression_enabled = 0;
+static int compression_level = 0;
 // the buffersize is in words, so 64MB
 static int currentBufferSize = 16*1024*1024;  
 
@@ -1972,7 +1972,7 @@ int daq_open (std::ostream& os)
   return 0;
 }
 
-int daq_set_compression (const int flag, std::ostream& os)
+int daq_set_compression (const int level, std::ostream& os)
 {
 
   if ( DAQ_RUNNING ) 
@@ -1980,25 +1980,11 @@ int daq_set_compression (const int flag, std::ostream& os)
       os << MyHostName << "Run is active" << endl;;
       return -1;
     }
-  if (flag)
+
+  compression_level = level;
+  for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
     {
-      //Buffer1.setCompression(1);
-      //Buffer2.setCompression(1);
-      compression_enabled = 1;
-      for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
-	{
-	  (*it)->setCompression(compression_enabled);
-	}
-    }
-  else
-    {
-      //Buffer1.setCompression(0);
-      //Buffer2.setCompression(0);
-      compression_enabled = 0;
-      for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
-	{
-	  (*it)->setCompression(compression_enabled);
-	}
+      (*it)->setCompression(compression_level);
     }
 
   return 0;
@@ -2381,7 +2367,7 @@ int daq_set_number_of_write_threads(const int n)
       daqBufferVector[i]->setMD5State(&md5state);
       daqBufferVector[i]->setEventFormat(current_data_format);
       daqBufferVector[i]->setMD5Enabled(md5_enabled);
-      daqBufferVector[i]->setCompression(compression_enabled);
+      daqBufferVector[i]->setCompression(compression_level);
     }
 
   // generate the circular buffer, note the start at 1
