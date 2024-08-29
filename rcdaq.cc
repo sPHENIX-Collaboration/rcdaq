@@ -2450,14 +2450,17 @@ int daq_status( const int flag, std::ostream& os)
 	 << " \"Rolloverlimit\":\"" << RolloverLimit << "\","
 	 << " \"nr_write_threads\":\"" << nr_of_write_threads << "\"," ;
 
-      if ( daqBufferVector[0]->getCompression() )
+      if (daqBufferVector[0]->getCompression() )
 	{
-	  os << "\"compresssion\":\"enabled\" ,";
+	  os << "\"compression\":\"enabled\" ,";
 	}
       else
 	{
 	  os << "\"compresssion\":\"disabled\" ,";
 	}
+
+      os << " \"compression level\":\"" << daqBufferVector[0]->getCompression() << "\"," ;
+
 
       if ( daqBufferVector[0]->getMD5Enabled() )
 	{
@@ -2481,18 +2484,44 @@ int daq_status( const int flag, std::ostream& os)
       os << " \"VolumeLimit\":\"" << max_volume /(1024 *1024) << "\","
 	 << " \"EventLimit\":\"" << max_events << "\",";
 
-      os << " \"Bufferstatus\":[";
 
       { // to keep the def localized
+	int total =0;
+	int nfree =0;
+	int inuse =0;
+	int compressing =0;
+	int waitingforwrite =0;
+	int writing =0;
+
 	auto bitr = daqBufferVector.begin();
-	os << "\"0x" << hex << (*bitr)->getStatus()<< dec <<"\"";
+	int s =  (*bitr)->getStatus();
+	total++;
+	if ( s== 0) nfree++;
+	if (s & 0x1) inuse++;
+	if (s & 0x4) compressing++;
+	else if (s & 0x8) waitingforwrite++;
+	else if (s & 0x10) writing++;
+
 	bitr++;
 	for (; bitr != daqBufferVector.end(); bitr++)
 	  {
-	    os << ",\"0x" << hex << (*bitr)->getStatus()<< dec <<"\"";
+	    total++;
+	    s =  (*bitr)->getStatus();
+	    if ( s== 0) nfree++;
+	    if (s & 0x1) inuse++;
+	    if (s & 0x4) compressing++;
+	    else if (s & 0x8) waitingforwrite++;
+	    else if (s & 0x10) writing++;
+
 	  }
-	
-	os << "] }" << endl;
+	os << " \"Bufferstatus\":[" 
+	   << "{\"total\":" << total << "}"  
+	   << ",{\"free\":" << nfree << "}"  
+	   << ",{\"inuse\":" << inuse << "}"  
+	   << ",{\"compressing\":" << compressing << "}"  
+	   << ",{\"wait_io\":" << waitingforwrite << "}"  
+	   << ",{\"writing\":" << writing << "}"  
+	   << "] }" << endl;
       }
 
       break;
