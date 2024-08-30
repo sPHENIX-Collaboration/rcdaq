@@ -66,8 +66,12 @@ public:
   // now the re-sizing of buffer
   int setMaxSize( const int size);
 
-  // and the query
+  // getMaxSize is the actually set size in KB 
+  // never mind what the mem size is, we can instruct it to use less memory
   int getMaxSize() const ;
+
+  // this is the immutable largest memory size in words 
+  int getMemSize() const {return max_size;} ;
 
   // and the query
   int getBufSeq () const { return bptr->Bufseq; } ;

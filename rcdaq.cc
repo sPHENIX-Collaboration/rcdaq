@@ -2432,11 +2432,11 @@ int daq_status( const int flag, std::ostream& os)
       
       if ( DAQ_RUNNING ) 
 	{
-	  os << "{\"state\":\"running\" ,";
+	  os << "{\"state\":\"running\",";
 	}
       else
 	{
-	  os << "{\"state\":\"stopped\" ,";
+	  os << "{\"state\":\"stopped\",";
 	}
 
 
@@ -2448,7 +2448,9 @@ int daq_status( const int flag, std::ostream& os)
 	 << " \"Filerule\":\"" << daq_get_filerule() << "\","
 	 << " \"Filename\":\"" << get_current_filename() << "\","
 	 << " \"Rolloverlimit\":\"" << RolloverLimit << "\","
-	 << " \"nr_write_threads\":\"" << nr_of_write_threads << "\"," ;
+	 << " \"nr_write_threads\":\"" << nr_of_write_threads << "\"," 
+	 << " \"BufferMaxsize\":\"" << daqBufferVector[0]->getMemSize()/256/1024 << "\"," 
+	 << " \"Buffersize\":\"" << daqBufferVector[0]->getMaxSize() << "\"," ;
 
       if (daqBufferVector[0]->getCompression() )
 	{
@@ -2459,7 +2461,7 @@ int daq_status( const int flag, std::ostream& os)
 	  os << "\"compresssion\":\"disabled\" ,";
 	}
 
-      os << " \"compression level\":\"" << daqBufferVector[0]->getCompression() << "\"," ;
+      os << " \"level\":\"" << daqBufferVector[0]->getCompression() << "\"," ;
 
 
       if ( daqBufferVector[0]->getMD5Enabled() )
@@ -2619,8 +2621,9 @@ int daq_status( const int flag, std::ostream& os)
 		{
 		  os << "  Filename:      " << get_current_filename() << endl; 	  
 		  os << "  Number of buffers/write threads: " << nr_of_write_threads << endl;
+		  os << "  Number of buffers/write threads: " << nr_of_write_threads << " Buffersize: " << daqBufferVector[0]->getMemSize()/256/1024 << "MB" << endl;
 		  if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled" << endl;
-		  else  os << "  compression disabled" << endl;
+		  else  os << "  compression disabled" << " level: " << daqBufferVector[0]->getCompression() <<endl;
 		  if ( daqBufferVector[0]->getMD5Enabled() ==0 ) os << "  MD5 calculation disabled" << endl;
 		  else os << "  MD5 calculation enabled" << endl;
 
@@ -2641,6 +2644,7 @@ int daq_status( const int flag, std::ostream& os)
       else  // not runnig
 	{
 	  os << MyHostName << " Stopped"  << endl;
+	  os << "  Filerule:     " <<  daq_get_filerule() << endl;
 	  if ( daq_open_flag )
 	    {
 	      if ( daq_server_flag )
@@ -2650,9 +2654,9 @@ int daq_status( const int flag, std::ostream& os)
 	      else
 		{
 		  os << "  Logging enabled" << endl;
-		  os << "  Number of buffers/write threads: " << nr_of_write_threads << endl;
+		  os << "  Number of buffers/write threads: " << nr_of_write_threads << " Buffersize: " << daqBufferVector[0]->getMemSize()/256/1024 << "MB" << endl;
 		  if ( daqBufferVector[0]->getCompression() ) os << "  compression enabled" << endl;
-		  else  os << "  compression disabled" << endl;
+		  else  os << "  compression disabled" << " level: " << daqBufferVector[0]->getCompression() <<endl;
 		  if ( daqBufferVector[0]->getMD5Enabled() ==0 ) os << "  MD5 calculation disabled" << endl;
 		  else os << "  MD5 calculation enabled" << endl;
 		}
@@ -2668,7 +2672,6 @@ int daq_status( const int flag, std::ostream& os)
 		  os << "  Logging disabled" << endl;
 		}
 	    }	      
-	  os << "  Filerule:     " <<  daq_get_filerule() << endl;
 	  
 	  if ( RolloverLimit)
 	    {
