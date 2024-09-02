@@ -185,7 +185,7 @@ shortResult * r_create_device_1_svc(deviceblock *db, struct svc_req *rqstp)
   subid = get_value ( db->argv2); // subevent id
 
 
-  // now we will see what device we are supposed to set up.
+  // now we will see what device we are supposed to setup.
   // we first check if it is one of our built-in ones, such as
   // device_random, or device_file or so.
   

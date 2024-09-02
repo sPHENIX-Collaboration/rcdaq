@@ -204,6 +204,11 @@ std::vector<daqBuffer *> daqBufferVector;
 int last_written_buffernr = 0;
 int last_bufferwritetime  = 0;
 
+std::vector<unsigned int>  buffer_free;
+std::vector<unsigned int>  buffer_inuse;
+std::vector<unsigned int>  buffer_compressing;
+std::vector<unsigned int>  buffer_wait_io;
+std::vector<unsigned int>  buffer_writing;
 
 int Trigger_Todo;
 int Command_Todo;
@@ -281,6 +286,99 @@ std::string shortHostName;
 
 
 std::map<int, int> fd_map;
+
+
+int setup_buffer_histogram()
+{
+
+
+  buffer_free.clear();
+  buffer_free.resize(daqBufferVector.size()+1,0);
+
+  buffer_inuse.clear();
+  buffer_inuse.resize(daqBufferVector.size()+1,0);
+
+  buffer_compressing.clear();
+  buffer_compressing.resize(daqBufferVector.size()+1,0);
+
+  buffer_wait_io.clear();
+  buffer_wait_io.resize(daqBufferVector.size()+1,0);
+
+  buffer_writing.clear();
+  buffer_writing.resize(daqBufferVector.size()+1,0);
+
+  return 0;
+}
+  
+
+int update_buffer_histogram()
+{
+  // to keep the def localized
+  unsigned int nfree =0;
+  unsigned int inuse =0;
+  unsigned int compressing =0;
+  unsigned int waitingforwrite =0;
+  unsigned int writing =0;
+
+  auto bitr = daqBufferVector.begin();
+  int s =  (*bitr)->getStatus();
+  if ( s== 0) nfree++;
+  if (s & 0x1) inuse++;
+  if (s & 0x4) compressing++;
+  else if (s & 0x8) waitingforwrite++;
+  else if (s & 0x10) writing++;
+  
+  bitr++;
+  for (; bitr != daqBufferVector.end(); bitr++)
+    {
+      s =  (*bitr)->getStatus();
+      if ( s== 0) nfree++;
+      if (s & 0x1) inuse++;
+      if (s & 0x4) compressing++;
+      else if (s & 0x8) waitingforwrite++;
+      else if (s & 0x10) writing++;
+    }
+
+  if ( nfree < buffer_free.size() ) buffer_free[nfree]++;
+  //  else cerrfl << " wrong index " << nfree << " vecore size is " << buffer_free.size() <<  endl;
+
+  if ( inuse < buffer_inuse.size() ) buffer_inuse[inuse]++;
+  //else cerrfl << " wrong index"<< endl;
+
+  if ( compressing < buffer_compressing.size() ) buffer_compressing[compressing]++;
+  //else cerrfl << " wrong index"<< endl;
+
+  if ( waitingforwrite < buffer_wait_io.size() ) buffer_wait_io[waitingforwrite]++;
+  //else cerrfl << " wrong index"<< endl;
+
+  if ( writing < buffer_writing.size() ) buffer_writing[writing]++;
+  //else cerrfl << " wrong index"<< endl;
+  return 0;
+
+}
+
+int print_buffer_histogram()
+{
+  cout << " ====== buffer statistics for run " << TheRun 
+       << " compression level " << daqBufferVector[0]->getCompression() 
+       << " nr_threads " << daqBufferVector.size() 
+       << endl;
+
+
+  cout << "  n    free   inuse    comp    wait writing" << endl;
+  for ( int i = 0; i < buffer_free.size(); i++)
+    {
+      cout << setw(3) << i
+	   << "  " << setw(6) <<  buffer_free[i]
+	   << "  " << setw(6) <<  buffer_inuse[i]
+	   << "  " << setw(6) <<  buffer_compressing[i]
+	   << "  " << setw(6) <<  buffer_wait_io[i]
+	   << "  " << setw(6) <<  buffer_writing[i]
+	   << endl;
+    }
+  cout << " ====== end buffer statistics " << endl;
+  return 0;
+}
 
 int UpdateLastWrittenBuffernr (const int n)
 {
@@ -916,6 +1014,8 @@ int switch_buffer()
 
   //coutfl << "before wait_for free " << fillBuffer->getID() << " status is 0x" << hex << fillBuffer->getStatus() << dec << endl;
   
+  update_buffer_histogram();
+
   
   fillBuffer->Wait_for_free();
   //coutfl << "After Wait_for_free on buffer " << fillBuffer->getID() << endl;
@@ -1380,12 +1480,7 @@ int daq_begin(const int irun, std::ostream& os)
     
   if (ThreadEvt) pthread_join(ThreadEvt, NULL);
 
-
-  // for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
-  //   {
-  //     (*it)->setVerbosity(0);
-  //   }
-
+  setup_buffer_histogram();
   
   // set the status to "running"
   DAQ_RUNNING = 1;
@@ -1634,6 +1729,8 @@ int daq_end(std::ostream& os)
   
   
   switch_buffer();  // we force a buffer flush
+
+    print_buffer_histogram();
 
   for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
     {
