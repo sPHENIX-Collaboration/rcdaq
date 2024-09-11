@@ -479,11 +479,12 @@ int daqBuffer::setCompression(const int flag)
 
   // 0 no compression
   // 1 lzo1c
-  // 2 lzo2a
-  // 3 bz2
+  // 2 lzo1c_999
+  // 3 lzo2a_999
+  // 4 bz2
 
   if ( wants_compression < 0 ) wants_compression = 0; 
-  if ( wants_compression > 3 ) wants_compression = 3; 
+  if ( wants_compression > 4 ) wants_compression = 4; 
 
   //coutfl << " compression level " << wants_compression << " set fpor buffer " << getID() << " " << endl;
   
@@ -540,7 +541,7 @@ int daqBuffer::compress ()
 
   int result;
 
-  if ( wants_compression == 1 || wants_compression == 2) // LZO-type
+  if ( wants_compression == 1 || wants_compression == 2 || wants_compression == 3 ) // LZO-type
     {
       lzo_uint outputlength_in_bytes = outputarraylength*4-16;
       lzo_uint in_len = getLength(); 
@@ -553,6 +554,15 @@ int daqBuffer::compress ()
 			  &outputlength_in_bytes,wrkmem, 9);
 	  outputarray[0] = outputlength_in_bytes +4*BUFFERHEADERLENGTH;
 	  outputarray[1] = LZO1CBUFFERMARKER;
+	}
+      else if ( wants_compression == 2)
+	{
+	  result = lzo1c_999_compress( (lzo_byte *) bptr,
+			      in_len,  
+			      (lzo_byte *)&outputarray[4],
+			      &outputlength_in_bytes,wrkmem);
+	  outputarray[0] = outputlength_in_bytes +4*BUFFERHEADERLENGTH;
+	  outputarray[1] = LZO2ABUFFERMARKER;
 	}
       else
 	{
