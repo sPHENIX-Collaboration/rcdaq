@@ -131,6 +131,11 @@ int daq_getRunControlMode (std::ostream& os = std::cout);
 
 int getRunNumberFromApp();
 
+int daq_set_uservalue ( const int index, const int value, std::ostream& os = std::cout );
+int daq_get_uservalue ( const int index,  std::ostream& os = std::cout );
+int get_uservalue ( const int index);
+
+
 
 #define MG_REQUEST_NAME 1
 #define MG_REQUEST_SPEED 2

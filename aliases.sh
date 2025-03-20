@@ -33,3 +33,6 @@ alias daq_get_mqtt_host="rcdaq_client daq_get_mqtt_host"
 alias daq_set_runcontrolmode="rcdaq_client  daq_set_runcontrolmode"
 alias daq_get_runcontrolmode="rcdaq_client  daq_get_runcontrolmode"
 alias daq_sync="rcdaq_client  daq_sync"
+
+alias daq_set_uservalue='rcdaq_client daq_set_uservalue'
+alias daq_get_uservalue='rcdaq_client daq_get_uservalue'

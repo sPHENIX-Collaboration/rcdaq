@@ -95,6 +95,9 @@ void showHelp()
   std::cout << "   daq_set_runcontrolmode n             switch to Run Control Mode (1=on, 0=off)" << std::endl;
   std::cout << "   daq_get_runcontrolmode               get the current Run Control Mode setting" << std::endl;
   std::cout << std::endl; 
+  std::cout << "   daq_set_uservalue n val              set the user value n (0..7) to val" << std::endl;
+  std::cout << "   daq_get_uservalue n                  get the user value n (0..7)" << std::endl;
+  std::cout << std::endl; 
 
   std::cout << "   elog elog-server port                specify coordinates for an Elog server" << std::endl;
   std::cout << std::endl; 
@@ -956,7 +959,42 @@ int command_execute( int argc, char **argv)
 	}
     }
 
+  else if ( strcasecmp(command,"daq_set_uservalue") == 0)
+    {
+      if ( argc < optind + 3) return -1;
 
+      ab.action = DAQ_SET_USERVALUE;
+      ab.ipar[0] = get_value(argv[optind + 1]);
+      ab.ipar[1] = get_value(argv[optind + 2]);
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+  else if ( strcasecmp(command,"daq_get_uservalue") == 0)
+    {
+      if ( argc < optind + 2) return -1;
+
+      ab.action = DAQ_GET_USERVALUE;
+      ab.ipar[0] = get_value(argv[optind + 1]);
+
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
+
+
+
+  
   else
     {
       std::cout << "Unknown Command " << command << std::endl;

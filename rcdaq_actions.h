@@ -68,6 +68,9 @@
 #define DAQ_SET_MD5ENABLE          145
 #define DAQ_SET_MD5ALLOWTURNOFF    146
 
+#define DAQ_SET_USERVALUE       147
+#define DAQ_GET_USERVALUE       148
+
 
 
 #define DAQ_DEVICE_RANDOM         1001

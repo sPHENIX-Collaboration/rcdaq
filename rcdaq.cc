@@ -88,6 +88,8 @@ char daq_event_env_string[128];
 
 int servernumber = 0;
 
+int uservalues[8] = {0};
+
 #define DAQ_TRIGGER 0x01
 #define DAQ_COMMAND 0x02
 #define DAQ_SPECIAL 0x04
@@ -2784,3 +2786,38 @@ int daq_generate_json (const int flag)
   
   return 0;
 }
+
+int daq_set_uservalue ( const int index, const int value, std::ostream& os  )
+{
+  if ( index < 0 || index > 7)
+    {
+      os << "index out of range. (0..7)" << endl;
+      return -1;
+    }
+  uservalues[index] = value;
+  return 0;
+}
+
+
+int daq_get_uservalue ( const int index,  std::ostream& os )
+{
+  if ( index < 0 || index > 7)
+    {
+      os << "index out of range. (0..7)" << endl;
+      return -1;
+    }
+  os << uservalues[index] << endl;
+  return 0;
+
+}
+
+int get_uservalue ( const int index)
+{
+  if ( index < 0 || index > 7)
+    {
+      return 0;
+    }
+  return uservalues[index];
+
+}
+
