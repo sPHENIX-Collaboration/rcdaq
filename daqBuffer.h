@@ -182,6 +182,7 @@ protected:
 
 
   int md5_enabled;  
+
   md5_state_t *_md5state;
 
   static int lzo_initialized;

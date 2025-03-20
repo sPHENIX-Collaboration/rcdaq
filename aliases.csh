@@ -12,6 +12,8 @@ alias daq_open                   rcdaq_client  daq_open
 alias daq_close                  rcdaq_client  daq_close
 alias daq_set_compression        rcdaq_client  daq_set_compression
 alias daq_set_nr_threads         rcdaq_client  daq_set_nr_threads
+alias daq_set_md5enable          rcdaq_client  daq_set_md5enable
+alias daq_allow_md5turnoff       rcdaq_client  daq_allow_md5turnoff
 alias daq_fake_trigger           rcdaq_client  daq_fake_trigger
 alias daq_list_readlist          rcdaq_client  daq_list_readlist
 alias daq_clear_readlist         rcdaq_client  daq_clear_readlist
@@ -36,3 +38,6 @@ alias daq_get_mqtt_host          rcdaq_client  daq_get_mqtt_host
 alias daq_set_runcontrolmode     rcdaq_client  daq_set_runcontrolmode
 alias daq_get_runcontrolmode     rcdaq_client  daq_get_runcontrolmode
 alias daq_sync                   rcdaq_client  daq_sync
+
+alias daq_set_uservalue          rcdaq_client  daq_set_uservalue
+alias daq_get_uservalue          rcdaq_client  daq_get_uservalue

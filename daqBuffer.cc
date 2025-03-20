@@ -297,7 +297,6 @@ unsigned int daqBuffer::writeout ()
       int blockcount = ( getLength() + 8192 -1)/8192;
       int bytecount = blockcount*8192;
 
-
       // if (verbosity)       coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
       _statusword |= 0x8;
       // if (verbosity)  cout << " to 0x" << _statusword << dec << endl;
