@@ -92,11 +92,11 @@ char daq_event_env_string[128];
 
 int servernumber = 0;
 
-
 #define coutfl std::cout << __FILE__<< "  " << __LINE__ << " "
 #define cerrfl std::cout << __FILE__<< "  " << __LINE__ << " "
 
 int uservalues[8] = {0};
+
 
 #define DAQ_TRIGGER 0x01
 #define DAQ_COMMAND 0x02
@@ -159,9 +159,6 @@ static int previous_outfile_fd;
 pthread_mutex_t OutfileManagementSem;
 
 
-
-static int md5_enabled =1;
-static int md5_allow_turnoff = 0;
 
 static int md5_enabled =1;
 static int md5_allow_turnoff = 0;
@@ -807,30 +804,6 @@ void *daq_end_thread (void *arg)
 
 }
 
-// this function can be called sirectly from daq_end_interactive, 
-// or we can make a thread for the "immediate" option 
-void *daq_end_thread (void *arg)
-{
-
-  std::ostream *os = (std::ostream *) arg;
-
-  // with an operator-induced daq_end, we make the event loop terminate
-  // and wait for it to be done.
-
-  disable_trigger();
-
-  // it is possible that we call daq_end before we ever started a run
-  if (ThreadEvt)   pthread_join(ThreadEvt, NULL);
-
-  daq_end(*os);
-  DAQ_ENDREQUESTED = 0;
-
-  return 0;
-
-}
-
-
-
 
 void *shutdown_thread (void *arg)
 {
@@ -887,9 +860,7 @@ void *monitorRequestwatcher_thread (void *arg)
     }
 	
   pthread_mutex_lock(&M_cout);
-
-  cout  << "Listening for monitoring requests on port " << MONITORINGPORT + servernumber << endl;
-
+  cout  << "Listening for monitoring requests on port " << MONITORINGPORT + servernumber<< endl;
   pthread_mutex_unlock(&M_cout);
 
   listen(sockfd, 16);
@@ -1301,7 +1272,7 @@ int daq_setruntype(const char *type, std::ostream& os )
       os << MyHostName << "Run is active" << endl;;
       return -1;
     }
-
+  
   std::string _type = type;
   std::map <string,string>::const_iterator iter = RunTypes.begin();
   for ( ; iter != RunTypes.end(); ++iter)
@@ -1651,12 +1622,8 @@ int daq_begin(const int irun, std::ostream& os)
   // here we sucessfully start a run. So now we set the env. variables
   char str[128];
   // RUNNUMBER
-  sprintf(str, "%d", TheRun);
-  setenv ( "DAQ_RUNNUMBER", str , 1);
-
-  // sprintf( str, "%d", Event_number);
-  // setenv ( "DAQ_EVENTNUMBER", str , 1);
-  
+  sprintf( str, "%d", TheRun);
+  setenv ( "DAQ_RUNNUMBER", str, 1);
   setenv ( "DAQ_FILERULE", TheFileRule.c_str() , 1);
 
   sprintf( str, "%ld", StartTime);
@@ -1705,9 +1672,7 @@ int daq_end_immediate(std::ostream& os)
   
   void * x = &os;
 
-
   //coutfl << " calling end_thread as thread" << endl; 
-
   int status = pthread_create(&t, NULL,
                           daq_end_thread,
                           x);
@@ -1717,12 +1682,9 @@ int daq_end_immediate(std::ostream& os)
       cout << "end_run failed " << status << endl;
       os << "end_run failed " << status << endl;
     }
-
   //coutfl << " done setting up  end_thread" << endl; 
-
   return 0;
 }
-
 
 // this function is to hold further interactions until a asynchronous begin-run is over 
 int daq_wait_for_begin_done()
@@ -1734,13 +1696,11 @@ int daq_wait_for_begin_done()
 // this function is to avoid a race condition with the asynchronous "end requested" feature
 int daq_wait_for_actual_end()
 {
-
   while ( DAQ_ENDREQUESTED ) 
     {
       usleep(10000);
     }
-
-  return 0;
+    return 0;
 }
 
 int daq_end_interactive(std::ostream& os)
@@ -1872,7 +1832,9 @@ int daq_end(std::ostream& os)
   request_mg_update (MG_REQUEST_SPEED);
 
   DAQ_ENDREQUESTED = 0;
+
   os << MyHostName <<  "Run " << TheRun << " ended" << endl;
+
 
   return 0;
 }
@@ -1932,8 +1894,6 @@ void * EventLoop( void *arg)
 		{
 		  TriggerControl = 0;
 		  //reset_deadtime();
-
-		  //cout << __LINE__ << " calling daq_end" << endl;
 		  daq_end ( std::cout);
 		}
 	      else
@@ -2009,6 +1969,7 @@ int readout(const int etype)
   deviceiterator d_it;
 
   sprintf( daq_event_env_string, "DAQ_EVENTNUMBER=%d", Event_number);
+
   
   int status = fillBuffer->nextEvent(etype,Event_number, Eventsize[etype]);
   if (status != 0) 
@@ -2016,15 +1977,13 @@ int readout(const int etype)
       switch_buffer();
       status = fillBuffer->nextEvent(etype,Event_number,  Eventsize[etype]);
     }
+  Event_number++;
+  Event_number_at_last_end = Event_number;
 
   for ( d_it = DeviceList.begin(); d_it != DeviceList.end(); ++d_it)
     {
       len += fillBuffer->addSubevent ( (*d_it) );
     }
-
-  Event_number++;
-  Event_number_at_last_end = Event_number;
-
 
   run_volume += 4*len;
 
@@ -2184,37 +2143,6 @@ int daq_set_md5enable (const int flag, std::ostream& os)
   return 0;
 }
 
-
-int daq_set_md5enable (const int flag, std::ostream& os)
-{
-
-  if ( DAQ_RUNNING ) 
-    {
-      os << MyHostName << "Run is active" << endl;;
-      return -1;
-    }
-  if ( ! md5_allow_turnoff) 
-    {
-      os << MyHostName << " MD5 switchoff not enabled" << endl;;
-      return 0;
-    }
-
-  if (flag)
-    {
-      Buffer1.setMD5Enabled(1);
-      Buffer2.setMD5Enabled(1);
-      md5_enabled = 1;
-    }
-  else
-    {
-      Buffer1.setMD5Enabled(0);
-      Buffer2.setMD5Enabled(0);
-      md5_enabled = 0;
-    }
-
-  return 0;
-}
-
 int daq_set_md5allowturnoff (const int flag, std::ostream& os)
 {
   if (flag)
@@ -2229,6 +2157,7 @@ int daq_set_md5allowturnoff (const int flag, std::ostream& os)
     }
   return 0;
 }
+
 
 int daq_set_server (const char *hostname, const int port, std::ostream& os)
 {
@@ -3206,7 +3135,6 @@ int daq_generate_json (const int flag)
  	    }
 	  digest_string[32] = 0;
 	}
-
       out << "{\"file\": [" << endl;
       out << "    { \"what\":\"" << "update"
 	  << "\", \"runnumber\":" << TheRun << ","
