@@ -15,6 +15,9 @@ int registerTriggerHandler(TriggerHandler *);
 int clearTriggerHandler();
 int daq_getEventFormat();
 
+int get_uservalue(const int i);
+
+  
 class daq_device {
 
 public:

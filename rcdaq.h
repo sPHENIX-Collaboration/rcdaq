@@ -140,7 +140,6 @@ int getRunNumberFromApp();
 
 int daq_set_uservalue ( const int index, const int value, std::ostream& os = std::cout );
 int daq_get_uservalue ( const int index,  std::ostream& os = std::cout );
-int get_uservalue ( const int index);
 
 
 
