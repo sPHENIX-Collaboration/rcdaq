@@ -962,6 +962,16 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       return &result;
       break;
 
+    case DAQ_SHOW_BUFFERSTATUS:
+      result.status = daq_show_bufferstatus (ab->ipar[0], outputstream);
+      outputstream.str().copy(resultstring,outputstream.str().size());
+      resultstring[outputstream.str().size()] = 0;
+      result.str = resultstring;
+      result.content = 1;
+      pthread_mutex_unlock(&M_output);
+      return &result;
+      break;
+
       
     default:
       strcpy(resultstring, "Unknown action");

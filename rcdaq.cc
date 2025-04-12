@@ -291,6 +291,40 @@ std::string shortHostName;
 std::map<int, int> fd_map;
 
 
+int daq_show_bufferstatus(const int verbose_flag, std::ostream& os)
+{
+
+  if ( verbose_flag)
+    {
+      os << "d :  buffer has data (dirty)" << endl;
+      os << "b :  buffer is beging written out (busy)" << endl;
+      os << "c :  buffer is getting compressed" << endl;
+      os << "wa:  buffer is waiting for the previous one" << endl;
+      os << "wr:  buffer is getting written out" << endl;
+      os << endl;
+    }
+  
+  os << "bufnr | d  | b  | c  | wa | wr | statusword " << endl;
+  
+  for (auto bitr = daqBufferVector.begin() ; bitr != daqBufferVector.end(); bitr++)
+    {
+      int s =  (*bitr)->getStatus();
+      s =  (*bitr)->getStatus();
+      os << setw(5) << (*bitr)->getID() << " ";
+
+      for (unsigned int b =0; b<5; b++)
+	{
+	  unsigned int mask = 1 << b;
+	  
+	  if (s & mask) os << setw(2) << "| x  ";
+	  else          os << setw(2) << "|    ";
+	}
+      os << "|  0x" << hex << s << dec << endl;
+    }
+  return 0;
+}
+
+
 int setup_buffer_histogram()
 {
 
@@ -388,6 +422,7 @@ int UpdateLastWrittenBuffernr (const int n)
   last_written_buffernr = n;
   return 0;
 }
+
 
 
 int UpdateFileSizes (const unsigned long long size)
@@ -985,7 +1020,8 @@ void *sendMonitorData( void *arg)
 }
 
 
-int switch_buffer()
+int switch_buffer(const int flag) // this flag is only used if we do the switch at end-run
+                                  // to prevent the next buffer from being marked as dirty (0)
 {
 
    // pthread_mutex_lock(&M_cout);
@@ -997,7 +1033,7 @@ int switch_buffer()
   pthread_mutex_lock(&SendProtectSem);
 
   fillBuffer->addEoB();
-  fillBuffer->setDirty(1);
+  //coutfl << "switching buffer current fillBuffer is  " << fillBuffer->getID() << " dirty is " << fillBuffer->getDirty() << endl;
 
   //switch buffers
   // spare = transportBuffer;
@@ -1015,15 +1051,15 @@ int switch_buffer()
     }
   fillBuffer = daqBufferVector[currentFillBuffernr];
 
-  //coutfl << "before wait_for free " << fillBuffer->getID() << " status is 0x" << hex << fillBuffer->getStatus() << dec << endl;
-  
-  update_buffer_histogram();
+  //coutfl << "new fillBuffer is  " << fillBuffer->getID() << " dirty is " << fillBuffer->getDirty() << endl;
 
+  update_buffer_histogram();
   
   fillBuffer->Wait_for_free();
   //coutfl << "After Wait_for_free on buffer " << fillBuffer->getID() << endl;
   
   fillBuffer->prepare_next(++Buffer_number, TheRun);
+  if (flag) fillBuffer->setDirty(1);
 
   // let's see if we need to roll over
     if ( daq_open_flag && RolloverLimit)
@@ -1640,6 +1676,7 @@ int daq_begin(const int irun, std::ostream& os)
   md5_init(&md5state);
   
   fillBuffer->prepare_next(Buffer_number,TheRun);
+  fillBuffer->setDirty(1);
 
   run_volume = 0;
   
@@ -1730,17 +1767,20 @@ int daq_end(std::ostream& os)
   //     (*it)->setVerbosity(1);
   //   }
   
-  
-  switch_buffer();  // we force a buffer flush
 
-    print_buffer_histogram();
+  //coutfl << "ending run, current fillBuffer is  " << fillBuffer->getID() << " dirty is " << fillBuffer->getDirty() << endl;
+
+  
+  switch_buffer(0);  // we force a buffer flush with a "do not mark the next buffer" (0)
+
+  //  print_buffer_histogram();
 
   for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
     {
       //coutfl << "Waiting for " << (*it)->getID() << " status is " << (*it)-> getDirty() << endl;
       while ( (*it)->getDirty() )
 	{
-	  usleep(200);
+	  usleep(2000);
 	}
       //coutfl << "Done waiting for " << (*it)->getID() << endl;
     }
@@ -1974,7 +2014,7 @@ int readout(const int etype)
   int status = fillBuffer->nextEvent(etype,Event_number, Eventsize[etype]);
   if (status != 0) 
     {
-      switch_buffer();
+      switch_buffer(1);
       status = fillBuffer->nextEvent(etype,Event_number,  Eventsize[etype]);
     }
   Event_number++;
@@ -2006,7 +2046,7 @@ int readout(const int etype)
 
   if ( adaptivebuffering  &&  time(0) - last_bufferwritetime > adaptivebuffering )
     {
-      switch_buffer();
+      switch_buffer(1);
       //      cout << "adaptive buffer switching" << endl;
     }
 

@@ -73,6 +73,8 @@
 #define DAQ_SET_USERVALUE       148
 #define DAQ_GET_USERVALUE       149
 
+#define DAQ_SHOW_BUFFERSTATUS   150
+
 
 #define DAQ_DEVICE_RANDOM         1001
 #define DAQ_DEVICE_FILE           1002

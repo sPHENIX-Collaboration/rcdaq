@@ -19,7 +19,7 @@ int Command( const int command);
 
 char * obtain_pidfilename();
 
-int switch_buffer();
+int switch_buffer(const int flag);
 int device_init();
 int device_endrun();
 int readout(const int etype);
@@ -141,7 +141,7 @@ int getRunNumberFromApp();
 int daq_set_uservalue ( const int index, const int value, std::ostream& os = std::cout );
 int daq_get_uservalue ( const int index,  std::ostream& os = std::cout );
 
-
+int daq_show_bufferstatus(const int verbose_flag, std::ostream& os);
 
 #define MG_REQUEST_NAME 1
 #define MG_REQUEST_SPEED 2

@@ -82,6 +82,7 @@ void showHelp()
   std::cout << "   daq_set_adaptivebuffering seconds    enable adaptive buffering at n seconds (0 = off)" << std::endl;
   std::cout << "   daq_set_maxbuffersize n_KB           adjust the used size of buffers written to n KB" << std::endl;
   std::cout << "   daq_define_buffersize n_MB           define the actual memory allocation of the buffers (daq_set_maxbuffersize just temporarily reduces the used portion " << std::endl;
+  std::cout << "   daq_show_bufferstatus                give a debug-style overview what the buffers are up to" << std::endl;
   std::cout << std::endl;
 
   std::cout << "   daq_webcontrol <port number>         restart web controls on a new port (default 8080)" << std::endl;
@@ -1010,8 +1011,20 @@ int command_execute( int argc, char **argv)
  
     }
 
+  else if ( strcasecmp(command,"daq_show_bufferstatus") == 0)
+    {
 
+      ab.action = DAQ_SHOW_BUFFERSTATUS;
+      ab.ipar[0] = verbose_flag;
 
+      r = r_action_1(&ab, clnt);
+      if (r == (shortResult *) NULL) 
+	{
+	  clnt_perror (clnt, "call failed");
+	}
+      if (r->content) std::cout <<  r->str << std::flush;
+ 
+    }
   
   else
     {

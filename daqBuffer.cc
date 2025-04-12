@@ -236,27 +236,34 @@ int daqBuffer::start_writeout_thread ()
 {
 
 
-  int status;
- 
-  if (_writeout_thread_t) 
+  int c = 0;
+
+  while ( _statusword & 0x1e ) // we are trying this instead of pthread_join 
     {
-      status= pthread_join(_writeout_thread_t, NULL);
-      if (status)
+      c++;
+      if ( c > 15000)
 	{
-	  perror ("start_writeout_thread join");
-	  cerrfl << "buffer id " << getID() << endl;
+	  cerrfl << "breaking lock on buffer id " << getID() << " statusword is " << hex << _statusword << dec << endl;
+	  break; // we are capping outr wait to 15s
 	}
+      usleep(1000);
     }
-  //_ta.fd =fd;
+
+ 
+  // if (_writeout_thread_t) 
+  //   {
+  //     status= pthread_join(_writeout_thread_t, NULL);
+  //     if (status)
+  // 	{
+  // 	  perror ("start_writeout_thread join");
+  // 	  cerrfl << "buffer id " << getID() << endl;
+  // 	}
+  //   }
+
   _ta.me =this;
   _busy = 1;
-  //  _dirty =1;
 
-  // if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
-  _statusword |= 0x3;  // dirty and busy
-  // if (verbosity) cout << " to 0x" << _statusword << dec << endl;
-
-  status = pthread_create(&_writeout_thread_t, NULL, 
+  int status = pthread_create(&_writeout_thread_t, NULL, 
 			       daqBuffer::writeout_thread, 
 			      (void *) &_ta);
   if (status)
@@ -272,7 +279,7 @@ int daqBuffer::start_writeout_thread ()
 void * daqBuffer::writeout_thread ( void * x)
 {
   thread_argument * ta  = (thread_argument *) x;
-  (ta->me)->setDirty(1);
+  //(ta->me)->setDirty(1);
   //register_fd_use(ta->fd,1);
   //int fd = ta->fd;
   (ta->me)->writeout();
@@ -289,6 +296,10 @@ unsigned int daqBuffer::writeout ()
   if ( _broken) return 0;
   if (!has_end) addEoB();
 
+  //if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
+  _statusword |= 0x2;  // busy
+  //if (verbosity) cout << " to 0x" << _statusword << dec << endl;
+
   
   unsigned int bytes = 0;
 
@@ -297,32 +308,32 @@ unsigned int daqBuffer::writeout ()
       int blockcount = ( getLength() + 8192 -1)/8192;
       int bytecount = blockcount*8192;
 
-      // if (verbosity)       coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
+      //if (verbosity)       coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
       _statusword |= 0x8;
-      // if (verbosity)  cout << " to 0x" << _statusword << dec << endl;
+      //if (verbosity)  cout << " to 0x" << _statusword << dec << endl;
 
-      if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
+      //if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
 
-      // if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
+      //if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
       _statusword &= ~0x8;
-      // if (verbosity) cout << " to 0x" << _statusword << dec << endl;
+      //if (verbosity) cout << " to 0x" << _statusword << dec << endl;
 
-      // if (verbosity) coutfl << "buffer " << getID() << " finished wait on prev id " << previousBuffer->getID() << endl;
+      //if (verbosity) coutfl << "buffer " << getID() << " finished wait on prev id " << previousBuffer->getID() << endl;
       
-      // if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
+      //if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
       _statusword |= 0x10;
-      // if (verbosity) cout << " to 0x" << _statusword << dec << endl;
+      //if (verbosity) cout << " to 0x" << _statusword << dec << endl;
 
       int fd = getCurrentOutputFD();
-
+      
       bytes = writen ( fd, (char *) bptr , bytecount );      
 
       UpdateFileSizes( bytes );
       UpdateLastWrittenBuffernr (getID());
 
-      // if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
+      //if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
       _statusword &= ~0x10;
-      // if (verbosity) cout << " to 0x" << _statusword << dec << endl;
+      //if (verbosity) cout << " to 0x" << _statusword << dec << endl;
 
       if ( _md5state && md5_enabled)
 	{
@@ -339,7 +350,7 @@ unsigned int daqBuffer::writeout ()
       _compressing = 1;
       _statusword |= 0x4;
 
-//      struct timespec t_before, t_after;
+      // this was to create scenarios during testing  if (get_uservalue(1)) usleep (get_uservalue(1));
 
       int s = compress();
 
@@ -349,23 +360,22 @@ unsigned int daqBuffer::writeout ()
       int blockcount = ( outputarray[0] + 8192 -1)/8192;
       int bytecount = blockcount*8192;
 
-      // if (verbosity)       coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
+      //if (verbosity)       coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
       _statusword |= 0x8;
-      // if (verbosity) cout << " to 0x" << _statusword << dec << endl;
+      //if (verbosity) cout << " to 0x" << _statusword << dec << endl;
 
       if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
 
-      // if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
+      //if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
       _statusword &= ~0x8;
-      // if (verbosity) cout << " to 0x" << _statusword << dec << endl;
+      //if (verbosity) cout << " to 0x" << _statusword << dec << endl;
 
-      // if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
+      //if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
       _statusword |= 0x10;
-      // if (verbosity) cout << " to 0x" << _statusword << dec << endl;
-
-      //usleep(1000000);
+      //if (verbosity) cout << " to 0x" << _statusword << dec << endl;
 
       int fd = getCurrentOutputFD();
+      // this was to create scenarios during testing  if (get_uservalue(2)) usleep (get_uservalue(2));
 
       if (s) // we had a compression error earlier nd write the original instead
 	{
@@ -381,9 +391,9 @@ unsigned int daqBuffer::writeout ()
       UpdateFileSizes( bytes );
       UpdateLastWrittenBuffernr (getID());
 
-      // if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
+      //if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
       _statusword &= ~0x10;
-      // if (verbosity) cout << " to 0x" << _statusword << dec << endl;
+      //if (verbosity) cout << " to 0x" << _statusword << dec << endl;
 
       if ( _md5state && md5_enabled)
 	{
@@ -399,14 +409,16 @@ unsigned int daqBuffer::writeout ()
       releaseOutputFD();
 
     }
-  // if (verbosity) coutfl << "Finishing write for buffer " << getID() << endl;
+  //if (verbosity) coutfl << "Finishing write for buffer " << getID() << endl;
  
   _busy = 0;
+  //if (verbosity) coutfl << "setting _dirty to 0 for " << getID() << endl;
+  
   _dirty = 0;
 
-  // if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
-  _statusword = 0;
-  // if (verbosity) cout << " to 0x" << _statusword << dec << endl;
+  //if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
+  _statusword = 0x0;
+  //if (verbosity) cout << " to 0x" << _statusword << dec << endl;
 
   // if (verbosity) coutfl << "buffer " << getID() << " finished write, status= " << getStatus() << endl;
 
@@ -674,3 +686,17 @@ int daqBuffer::Wait_for_free() const
  }
 
 
+void daqBuffer::setDirty( const int i)
+{
+  if (i)
+    {
+      _dirty=1;
+      _statusword |= 1 ;
+    }
+ 
+  else
+    {
+      _dirty = 0;
+      _statusword &= ~1;
+    }
+}

@@ -41,3 +41,4 @@ alias daq_sync                   rcdaq_client  daq_sync
 
 alias daq_set_uservalue          rcdaq_client  daq_set_uservalue
 alias daq_get_uservalue          rcdaq_client  daq_get_uservalue
+alias daq_show_bufferstatus      rcdaq_client daq_show_bufferstatus

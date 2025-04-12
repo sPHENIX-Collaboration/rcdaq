@@ -93,7 +93,7 @@ public:
   void setID( const int i) {_my_number=i;};
   int getID() const {return _my_number;};
 
-  void setDirty( const int i) {if (i) _dirty=1; else _dirty = 0;};
+  void setDirty( const int i);
   int getDirty() const {return _dirty;};
   int getCompressing() const {return _compressing;};
 
