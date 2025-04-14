@@ -18,8 +18,8 @@ daq_device_file.cc \
 
 AM_LDFLAGS = -L$(libdir) -L$(ONLINE_MAIN)/lib
 
-AM_CXXFLAGS = -I$(includedir) -I$(ONLINE_MAIN)/include $(RPC_INCLUDE)
-AM_CPPFLAGS = -I$(includedir) -I$(ONLINE_MAIN)/include $(RPC_INCLUDE)
+AM_CXXFLAGS = -g -O2 -I$(includedir) -I$(ONLINE_MAIN)/include $(RPC_INCLUDE)
+AM_CPPFLAGS = -g -O2 -I$(includedir) -I$(ONLINE_MAIN)/include $(RPC_INCLUDE)
 
 noinst_HEADERS = \
   EvtConstants.h \

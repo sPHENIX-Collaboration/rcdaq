@@ -235,35 +235,41 @@ unsigned int daqBuffer::addEoB()
 int daqBuffer::start_writeout_thread ()
 {
 
+  int status;
+  
+  // int c = 0;
 
-  int c = 0;
-
-  while ( _statusword & 0x1e ) // we are trying this instead of pthread_join 
-    {
-      c++;
-      if ( c > 15000)
-	{
-	  cerrfl << "breaking lock on buffer id " << getID() << " statusword is " << hex << _statusword << dec << endl;
-	  break; // we are capping outr wait to 15s
-	}
-      usleep(1000);
-    }
+  // while ( _statusword & 0x1e ) // we are trying this instead of pthread_join 
+  //   {
+  //     c++;
+  //     if ( c > 15000)
+  // 	{
+  // 	  cerrfl << "breaking lock on buffer id " << getID() << " statusword is " << hex << _statusword << dec << endl;
+  // 	  break; // we are capping outr wait to 15s
+  // 	}
+  //     usleep(1000);
+  //   }
 
  
-  // if (_writeout_thread_t) 
-  //   {
-  //     status= pthread_join(_writeout_thread_t, NULL);
-  //     if (status)
-  // 	{
-  // 	  perror ("start_writeout_thread join");
-  // 	  cerrfl << "buffer id " << getID() << endl;
-  // 	}
-  //   }
+  struct timespec wait_timeout;
+  wait_timeout.tv_sec=15;
+  wait_timeout.tv_nsec=0;
+
+  if ( _writeout_thread_t )
+    {
+      //  status= pthread_join(_writeout_thread_t, NULL);
+      status= pthread_timedjoin_np(_writeout_thread_t, NULL, &wait_timeout);
+      if (status)
+	{
+	  perror ("start_writeout_thread join");
+	  cerrfl << "buffer id " << getID() << endl;
+	}
+    }
 
   _ta.me =this;
   _busy = 1;
 
-  int status = pthread_create(&_writeout_thread_t, NULL, 
+  status = pthread_create(&_writeout_thread_t, NULL, 
 			       daqBuffer::writeout_thread, 
 			      (void *) &_ta);
   if (status)
@@ -437,7 +443,7 @@ unsigned int daqBuffer::sendout ( int fd )
 
   if ( previousBuffer) previousBuffer->Wait_for_Completion(_my_buffernr);
 
-  //std::cout << __FILE__ << " " << __LINE__ << " sending  opcode ctrl_data" <<  CTRL_DATA << std::endl ;
+  //coutfl  << "sending  opcode ctrl_data" <<  CTRL_DATA << std::endl ;
   // send "CTRL_DATA" opcode in network byte ordering
   int opcode = htonl(CTRL_DATA);
   int status = writen(fd, (char *) &opcode, sizeof(int));
@@ -456,6 +462,18 @@ unsigned int daqBuffer::sendout ( int fd )
   readn (fd, (char *) &opcode, sizeof(int));
   opcode = ntohl(opcode);
   if ( opcode != CTRL_REMOTESUCCESS) return -1; // signal error
+
+  UpdateFileSizes( sent );
+  UpdateLastWrittenBuffernr (getID());
+
+  _busy = 0;
+  //if (verbosity) coutfl << "setting _dirty to 0 for " << getID() << endl;
+  
+  _dirty = 0;
+
+  //if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
+  _statusword = 0x0;
+
   
   return sent;
 }
@@ -533,6 +551,7 @@ int daqBuffer::setCompression(const int flag)
 	      _broken = 1;
 	      return -1;
 	    }
+	  if ( outputarray) delete [] outputarray;
 	  outputarraylength = max_length + 10*8192;
 	  outputarray = new unsigned int[outputarraylength];
 	}
@@ -540,6 +559,7 @@ int daqBuffer::setCompression(const int flag)
     }
   else // bz2
     {
+      if ( outputarray) delete [] outputarray;
       outputarraylength = max_length + 10*8192;
       outputarray = new unsigned int[outputarraylength];
     }

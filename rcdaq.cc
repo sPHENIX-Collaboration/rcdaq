@@ -851,6 +851,12 @@ void *shutdown_thread (void *arg)
   int pid_fd = t_args[2];
   TriggerControl = 0;
   if ( TriggerH) delete TriggerH;
+
+  for (auto bitr = daqBufferVector.begin() ; bitr != daqBufferVector.end(); bitr++)
+    {
+      delete (*bitr);
+    }
+  
   pthread_mutex_unlock(&M_cout);
   // unregister out service 
   svc_unregister ( t_args[0], t_args[1]);
@@ -1131,6 +1137,7 @@ int switch_buffer(const int flag) // this flag is only used if we do the switch 
     }
   else if ( daq_server_flag &&  TheServerFD)
     {
+      //coutfl << " ending out buffer  " << transportBuffer->getID() << endl;
       unsigned int bytecount = transportBuffer->sendout(TheServerFD);
       NumberWritten++;
       BytesInThisRun += bytecount;
