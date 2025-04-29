@@ -90,7 +90,7 @@ char daq_event_env_string[128];
 // those are the "todo" definitions. DAQ can be woken up by a trigger
 // and read something, or by a command and change its status.
 
-int servernumber = 0;
+int serverID = 0;
 
 #define coutfl std::cout << __FILE__<< "  " << __LINE__ << " "
 #define cerrfl std::cout << __FILE__<< "  " << __LINE__ << " "
@@ -891,7 +891,7 @@ void *monitorRequestwatcher_thread (void *arg)
   bzero( (char*)&server_addr, sizeof(server_addr));
   server_addr.sin_family = PF_INET;
   server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-  server_addr.sin_port = htons(MONITORINGPORT + servernumber);
+  server_addr.sin_port = htons(MONITORINGPORT + serverID);
 
 
   int status = bind(sockfd, (struct sockaddr*) &server_addr, sizeof(server_addr));
@@ -901,7 +901,7 @@ void *monitorRequestwatcher_thread (void *arg)
     }
 	
   pthread_mutex_lock(&M_cout);
-  cout  << "Listening for monitoring requests on port " << MONITORINGPORT + servernumber<< endl;
+  cout  << "Listening for monitoring requests on port " << MONITORINGPORT + serverID<< endl;
   pthread_mutex_unlock(&M_cout);
 
   listen(sockfd, 16);
@@ -1251,9 +1251,9 @@ int daq_set_filerule(const char *rule , std::ostream& os)
 int daq_set_name(const char *name)
 {
   MyName = name;
-  if (servernumber)
+  if (serverID)
     {
-      MyName = MyName + ":" + to_string(servernumber);
+      MyName = MyName + ":" + to_string(serverID);
     }
   request_mg_update (MG_REQUEST_NAME);
   return 0;
@@ -2267,7 +2267,7 @@ int server_open_Connection()
 }
 
 
-int daq_shutdown(const unsigned long servernumber, const unsigned long versionnumber, const int pid_fd,
+int daq_shutdown(const unsigned long serverID, const unsigned long versionnumber, const int pid_fd,
 		 std::ostream& os)
 {
 
@@ -2283,7 +2283,7 @@ int daq_shutdown(const unsigned long servernumber, const unsigned long versionnu
     }
   
   static unsigned long  t_args[3];
-  t_args[0] = servernumber;
+  t_args[0] = serverID;
   t_args[1] = versionnumber;
   t_args[3] = pid_fd;
     
@@ -2392,8 +2392,8 @@ int rcdaq_init( const int snumber, pthread_mutex_t &M)
   
   int status;
 
-  servernumber = snumber;
-  ThePort += servernumber;
+  serverID = snumber;
+  ThePort += serverID;
     
   char hostname[HOST_NAME_MAX];
   status = gethostname(hostname, HOST_NAME_MAX);
@@ -2401,10 +2401,10 @@ int rcdaq_init( const int snumber, pthread_mutex_t &M)
     {
       shortHostName = hostname;
       MyHostName = hostname;
-      if (servernumber)
+      if (serverID)
 	{
-	  shortHostName = shortHostName + ":" + to_string(servernumber);
-	  MyHostName = MyHostName + ":" + to_string(servernumber);
+	  shortHostName = shortHostName + ":" + to_string(serverID);
+	  MyHostName = MyHostName + ":" + to_string(serverID);
 	}
       MyHostName += " - ";
     }
@@ -2896,7 +2896,7 @@ int daq_webcontrol(const int port, std::ostream& os)
 
   if (  port ==0)
     {
-      ThePort=8899 + servernumber;
+      ThePort=8899 + serverID;
     }
   else
     {
@@ -3153,6 +3153,7 @@ int daq_generate_json (const int flag)
       out << "    { \"what\":\"new\","
 	  << " \"runnumber\":" << TheRun << ","
 	  << " \"host\":\"" << shortHostName << "\","
+	  << " \"serverID\":\"" << serverID << "\","
 	  << " \"runtype\":\"" << TheRunType << "\","
 	  << " \"CurrentFileName\":\"" << CurrentFilename << "\","
 	  << " \"CurrentFileSequence\":" << current_filesequence << ","
@@ -3182,14 +3183,17 @@ int daq_generate_json (const int flag)
  	    }
 	  digest_string[32] = 0;
 	}
+
       out << "{\"file\": [" << endl;
       out << "    { \"what\":\"" << "update"
 	  << "\", \"runnumber\":" << TheRun << ","
 	  << " \"host\":\"" << shortHostName << "\","
+	  << " \"serverID\":\"" << serverID << "\","
 	  << " \"CurrentFileName\":\"" << CurrentFilename << "\","
 	  << " \"MD5\":\"" << digest_string << "\","
 	  << " \"LastEventNr\":" << daqBufferVector[last_written_buffernr]->getLastEventNumber() << ","
 	  << " \"NrEvents\":" << daqBufferVector[last_written_buffernr]->getLastEventNumber() - Event_number_at_last_open +1 << ","
+	  << " \"FileSize\":" << BytesInThisFile << ","
 	  << " \"time\":" << time(0)  << " }" << endl;
       out << "] }" << endl;
     }
