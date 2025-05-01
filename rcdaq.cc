@@ -1263,7 +1263,7 @@ int daq_set_name(const char *name)
 #ifdef HAVE_MOSQUITTO_H
 int daq_set_mqtt_host(const char * host, const int port, std::ostream& os)
 {
-  coutfl <<  " mqtt host " << host << " port " << port << endl;
+  //coutfl <<  " mqtt host " << host << " port " << port << endl;
   if (mqtt) delete mqtt;
 
   if (strcasecmp(host, "None") == 0) // delete existing def
@@ -1350,8 +1350,10 @@ int daq_getruntype(const int flag, std::ostream& os)
 	    }
 	}
     }
-  return 0;
+  return 1;  // we are returning 1 if we don't have a runtype.
 }
+
+
 
 // this is defining a new run type (or re-defining an old one) 
 int daq_define_runtype(const char *type, const char *rule)
@@ -2388,7 +2390,7 @@ int daq_clear_readlist(std::ostream& os)
 int rcdaq_init( const int snumber, pthread_mutex_t &M)
 {
 
-  coutfl << " Number of cores: " << processor_count << endl;
+  //coutfl << " Number of cores: " << processor_count << endl;
   
   int status;
 

@@ -626,8 +626,13 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       result.status = daq_getruntype(ab->ipar[0], outputstream);
       outputstream.str().copy(resultstring,outputstream.str().size());
       resultstring[outputstream.str().size()] = 0;
-      result.str = resultstring;
-      result.content = 1;
+      if (! result.status)  // 0 means all ok, we got an answer
+        {
+          outputstream.str().copy(resultstring,outputstream.str().size());
+          resultstring[outputstream.str().size()] = 0;
+          result.str = resultstring;
+          result.content = 1;
+        }
       pthread_mutex_unlock(&M_output);
       return &result;
       break;
