@@ -259,11 +259,11 @@ int daqBuffer::start_writeout_thread ()
     {
       //  status= pthread_join(_writeout_thread_t, NULL);
       status= pthread_timedjoin_np(_writeout_thread_t, NULL, &wait_timeout);
-      if (status)
-	{
-	  perror ("start_writeout_thread join");
-	  cerrfl << "buffer id " << getID() << endl;
-	}
+      // if (status)
+      // 	{
+      // 	  perror ("start_writeout_thread join");
+      // 	  cerrfl << "buffer id " << getID() << endl;
+      // 	}
     }
 
   _ta.me =this;
