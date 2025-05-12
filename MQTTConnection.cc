@@ -54,7 +54,7 @@ int MQTTConnection::send(const std::string message)
 MQTTConnection::~MQTTConnection()
 {
   CloseConnection();
-  mosquitto_destroy(mosq);
+  if (! _status) mosquitto_destroy(mosq);
   mosquitto_lib_cleanup();
 
 }
@@ -77,7 +77,7 @@ int MQTTConnection::OpenConnection()
 
 int MQTTConnection::CloseConnection()
 {
-  mosquitto_disconnect(mosq);
+  if (! _status)  mosquitto_disconnect(mosq);
   //  mosquitto_destroy(mosq);
   return 0;
 }
