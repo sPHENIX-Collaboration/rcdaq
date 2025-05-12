@@ -19,6 +19,7 @@
 #include <iomanip>
 #include <sstream>
 #include <thread>
+#include <filesystem>
 
 #include <errno.h>
 #include <string.h>
@@ -3148,6 +3149,17 @@ int daq_generate_json (const int flag)
   
   std::ostringstream out;
 
+  std::string final_filename;
+  
+  try
+    {
+      final_filename = std::filesystem::canonical(CurrentFilename);
+    }
+  catch (const std::exception& ex)
+    {
+      final_filename = CurrentFilename;
+    }
+  
   if (flag == 0) // we start a new entry
     {
 
@@ -3157,7 +3169,8 @@ int daq_generate_json (const int flag)
 	  << " \"host\":\"" << shortHostName << "\","
 	  << " \"serverID\":\"" << serverID << "\","
 	  << " \"runtype\":\"" << TheRunType << "\","
-	  << " \"CurrentFileName\":\"" << CurrentFilename << "\","
+	//	  << " \"CurrentFileName\":\"" << CurrentFilename << "\","
+	  << " \"CurrentFileName\":\"" << final_filename << "\","
 	  << " \"CurrentFileSequence\":" << current_filesequence << ","
 	  << " \"FirstEventNr\":" << Event_number_at_last_open << ","
 	  << " \"time\": " << time(0)  << " }" << endl;
@@ -3191,7 +3204,7 @@ int daq_generate_json (const int flag)
 	  << "\", \"runnumber\":" << TheRun << ","
 	  << " \"host\":\"" << shortHostName << "\","
 	  << " \"serverID\":\"" << serverID << "\","
-	  << " \"CurrentFileName\":\"" << CurrentFilename << "\","
+	  << " \"CurrentFileName\":\"" << final_filename << "\","
 	  << " \"MD5\":\"" << digest_string << "\","
 	  << " \"LastEventNr\":" << daqBufferVector[last_written_buffernr]->getLastEventNumber() << ","
 	  << " \"NrEvents\":" << daqBufferVector[last_written_buffernr]->getLastEventNumber() - Event_number_at_last_open +1 << ","
