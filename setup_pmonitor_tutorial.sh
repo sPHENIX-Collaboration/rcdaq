@@ -30,5 +30,6 @@ rcdaq_client create_device device_file 9 900 "$MYSELF"
 rcdaq_client create_device device_gauss -- 1 1003 1
 
 # we add some artificial deadtime to slow down a bit
-rcdaq_client create_device device_deadtime 1 0 5000
+rcdaq_client create_device device_deadtime 1 0 3000
+rcdaq_client daq_set_maxbuffersize 1
 
