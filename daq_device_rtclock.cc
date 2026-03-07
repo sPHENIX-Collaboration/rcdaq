@@ -93,7 +93,7 @@ int daq_device_rtclock::put_data(const int etype, int * adr, const int length )
       
       if  (s)  // error, set everything to 0
 	{
-	  for ( int i = 0; i < 6; i++)  *d++ = 0;
+	  for ( int i = 0; i < 9; i++)  *d++ = 0;
 	}
       else
 	{
@@ -126,7 +126,7 @@ void daq_device_rtclock::identify(std::ostream& os) const
 int daq_device_rtclock::max_length(const int etype) const
 {
   if (etype != m_eventType) return 0;
-  return  (6 + SEVTHEADERLENGTH);
+  return  (10 + SEVTHEADERLENGTH);
 }
 
 int  daq_device_rtclock::init()
