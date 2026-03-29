@@ -1586,7 +1586,10 @@ int daq_begin(const int irun, std::ostream& os)
 	  if ( !status)
 	    {
 
-	      if (ElogH) ElogH->BegrunLog( TheRun,"RCDAQ",  
+	      std::string author = "RCDAQ - ";
+	      author += daq_get_myname();
+		
+	      if (ElogH) ElogH->BegrunLog( TheRun,author.c_str(),  
 					   get_current_filename());
 
 	      daq_write_runnumberfile(TheRun);
@@ -1606,7 +1609,10 @@ int daq_begin(const int irun, std::ostream& os)
 	  int status = open_file ( TheRun, &outfile_fd);
 	  if ( !status)
 	    {
-	      if (ElogH) ElogH->BegrunLog( TheRun,"RCDAQ",  
+	      std::string author = "RCDAQ - ";
+	      author += daq_get_myname();
+		
+	      if (ElogH) ElogH->BegrunLog( TheRun,author.c_str(),  
 					   get_current_filename());
 
 	      daq_write_runnumberfile(TheRun);
@@ -1806,8 +1812,11 @@ int daq_end(std::ostream& os)
 
       double v = run_volume;
       v /= (1024*1024);
-      
-      if (ElogH) ElogH->EndrunLog( TheRun,"RCDAQ", Event_number, v, StartTime);
+
+      std::string author = "RCDAQ - ";
+      author += daq_get_myname();
+		
+      if (ElogH) ElogH->EndrunLog( TheRun,author.c_str(), Event_number, v, StartTime);
       
       if ( daq_server_flag)
 	{
