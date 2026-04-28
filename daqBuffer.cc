@@ -593,7 +593,7 @@ int daqBuffer::compress ()
 			      (lzo_byte *)&outputarray[4],
 			      &outputlength_in_bytes,wrkmem);
 	  outputarray[0] = outputlength_in_bytes +4*BUFFERHEADERLENGTH;
-	  outputarray[1] = LZO2ABUFFERMARKER;
+	  outputarray[1] = LZO1CBUFFERMARKER;
 	}
       else
 	{
