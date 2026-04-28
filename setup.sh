@@ -40,6 +40,8 @@ fi
 # have the full power of a shell script at our
 # fingertips.
 
+rcdaq_client daq_setrunnumberfile $HOME/.rcdaq_runnumber.txt
+
 rcdaq_client daq_clear_readlist
 
 # we add this very file to the begin-run event
