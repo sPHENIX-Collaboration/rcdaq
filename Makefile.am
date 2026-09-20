@@ -112,7 +112,7 @@ librcdaqplugin_example_la_SOURCES = daq_device_pluginexample.cc example_plugin.c
 
 librcdaqplugin_gauss_la_SOURCES = daq_device_gauss.cc gauss_plugin.cc simpleRandom.cc
 
-bin_SCRIPTS =  rcdaq_control.pl rcdaq_status.pl rcdaq_runtypechooser.pl rcdaq_configmenu.pl aliases.csh aliases.sh automated_run_example.sh wait_for_run_end.sh
+bin_SCRIPTS =  rcdaq_control.pl rcdaq_status.pl rcdaq_control.py rcdaq_status.py rcdaq_runtypechooser.pl rcdaq_configmenu.pl aliases.csh aliases.sh automated_run_example.sh wait_for_run_end.sh
 
 bin_PROGRAMS =  rcdaq_client rcdaq_server elogtest sfs
 
