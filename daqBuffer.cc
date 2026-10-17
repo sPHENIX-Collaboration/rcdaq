@@ -522,7 +522,7 @@ int daqBuffer::setCompression(const int flag)
       return 0;
     }
   // we initialize the work mem if it's LZO
-  else if ( wants_compression == 1 || wants_compression == 2) 
+  else if ( wants_compression == 1 || wants_compression == 2 || wants_compression == 3) 
     {
       if ( !  lzo_initialized )
 	{
@@ -538,6 +538,8 @@ int daqBuffer::setCompression(const int flag)
 	{
 	  //	  wrkmem = (lzo_bytep) lzo_malloc(LZO1X_1_12_MEM_COMPRESS);
 	  int memsize=LZO1X_999_MEM_COMPRESS;
+	  if ( wants_compression == 3) memsize = LZO2A_999_MEM_COMPRESS;
+	  
 	  //int memsize=LZO1X_1_15_MEM_COMPRESS;
 	  wrkmem = (lzo_bytep) lzo_malloc(memsize);
 	  if (wrkmem)
