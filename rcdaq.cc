@@ -2297,7 +2297,7 @@ int daq_shutdown(const unsigned long serverID, const unsigned long versionnumber
   static unsigned long  t_args[3];
   t_args[0] = serverID;
   t_args[1] = versionnumber;
-  t_args[3] = pid_fd;
+  t_args[2] = pid_fd;   // was t_args[3], one past the end of the array
     
   pthread_t t;
 
@@ -2397,7 +2397,7 @@ int daq_clear_readlist(std::ostream& os)
 }
 
 
-int rcdaq_init( const int snumber, pthread_mutex_t &M)
+int rcdaq_init( const int snumber)
 {
 
   //coutfl << " Number of cores: " << processor_count << endl;
@@ -2427,8 +2427,10 @@ int rcdaq_init( const int snumber, pthread_mutex_t &M)
 
 
 
-  //  pthread_mutex_init(&M_cout, 0); 
-  M_cout = M;
+  // M_cout used to be a copy of the server's M_output mutex. Copying an
+  // initialized pthread_mutex_t is undefined, and the copy was an independent
+  // mutex anyway, so we simply initialize our own here.
+  pthread_mutex_init(&M_cout, 0);
 
   pthread_mutex_init( &SizeUpdateSem, 0);
 

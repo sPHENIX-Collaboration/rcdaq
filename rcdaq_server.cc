@@ -32,6 +32,7 @@
 
 
 #include <vector>
+#include <mutex>
 
 
 #include <set>
@@ -39,7 +40,8 @@
 
 using namespace std;
 
-static pthread_mutex_t M_output;
+// serializes the RPC handlers; std::lock_guard releases it on every return path
+static std::mutex M_output;
 
 std::vector<RCDAQPlugin *> pluginlist;
 
@@ -499,7 +501,7 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     }
 
 
-  pthread_mutex_lock(&M_output);
+  std::lock_guard<std::mutex> lock(M_output);
   result.str=resultstring;
   strcpy(resultstring," ");
   result.content = 0;
@@ -512,7 +514,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
     {
       
     case DAQ_SYNC:
-      pthread_mutex_unlock(&M_output);
 
       return &result;
       break;
@@ -523,7 +524,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -533,7 +533,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -543,7 +542,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -553,7 +551,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -574,7 +571,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -593,7 +589,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -604,7 +599,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 #endif
@@ -618,7 +612,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result; 
       break;
 
@@ -633,7 +626,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
           result.str = resultstring;
           result.content = 1;
         }
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -647,7 +639,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -657,7 +648,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -671,7 +661,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -684,7 +673,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -697,7 +685,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -707,7 +694,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -717,7 +703,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -727,7 +712,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -737,7 +721,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
       
@@ -751,7 +734,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -761,7 +743,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -771,7 +752,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -784,7 +764,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -797,7 +776,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -810,7 +788,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -823,7 +800,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -836,7 +812,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -849,7 +824,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -867,7 +841,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -877,7 +850,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -885,7 +857,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       result.status = daq_getlastfilename ( outputstream);
       if ( result.status )
 	{
-	  pthread_mutex_unlock(&M_output);
 	  result.content = 0;
 	  return &result;
 	}
@@ -893,7 +864,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -904,7 +874,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       result.str = resultstring;
       result.content = 1;
       result.status = 0;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -917,7 +886,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -930,7 +898,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -940,7 +907,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -953,7 +919,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 	  result.str = resultstring;
 	  result.content = 1;
 	}
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -963,7 +928,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -973,7 +937,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
       resultstring[outputstream.str().size()] = 0;
       result.str = resultstring;
       result.content = 1;
-      pthread_mutex_unlock(&M_output);
       return &result;
       break;
 
@@ -986,7 +949,6 @@ shortResult * r_action_1_svc(actionblock *ab, struct svc_req *rqstp)
 
     }
   
-  pthread_mutex_unlock(&M_output);
   return &result;
   
 
@@ -1001,7 +963,7 @@ shortResult * r_shutdown_1_svc(void *x, struct svc_req *rqstp)
   
   static char resultstring[256];
 
-  pthread_mutex_lock(&M_output);
+  std::lock_guard<std::mutex> lock(M_output);
 
   
   result.content = 0;
@@ -1021,7 +983,6 @@ shortResult * r_shutdown_1_svc(void *x, struct svc_req *rqstp)
       result.str = resultstring;
       result.content = 1;
     }
-  pthread_mutex_unlock(&M_output);
   return &result;
 
 }
@@ -1103,9 +1064,8 @@ main (int argc, char **argv)
   signal(SIGINT,  sig_handler);
   
   
-  pthread_mutex_init(&M_output, 0); 
 
-  rcdaq_init( servernumber, M_output);
+  rcdaq_init( servernumber);
 
   my_servernumber = RCDAQ+servernumber;  // remember who we are for later
 
