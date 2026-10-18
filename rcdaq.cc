@@ -40,6 +40,9 @@
 #include <vector>
 #include <map>
 #include <queue>
+#include <atomic>
+#include <mutex>
+#include <condition_variable>
 
 
 
@@ -79,9 +82,42 @@ int request_mg_update(const int what);
 
 pthread_mutex_t SizeUpdateSem;
 
-pthread_mutex_t MonitoringRequestSem;
-pthread_mutex_t SendSem;
-pthread_mutex_t SendProtectSem;
+// A binary semaphore (C++20 has std::binary_semaphore; this is the C++17 equivalent).
+// SendSem and SendProtectSem used to be pthread mutexes that were locked in one
+// thread and unlocked in another, which POSIX does not allow for mutexes.
+// What they implement is a semaphore hand-off, so that's what we use now.
+class BinarySemaphore
+{
+public:
+  explicit BinarySemaphore(const bool available) : _available(available) {}
+
+  void acquire()
+  {
+    std::unique_lock<std::mutex> lock(_m);
+    _cv.wait(lock, [this] { return _available; });
+    _available = false;
+  }
+
+  void release()
+  {
+    {
+      std::lock_guard<std::mutex> lock(_m);
+      _available = true;
+    }
+    _cv.notify_one();
+  }
+
+private:
+  std::mutex _m;
+  std::condition_variable _cv;
+  bool _available;
+};
+
+// The hand-off between switch_buffer() and the sendMonitorData thread:
+// SendSem:        "a new transportBuffer is ready"  - released by switch_buffer, acquired by the sender
+// SendProtectSem: "the sender is done with it"      - released by the sender, acquired by switch_buffer
+BinarySemaphore SendSem(false);        // was pre-locked in rcdaq_init
+BinarySemaphore SendProtectSem(true);
 
 pthread_mutex_t FdManagementSem;
 
@@ -197,9 +233,10 @@ static int Eventsize[MAXEVENTID];
 // the original bit-wise status word manipulation wasn't particular thread-safe.
 // upgrading to individual variables (and we ditch "DAQ_READING")
 
-int  DAQ_RUNNING = 0;
-int  DAQ_ENDREQUESTED = 0;
-int  DAQ_BEGININPROGRESS =0;
+// these are read and written from several threads, so they need to be atomic
+std::atomic<int>  DAQ_RUNNING{0};
+std::atomic<int>  DAQ_ENDREQUESTED{0};
+std::atomic<int>  DAQ_BEGININPROGRESS{0};
 
 //static daqBuffer Buffer1;
 //static daqBuffer Buffer2;
@@ -229,7 +266,7 @@ int Event_number_at_last_end = 0;
 
 int update_delta;
 
-static int TriggerControl = 0;
+static std::atomic<int> TriggerControl{0};  // also set from sig_handler; lock-free, so that is OK
 
 int ThePort=8899;
 
@@ -936,21 +973,12 @@ void *monitorRequestwatcher_thread (void *arg)
 	  pthread_mutex_lock(&FdManagementSem);
 	  fd_queue.push(dd_fd);
 	  pthread_mutex_unlock(&FdManagementSem);
-	  
-	  //kick off "the sender of monitoring data" thread
-	  pthread_mutex_unlock(&MonitoringRequestSem);
+	  // the sender picks this up at the next buffer switch
 	}
     }
   return 0;
 }
 
-void handler ( int sig)
-{
-  //pthread_mutex_lock(&M_cout);
-  // cout  << " in handler..." << endl;
-  //pthread_mutex_unlock(&M_cout);
-  pthread_mutex_unlock(&SendProtectSem);
-}  
 
 void *sendMonitorData( void *arg)
 {
@@ -970,18 +998,21 @@ void *sendMonitorData( void *arg)
       // cout <<  "  locking SendSem " << endl;
       // pthread_mutex_unlock(&M_cout);
 
-      pthread_mutex_lock( &SendSem);
+      SendSem.acquire();
 
       // Now we go through all requests in the queue
-      while ( !fd_queue.empty() )
+      while ( 1 )
 	{
-	  // now we are manipulating the queue. To do that, we need to
-	  // lock-protect this:
-	  
+	  // the queue is filled by the request watcher thread, so even
+	  // the empty() check needs to be under the lock
 	  pthread_mutex_lock(&FdManagementSem);
+	  if ( fd_queue.empty() )
+	    {
+	      pthread_mutex_unlock(&FdManagementSem);
+	      break;
+	    }
 	  fd = fd_queue.front();
 	  fd_queue.pop();
-
 	  pthread_mutex_unlock(&FdManagementSem);
 
 	  int max_length =0;
@@ -1019,7 +1050,7 @@ void *sendMonitorData( void *arg)
       // cout <<  "  unlocking SendProtectSem " << endl;
       // pthread_mutex_unlock(&M_cout);
 
-      pthread_mutex_unlock(&SendProtectSem);
+      SendProtectSem.release();
       if ( end_thread) pthread_exit(0);
 
     }
@@ -1037,7 +1068,7 @@ int switch_buffer(const int flag) // this flag is only used if we do the switch 
   //daqBuffer *spare;
   
   //pthread_mutex_lock(&WriteProtectSem);
-  pthread_mutex_lock(&SendProtectSem);
+  SendProtectSem.acquire();  // wait until the sender is done with the current transportBuffer
 
   fillBuffer->addEoB();
   //coutfl << "switching buffer current fillBuffer is  " << fillBuffer->getID() << " dirty is " << fillBuffer->getDirty() << endl;
@@ -1151,7 +1182,7 @@ int switch_buffer(const int flag) // this flag is only used if we do the switch 
     }
 
   //pthread_mutex_unlock(&WriteSem);
-  pthread_mutex_unlock(&SendSem);
+  SendSem.release();   // wake the monitoring sender for the new transportBuffer
   return 0;
 
 }
@@ -2434,15 +2465,11 @@ int rcdaq_init( const int snumber)
 
   pthread_mutex_init( &SizeUpdateSem, 0);
 
-  pthread_mutex_init( &MonitoringRequestSem, 0);
-  pthread_mutex_init( &SendSem, 0);
-  pthread_mutex_init( &SendProtectSem, 0);
   pthread_mutex_init( &FdManagementSem,0);
   pthread_mutex_init( &OutfileManagementSem, 0);
 
-  // pre-lock them except the "protect" ones
-  pthread_mutex_lock( &MonitoringRequestSem);
-  pthread_mutex_lock( &SendSem);
+  // SendSem and SendProtectSem are BinarySemaphores now and get their
+  // initial state at construction (SendSem taken, SendProtectSem available)
 
   ThreadEvt = 0;
 

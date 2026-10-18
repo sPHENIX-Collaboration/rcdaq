@@ -3,6 +3,7 @@
 
 
 #include <lzo/lzoutil.h>
+#include <atomic>
 
 #include <EvtStructures.h>
 #include <daq_device.h>
@@ -153,7 +154,7 @@ protected:
   thread_argument _ta;
     
   int _my_number;
-  int _busy;
+  std::atomic<int> _busy;  // set by the writeout thread, polled by Wait_for_free()
   int _dirty;
   int _compressing;
   int _statusword;
