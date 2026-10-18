@@ -116,8 +116,14 @@ private:
 // The hand-off between switch_buffer() and the sendMonitorData thread:
 // SendSem:        "a new transportBuffer is ready"  - released by switch_buffer, acquired by the sender
 // SendProtectSem: "the sender is done with it"      - released by the sender, acquired by switch_buffer
-BinarySemaphore SendSem(false);        // was pre-locked in rcdaq_init
-BinarySemaphore SendProtectSem(true);
+//
+// These are deliberately heap-allocated and never deleted. If they were plain
+// globals, exit() (from shutdown_thread or sig_handler) would run their
+// destructors while the sendMonitorData thread is still blocked in
+// SendSem.acquire(), and glibc's condition-variable destructor waits for its
+// waiters - so the process hangs in exit() and only kill -9 gets rid of it.
+BinarySemaphore &SendSem        = *new BinarySemaphore(false);  // was pre-locked in rcdaq_init
+BinarySemaphore &SendProtectSem = *new BinarySemaphore(true);
 
 pthread_mutex_t FdManagementSem;
 
