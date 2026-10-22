@@ -927,6 +927,10 @@ void *shutdown_thread (void *arg)
 // monitoring data
 
 std::queue<int> fd_queue;  // this queue holds the monitoring requests 
+// fd_queue has its own lock. It must not share FdManagementSem, which a
+// writeout holds for the whole write: a hanging write would then also stop
+// the monitoring sender, and with it switch_buffer and the readout.
+static std::mutex MonitorQueueMutex;
 
 
 void *monitorRequestwatcher_thread (void *arg)
@@ -986,9 +990,10 @@ void *monitorRequestwatcher_thread (void *arg)
 	  // cout << ctime(&x) << "new request for monitoring connection accepted from " << host << endl;
 	  // pthread_mutex_unlock(&M_cout);
 
-	  pthread_mutex_lock(&FdManagementSem);
-	  fd_queue.push(dd_fd);
-	  pthread_mutex_unlock(&FdManagementSem);
+	  {
+	    std::lock_guard<std::mutex> lock(MonitorQueueMutex);
+	    fd_queue.push(dd_fd);
+	  }
 	  // the sender picks this up at the next buffer switch
 	}
     }
@@ -1021,15 +1026,12 @@ void *sendMonitorData( void *arg)
 	{
 	  // the queue is filled by the request watcher thread, so even
 	  // the empty() check needs to be under the lock
-	  pthread_mutex_lock(&FdManagementSem);
-	  if ( fd_queue.empty() )
-	    {
-	      pthread_mutex_unlock(&FdManagementSem);
-	      break;
-	    }
-	  fd = fd_queue.front();
-	  fd_queue.pop();
-	  pthread_mutex_unlock(&FdManagementSem);
+	  {
+	    std::lock_guard<std::mutex> lock(MonitorQueueMutex);
+	    if ( fd_queue.empty() ) break;
+	    fd = fd_queue.front();
+	    fd_queue.pop();
+	  }
 
 	  int max_length =0;
 	  	  
