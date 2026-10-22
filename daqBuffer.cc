@@ -259,11 +259,14 @@ int daqBuffer::start_writeout_thread ()
     {
       //  status= pthread_join(_writeout_thread_t, NULL);
       status= pthread_timedjoin_np(_writeout_thread_t, NULL, &wait_timeout);
-      // if (status)
-      // 	{
-      // 	  perror ("start_writeout_thread join");
-      // 	  cerrfl << "buffer id " << getID() << endl;
-      // 	}
+      if (status)
+	{
+	  // the previous writeout of this buffer is still going after 15s;
+	  // we go on as before, but say so, since that thread is now lost
+	  cerrfl << "buffer id " << getID() << " previous writeout thread did not finish: "
+		 << strerror(status) << endl;
+	}
+      _writeout_thread_t = 0;
     }
 
   _ta.me =this;
@@ -278,6 +281,15 @@ int daqBuffer::start_writeout_thread ()
       cerrfl << "buffer id " << getID() << endl;
     }
 
+  return status;
+}
+
+
+int daqBuffer::join_writeout_thread ()
+{
+  if ( ! _writeout_thread_t ) return 0;
+  int status = pthread_join(_writeout_thread_t, NULL);
+  _writeout_thread_t = 0;
   return status;
 }
 

@@ -1787,6 +1787,10 @@ int daq_end_immediate(std::ostream& os)
       cout << "end_run failed " << status << endl;
       os << "end_run failed " << status << endl;
     }
+  else
+    {
+      pthread_detach(t);  // nobody waits for this thread
+    }
   //coutfl << " done setting up  end_thread" << endl; 
   return 0;
 }
@@ -1907,6 +1911,13 @@ int daq_end(std::ostream& os)
 		  if ( (*it)->getDirty() ) still_dirty=1; 
 		}
 	    }
+
+	  // all buffers are written; clean up their writeout threads
+	  for (auto it: daqBufferVector)
+	    {
+	      it->join_writeout_thread();
+	    }
+
 	  close(outfile_fd);
 	  outfile_fd = 0;
 

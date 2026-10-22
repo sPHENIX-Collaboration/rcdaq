@@ -54,6 +54,8 @@ public:
 
   // now the write routine
   int start_writeout_thread ();
+  // wait for the last writeout thread of this buffer to finish and clean it up
+  int join_writeout_thread ();
   
   // now the write routine
   unsigned int writeout ();
