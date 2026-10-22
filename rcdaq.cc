@@ -1849,14 +1849,11 @@ int daq_end(std::ostream& os)
 
   //  print_buffer_histogram();
 
+  // wait until all buffers are written out. A buffer whose writeout
+  // hangs is given up on after a timeout, so we cannot hang here
   for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
     {
-      //coutfl << "Waiting for " << (*it)->getID() << " status is " << (*it)-> getDirty() << endl;
-      while ( (*it)->getDirty() )
-	{
-	  usleep(2000);
-	}
-      //coutfl << "Done waiting for " << (*it)->getID() << endl;
+      (*it)->Wait_for_written();
     }
 
   if ( file_is_open  )
@@ -1888,13 +1885,6 @@ int daq_end(std::ostream& os)
 	}
       else
 	{
-	  // wait until all buffers are written out. A buffer whose writeout
-	  // hangs is given up on after a timeout, so we cannot hang here
-	  for (auto it: daqBufferVector)
-	    {
-	      it->Wait_for_written();
-	    }
-
 	  cout << "closing outfile.. " << endl;
 	  //outfile_fd = 0; // mark all files inactive
 	  //close_fd_except_active(outfile_fd);
