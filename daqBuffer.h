@@ -4,6 +4,8 @@
 
 #include <lzo/lzoutil.h>
 #include <atomic>
+#include <mutex>
+#include <condition_variable>
 
 #include <EvtStructures.h>
 #include <daq_device.h>
@@ -114,6 +116,8 @@ public:
   // this allows others to wait for me to finish writing
   int Wait_for_Completion(const int other_buffer) const;
   int Wait_for_free() const;
+  // at the end of the run: wait until I am written out (not dirty)
+  int Wait_for_written() const;
 
   static void reset_count();
   static void init_mutex();
@@ -156,8 +160,17 @@ protected:
   thread_argument _ta;
     
   int _my_number;
-  std::atomic<int> _busy;  // set by the writeout thread, polled by Wait_for_free()
-  int _dirty;
+  // _busy and _dirty are cleared by the writeout thread and waited on by
+  // others (Wait_for_...); clearing them goes through set_done(), which
+  // wakes up the waiters
+  std::atomic<int> _busy;
+  std::atomic<int> _dirty;
+  mutable std::mutex _done_mutex;
+  mutable std::condition_variable _done_cv;
+  void set_done();
+
+  // how long we wait for a writeout before we give up on it, in seconds
+  const static int WriteoutTimeout = 20;
   int _compressing;
   int _statusword;
   

@@ -429,10 +429,7 @@ unsigned int daqBuffer::writeout ()
     }
   //if (verbosity) coutfl << "Finishing write for buffer " << getID() << endl;
  
-  _busy = 0;
-  //if (verbosity) coutfl << "setting _dirty to 0 for " << getID() << endl;
-  
-  _dirty = 0;
+  set_done();
 
   //if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
   _statusword = 0x0;
@@ -478,10 +475,7 @@ unsigned int daqBuffer::sendout ( int fd )
   UpdateFileSizes( sent );
   UpdateLastWrittenBuffernr (getID());
 
-  _busy = 0;
-  //if (verbosity) coutfl << "setting _dirty to 0 for " << getID() << endl;
-  
-  _dirty = 0;
+  set_done();
 
   //if (verbosity) coutfl << "status change in buffer " << getID() << " from 0x" << hex <<_statusword;
   _statusword = 0x0;
@@ -685,37 +679,48 @@ int daqBuffer::setEventFormat(const int f)
    return 0;
  }
 
+// the writeout of this buffer is done: clear _busy and _dirty, and wake up
+// whoever waits for that
+void daqBuffer::set_done()
+{
+  {
+    std::lock_guard<std::mutex> lock(_done_mutex);
+    _busy = 0;
+    _dirty = 0;
+  }
+  _done_cv.notify_all();
+}
+
 int daqBuffer::Wait_for_Completion( const int other_buffernumber) const
  { 
-   int guard = 20*10000;
-   
    if ( other_buffernumber < _my_buffernr ) return 0;
-   while ( _busy  )
+
+   std::unique_lock<std::mutex> lock(_done_mutex);
+   if ( ! _done_cv.wait_for(lock, std::chrono::seconds(WriteoutTimeout), [this] { return !_busy; }) )
      {
-       usleep(100);
-       if ( --guard <=0)
-	 {
-	   coutfl << "breaking wait completion lock, I am " << _my_buffernr  << " waited on by " << other_buffernumber << endl;
-	   return 0;
-	 }
+       coutfl << "breaking wait completion lock, I am " << _my_buffernr  << " waited on by " << other_buffernumber << endl;
      }
    return 0;
  }
 
 int daqBuffer::Wait_for_free() const
  { 
-   int guard = 20*10000;
-   //coutfl << "Buffer " << _my_number  << " busy_state: " << _busy << endl;
-   while ( _busy  )
+   std::unique_lock<std::mutex> lock(_done_mutex);
+   if ( ! _done_cv.wait_for(lock, std::chrono::seconds(WriteoutTimeout), [this] { return !_busy; }) )
      {
-       usleep(100);
-       if ( --guard <=0)
-	 {
-	   coutfl << "breaking wait for free lock, I am " << _my_buffernr  << endl;
-	   return 0;
-	 }
+       coutfl << "breaking wait for free lock, I am " << _my_buffernr  << endl;
      }
-   
+   return 0;
+ }
+
+int daqBuffer::Wait_for_written() const
+ { 
+   std::unique_lock<std::mutex> lock(_done_mutex);
+   if ( ! _done_cv.wait_for(lock, std::chrono::seconds(WriteoutTimeout), [this] { return !_dirty; }) )
+     {
+       coutfl << "breaking wait for written lock, I am " << _my_buffernr  << endl;
+       return -1;
+     }
    return 0;
  }
 
@@ -730,7 +735,11 @@ void daqBuffer::setDirty( const int i)
  
   else
     {
-      _dirty = 0;
+      {
+	std::lock_guard<std::mutex> lock(_done_mutex);
+	_dirty = 0;
+      }
+      _done_cv.notify_all();
       _statusword &= ~1;
     }
 }

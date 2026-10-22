@@ -1888,36 +1888,21 @@ int daq_end(std::ostream& os)
 	}
       else
 	{
-	  while (1)
+	  // wait until all buffers are written out. A buffer whose writeout
+	  // hangs is given up on after a timeout, so we cannot hang here
+	  for (auto it: daqBufferVector)
 	    {
-	      int dirtycount = 0;
-	      for (auto it: daqBufferVector)
-		{
-		  if ( it->getDirty()) dirtycount++;
-		}
-	      if ( dirtycount == 0) break;
+	      it->Wait_for_written();
 	    }
-
 
 	  cout << "closing outfile.. " << endl;
 	  //outfile_fd = 0; // mark all files inactive
 	  //close_fd_except_active(outfile_fd);
 
-	  
-	  int still_dirty = 1;
-	  while ( still_dirty)
-	    {
-	      still_dirty = 0;
-	      for ( auto it = daqBufferVector.begin(); it!= daqBufferVector.end(); ++it)
-		{
-		  if ( (*it)->getDirty() ) still_dirty=1; 
-		}
-	    }
-
 	  // all buffers are written; clean up their writeout threads
 	  for (auto it: daqBufferVector)
 	    {
-	      it->join_writeout_thread();
+	      if ( ! it->getDirty() ) it->join_writeout_thread();
 	    }
 
 	  close(outfile_fd);
