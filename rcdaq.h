@@ -98,6 +98,11 @@ std::string& daq_get_filerule();
 
 int daq_status(const int flag, std::ostream& os = std::cout );
 int daq_running();
+
+// a write of a buffer did not finish within the timeout. This is sticky:
+// the run is ended, and no new run can start until rcdaq_server is restarted
+void daq_set_output_hang();
+int daq_output_hangs();
 int daq_status_plugin(const int flag =0, std::ostream& os = std::cout );
 
 int daq_setmaxevents (const int n, std::ostream& os);

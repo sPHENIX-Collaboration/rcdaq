@@ -265,6 +265,7 @@ int daqBuffer::start_writeout_thread ()
 	  // we go on as before, but say so, since that thread is now lost
 	  cerrfl << "buffer id " << getID() << " previous writeout thread did not finish: "
 		 << strerror(status) << endl;
+	  daq_set_output_hang();
 	}
       _writeout_thread_t = 0;
     }
@@ -699,6 +700,7 @@ int daqBuffer::Wait_for_Completion( const int other_buffernumber) const
    if ( ! _done_cv.wait_for(lock, std::chrono::seconds(WriteoutTimeout), [this] { return !_busy; }) )
      {
        coutfl << "breaking wait completion lock, I am " << _my_buffernr  << " waited on by " << other_buffernumber << endl;
+       daq_set_output_hang();
      }
    return 0;
  }
@@ -709,6 +711,7 @@ int daqBuffer::Wait_for_free() const
    if ( ! _done_cv.wait_for(lock, std::chrono::seconds(WriteoutTimeout), [this] { return !_busy; }) )
      {
        coutfl << "breaking wait for free lock, I am " << _my_buffernr  << endl;
+       daq_set_output_hang();
      }
    return 0;
  }
@@ -719,6 +722,7 @@ int daqBuffer::Wait_for_written() const
    if ( ! _done_cv.wait_for(lock, std::chrono::seconds(WriteoutTimeout), [this] { return !_dirty; }) )
      {
        coutfl << "breaking wait for written lock, I am " << _my_buffernr  << endl;
+       daq_set_output_hang();
        return -1;
      }
    return 0;

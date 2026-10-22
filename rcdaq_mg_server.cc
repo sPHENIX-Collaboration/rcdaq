@@ -90,6 +90,10 @@ std::string get_statusstring()
     {
       return  error_string;
     }
+  else if ( daq_output_hangs() )
+    {
+      out << "A buffer write hangs - restart rcdaq_server" << ends;
+    }
   else if ( daq_running() )
     {
       out << "Running for " << get_runduration() << "s" << ends;

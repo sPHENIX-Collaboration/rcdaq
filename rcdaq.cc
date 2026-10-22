@@ -332,6 +332,23 @@ int adaptivebuffering = 15;
 
 int persistentErrorCondition = 0;
 
+// set when a buffer write does not finish within the timeout. Such writes
+// (seen on Lustre) never came back; the hanging write keeps the output
+// file locked, so nothing can be written any more until rcdaq_server is
+// restarted. We end the run and refuse to start a new one.
+static std::atomic<int> OutputHangCondition = 0;
+
+void daq_set_output_hang()
+{
+  if ( OutputHangCondition.exchange(1) ) return;  // say it only once
+  cout << "*** a buffer write hangs - ending the run; restart rcdaq_server" << endl;
+}
+
+int daq_output_hangs()
+{
+  return OutputHangCondition;
+}
+
 std::string MyHostName;
 std::string shortHostName;
 
@@ -1584,6 +1601,12 @@ int daq_begin(const int irun, std::ostream& os)
       os << MyHostName << "*** Previous error with server connection" << endl;;
       return -1;
     }
+
+  if ( daq_output_hangs() )
+    {
+      os << MyHostName << "*** A previous buffer write hangs - restart rcdaq_server" << endl;;
+      return -1;
+    }
     
   if (ThreadEvt)
     {
@@ -2110,6 +2133,12 @@ int readout(const int etype)
       if ( etype == DATAEVENT && max_events > 0 && Event_number >= max_events ) 
 	{
 	  cout << " automatic end after " << max_events<< " events" << endl;
+	  returncode = 1;
+	}
+
+      if ( daq_output_hangs() )
+	{
+	  cout << " automatic end because a buffer write hangs" << endl;
 	  returncode = 1;
 	}
     }
@@ -2947,6 +2976,12 @@ int daq_status( const int flag, std::ostream& os)
 
       break;
 
+    }
+
+  // not in the short and json formats, which are read by programs
+  if ( daq_output_hangs() && flag != STATUSFORMAT_SHORT && flag != 100 )
+    {
+      os << MyHostName << "*** A buffer write hangs - restart rcdaq_server" << endl;
     }
 
   return 0;
