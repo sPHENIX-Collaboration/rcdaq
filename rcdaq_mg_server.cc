@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <atomic>
 #include <sys/stat.h>
 
 using namespace std;
@@ -26,7 +27,8 @@ static void broadcast(struct mg_connection *nc, char *str, const int len);
 
 static struct mg_serve_http_opts s_http_server_opts;
 
-int end_web_thread = 0;
+// set from other threads (RPC server, shutdown), read by the web server thread
+std::atomic<int> end_web_thread = 0;
 
 pthread_mutex_t M_ws_send;
 
@@ -40,8 +42,9 @@ static double  last_runvolume;
 static int  last_runduration;
 static int  last_openflag;
 static int  last_serverflag;
-static int  rcdaqname_request_flag; 
-static int  speed_request_flag = 0; 
+// set by request_mg_update() from other threads, cleared by the web server thread
+static std::atomic<int>  rcdaqname_request_flag = 0;
+static std::atomic<int>  speed_request_flag = 0;
 
 static int speed_update_interval =9;
 

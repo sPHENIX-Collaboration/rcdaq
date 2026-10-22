@@ -61,7 +61,7 @@ std::string& daq_get_filerule();
 int daq_open(std::ostream& os = std::cout);
 int daq_shutdown(const unsigned long servernumber, const unsigned long versionnumber, const int pid_fd,
 		 std::ostream& os = std::cout);
-std::string& get_current_filename();
+std::string get_current_filename();
 int daq_close (std::ostream& os = std::cout);
 int is_open();
 
@@ -93,7 +93,7 @@ double daq_get_events_per_second();
 
 int daq_list_readlist(std::ostream& os = std::cout );
 int daq_clear_readlist(std::ostream& os = std::cout);
-std::string& get_current_filename();
+std::string get_current_filename();
 std::string& daq_get_filerule();
 
 int daq_status(const int flag, std::ostream& os = std::cout );

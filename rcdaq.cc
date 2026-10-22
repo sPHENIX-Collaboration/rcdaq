@@ -164,8 +164,12 @@ static std::map<string,string> RunTypes;
 
 static std::string TheFileRule = "rcdaq-%08d-%04d.evt";
 static std::string TheRunType = " ";
+// the file names are written when a file is opened or closed, and read
+// by other threads (the web server, the RPC server), so they are only
+// touched under FilenameMutex, and handed out as copies
 static std::string CurrentFilename = "";
 static std::string PreviousFilename = "";
+static std::mutex FilenameMutex;
 
 static std::string TheRunnumberfile;
 static int RunnumberfileIsSet = 0;
@@ -814,8 +818,11 @@ int open_file(const int run_number, int *fd)
 
   
   *fd = ifd;
-  CurrentFilename = d;
-  PreviousFilename = CurrentFilename;
+  {
+    std::lock_guard<std::mutex> lock(FilenameMutex);
+    CurrentFilename = d;
+    PreviousFilename = CurrentFilename;
+  }
   md5_init(&md5state);
 
   file_is_open =1;
@@ -853,8 +860,11 @@ int open_file_on_server(const int run_number)
       return -1;
     }
 
-  CurrentFilename = d;
-  PreviousFilename = CurrentFilename;
+  {
+    std::lock_guard<std::mutex> lock(FilenameMutex);
+    CurrentFilename = d;
+    PreviousFilename = CurrentFilename;
+  }
 
   file_is_open =1;
 
@@ -1125,7 +1135,10 @@ int switch_buffer(const int flag) // this flag is only used if we do the switch 
 	      coutfl << " rolling over " << d << endl;
 
 	      int status = server_send_rollover_sequence(d,TheServerFD);
-	      CurrentFilename = d;
+	      {
+		std::lock_guard<std::mutex> lock(FilenameMutex);
+		CurrentFilename = d;
+	      }
 	      BytesInThisFile = 0;
 	    }
 	  else   // not server
@@ -1458,13 +1471,15 @@ std::string& daq_get_filerule()
   return TheFileRule;
 }
 
-std::string& get_current_filename()
+std::string get_current_filename()
 {
+  std::lock_guard<std::mutex> lock(FilenameMutex);
   return CurrentFilename;
 }
 
-std::string& get_previous_filename()
+std::string get_previous_filename()
 {
+  std::lock_guard<std::mutex> lock(FilenameMutex);
   return PreviousFilename;
 }
 
@@ -1720,7 +1735,7 @@ int daq_begin(const int irun, std::ostream& os)
 	     
   if ( daq_open_flag || daq_server_flag )
     {
-      setenv ( "DAQ_FILENAME", CurrentFilename.c_str() , 1);
+      setenv ( "DAQ_FILENAME", get_current_filename().c_str() , 1);
     }
 
   daqBuffer::reset_count();
@@ -1916,8 +1931,11 @@ int daq_end(std::ostream& os)
   BytesInThisRun = 0;    // bytes actually written
   BytesInThisFile = 0;
   Buffer_number = 0;
-  PreviousFilename = CurrentFilename;
-  CurrentFilename = "";
+  {
+    std::lock_guard<std::mutex> lock(FilenameMutex);
+    PreviousFilename = CurrentFilename;
+    CurrentFilename = "";
+  }
   StartTime = 0;
   DAQ_RUNNING = 0;
 
@@ -3193,15 +3211,14 @@ int daq_generate_json (const int flag)
   
   std::ostringstream out;
 
-  std::string final_filename;
+  std::string final_filename = get_current_filename();
   
   try
     {
-      final_filename = std::filesystem::canonical(CurrentFilename);
+      final_filename = std::filesystem::canonical(final_filename);
     }
   catch (const std::exception& ex)
     {
-      final_filename = CurrentFilename;
     }
   
   if (flag == 0) // we start a new entry
