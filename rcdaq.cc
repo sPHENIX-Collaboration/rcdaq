@@ -884,7 +884,11 @@ void *daq_end_thread (void *arg)
   disable_trigger();
 
   // it is possible that we call daq_end before we ever started a run
-  if (ThreadEvt)   pthread_join(ThreadEvt, NULL);
+  if (ThreadEvt)
+    {
+      pthread_join(ThreadEvt, NULL);
+      ThreadEvt = 0;  // joining it a second time would be undefined
+    }
 
   daq_end(*os);
   DAQ_ENDREQUESTED = 0;
@@ -1581,7 +1585,11 @@ int daq_begin(const int irun, std::ostream& os)
       return -1;
     }
     
-  if (ThreadEvt) pthread_join(ThreadEvt, NULL);
+  if (ThreadEvt)
+    {
+      pthread_join(ThreadEvt, NULL);
+      ThreadEvt = 0;
+    }
 
   setup_buffer_histogram();
   
