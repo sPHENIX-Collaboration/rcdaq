@@ -258,7 +258,14 @@ int daqBuffer::start_writeout_thread ()
   if ( _writeout_thread_t )
     {
       //  status= pthread_join(_writeout_thread_t, NULL);
-      status= pthread_timedjoin_np(_writeout_thread_t, NULL, &wait_timeout);
+      if ( daq_output_hangs() )  // a write hangs already, we don't wait any more
+	{
+	  status= pthread_tryjoin_np(_writeout_thread_t, NULL);
+	}
+      else
+	{
+	  status= pthread_timedjoin_np(_writeout_thread_t, NULL, &wait_timeout);
+	}
       if (status)
 	{
 	  // the previous writeout of this buffer is still going after 15s;
@@ -696,8 +703,10 @@ int daqBuffer::Wait_for_Completion( const int other_buffernumber) const
  { 
    if ( other_buffernumber < _my_buffernr ) return 0;
 
+   // once a write hangs, we stop waiting (daq_output_hangs())
    std::unique_lock<std::mutex> lock(_done_mutex);
-   if ( ! _done_cv.wait_for(lock, std::chrono::seconds(WriteoutTimeout), [this] { return !_busy; }) )
+   _done_cv.wait_for(lock, std::chrono::seconds(WriteoutTimeout), [this] { return !_busy || daq_output_hangs(); });
+   if ( _busy )
      {
        coutfl << "breaking wait completion lock, I am " << _my_buffernr  << " waited on by " << other_buffernumber << endl;
        daq_set_output_hang();
@@ -708,7 +717,8 @@ int daqBuffer::Wait_for_Completion( const int other_buffernumber) const
 int daqBuffer::Wait_for_free() const
  { 
    std::unique_lock<std::mutex> lock(_done_mutex);
-   if ( ! _done_cv.wait_for(lock, std::chrono::seconds(WriteoutTimeout), [this] { return !_busy; }) )
+   _done_cv.wait_for(lock, std::chrono::seconds(WriteoutTimeout), [this] { return !_busy || daq_output_hangs(); });
+   if ( _busy )
      {
        coutfl << "breaking wait for free lock, I am " << _my_buffernr  << endl;
        daq_set_output_hang();
@@ -719,7 +729,8 @@ int daqBuffer::Wait_for_free() const
 int daqBuffer::Wait_for_written() const
  { 
    std::unique_lock<std::mutex> lock(_done_mutex);
-   if ( ! _done_cv.wait_for(lock, std::chrono::seconds(WriteoutTimeout), [this] { return !_dirty; }) )
+   _done_cv.wait_for(lock, std::chrono::seconds(WriteoutTimeout), [this] { return !_dirty || daq_output_hangs(); });
+   if ( _dirty )
      {
        coutfl << "breaking wait for written lock, I am " << _my_buffernr  << endl;
        daq_set_output_hang();

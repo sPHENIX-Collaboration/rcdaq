@@ -342,6 +342,11 @@ void daq_set_output_hang()
 {
   if ( OutputHangCondition.exchange(1) ) return;  // say it only once
   cout << "*** a buffer write hangs - ending the run; restart rcdaq_server" << endl;
+
+  // whoever waits for a buffer now stops waiting (notify only, no lock,
+  // since we may be called from inside one of those waits; a waiter that
+  // misses this still gives up after its timeout)
+  for ( auto b : daqBufferVector) b->wake_waiters();
 }
 
 int daq_output_hangs()

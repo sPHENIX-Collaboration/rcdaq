@@ -118,6 +118,8 @@ public:
   int Wait_for_free() const;
   // at the end of the run: wait until I am written out (not dirty)
   int Wait_for_written() const;
+  // once a write hangs, all waits end at once; this wakes up current waiters
+  void wake_waiters() const { _done_cv.notify_all(); }
 
   static void reset_count();
   static void init_mutex();
