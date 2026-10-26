@@ -2148,7 +2148,10 @@ int readout(const int etype)
 	}
     }
 
-  if ( adaptivebuffering  &&  time(0) - last_bufferwritetime > adaptivebuffering )
+  // not after the end-run event: daq_end flushes this buffer right away,
+  // and a switch here would leave an empty buffer to be written
+  if ( adaptivebuffering  &&  etype != ENDRUNEVENT
+       &&  time(0) - last_bufferwritetime > adaptivebuffering )
     {
       switch_buffer(1);
       //      cout << "adaptive buffer switching" << endl;

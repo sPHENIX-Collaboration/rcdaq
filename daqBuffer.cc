@@ -350,6 +350,10 @@ unsigned int daqBuffer::writeout ()
       _statusword |= 0x10;
       //if (verbosity) cout << " to 0x" << _statusword << dec << endl;
 
+      // the rest of the last block is not data - zero it, or it carries
+      // whatever this (reused) buffer held before
+      memset ( (char *) bptr + getLength(), 0, bytecount - getLength());
+
       int fd = getCurrentOutputFD();
       
       bytes = writen ( fd, (char *) bptr , bytecount );      
@@ -407,10 +411,12 @@ unsigned int daqBuffer::writeout ()
 	{
 	  blockcount = ( getLength() + 8192 -1)/8192;
 	  bytecount = blockcount*8192;
+	  memset ( (char *) bptr + getLength(), 0, bytecount - getLength());
 	  bytes = writen ( fd, (char *) bptr , bytecount );      
 	}
       else
 	{
+	  memset ( (char *) outputarray + outputarray[0], 0, bytecount - outputarray[0]);
 	  bytes = writen ( fd, (char *) outputarray , bytecount );
 	}
 
